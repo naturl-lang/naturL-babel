@@ -18,3 +18,7 @@ type scope =
   | FuncDefinition
   | FuncHeader
   | FuncBody
+
+type 'a tree =
+  | Leaf of 'a
+  | Tree of 'a * 'a tree list
