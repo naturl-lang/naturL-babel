@@ -1,5 +1,5 @@
 type type_struct =
-    Int
+  | Int
   | Float
   | Char
   | String
@@ -7,17 +7,12 @@ type type_struct =
   | List of type_struct
   | Function of type_struct list * type_struct ;;
 
-
-type scope =
-    Normal
-  | Current (* Used to indicate no change of the current scope*)
-  | Previous
-  | ForDefinition
-  | WhileDefinition
-  | IfDefinition
-  | FuncDefinition
-  | FuncHeader
-  | FuncBody
+type expr =
+  | Plus of expr * expr
+  | Minus of expr * expr
+  | Times of expr * expr
+  | Divide of expr * expr
+  | Value of type_struct
 
 type 'a tree =
   | Leaf of 'a
