@@ -1,21 +1,23 @@
+let eval_code vars code index
+
 (* Keyword evaluators *)
-let eval_fonction str index = str, index + 1
+let eval_fonction vars code index = code, index + 1
 
-let eval_procedure str index = str, index + 1
+let eval_procedure vars code index = code, index + 1
 
-let eval_variables str index = str, index + 1
+let eval_variables vars code index = code, index + 1
 
-let eval_debut str index = str, index + 1
+let eval_debut vars code index = code, index + 1
 
-let eval_pour str index = str, index + 1
+let eval_pour vars code index = code, index + 1
 
-let eval_tant_que str index = str, index + 1
+let eval_tant_que vars code index = code, index + 1
 
-let eval_si str index = str, index + 1
+let eval_si vars code index = code, index + 1
 
-let eval_sinon str index = str, index + 1
+let eval_sinon vars code index = code, index + 1
 
-let eval_sinon_si str index = str, index + 1
+let eval_sinon_si vars code index = code, index + 1
 
 let keywords_list = [
     "fonction";
@@ -28,10 +30,10 @@ let keywords_list = [
     "sinon_si"
   ]
 
-(* Translates the code after the keyword and return an index to continue evaluating the code *)
+(* Translates the code after the keyword and returns an index to continue evaluating the code *)
 (*NB: The terminating keywords such as "fin" or "faire" are ignored here.*)
 (*    We only consider the keywords starting a new scope*)
-let evaluate_keyword keyword =
+let evaluate_keyword keyword vars code index =
   (function
    | "fonction" -> eval_fonction
    | "procedure" -> eval_procedure
@@ -43,4 +45,4 @@ let evaluate_keyword keyword =
    | "sinon" -> eval_sinon
    | "sinon_si" -> eval_sinon_si
    | token -> invalid_arg ("evaluate_keyword: Unknown token: " ^ token)
-  ) keyword
+  ) vars code index
