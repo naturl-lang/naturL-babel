@@ -1,4 +1,4 @@
-let eval_code vars code index
+let eval_code vars code index = code, index + 1
 
 (* Keyword evaluators *)
 let eval_fonction vars code index = code, index + 1
