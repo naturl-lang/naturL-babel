@@ -45,4 +45,5 @@ let evaluate_keyword keyword vars code index =
    | "sinon" -> eval_sinon
    | "sinon_si" -> eval_sinon_si
    | token -> invalid_arg ("evaluate_keyword: Unknown token: " ^ token)
-  ) vars code index
+  ) vars (Buffer.sub code (index) (Buffer.length code)) index
+
