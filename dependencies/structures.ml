@@ -1,9 +1,9 @@
 type type_struct =
-  | Int
-  | Float
-  | Char
-  | String
-  | Boolean
+  | Int of int
+  | Float of float
+  | Char of char
+  | String of string
+  | Boolean of bool
   | List of type_struct
   | Function of type_struct list * type_struct ;;
 
@@ -12,6 +12,9 @@ type expr =
   | Minus of expr * expr
   | Times of expr * expr
   | Divide of expr * expr
+  | Equal of expr * expr
+  | Greater of expr * expr
+  | Lower of expr * expr
   | Value of type_struct
 
 type 'a tree =
