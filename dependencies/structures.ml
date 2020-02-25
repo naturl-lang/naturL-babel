@@ -19,7 +19,7 @@ struct
 end
 
 
-type variable = {name: string; _type: Type._type}
+type variable = {name: string; _type: Type._type; mutable value: string; is_parametre: bool}
 
 (* Parametrized types *)
 type type_struct =
