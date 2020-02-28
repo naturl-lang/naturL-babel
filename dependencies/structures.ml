@@ -1,7 +1,7 @@
 (* Unparametrized types *)
 module Type =
 struct
-  type _type =
+  type type_struct =
     | Int
     | Float
     | Char
@@ -19,7 +19,7 @@ struct
 end
 
 
-type variable = {name: string; _type: Type._type; mutable value: string; is_parametre: bool}
+type variable = {name: string; _type: Type.type_struct}
 
 (* Parametrized types *)
 type type_struct =
@@ -45,6 +45,7 @@ type expr =
   | LowerOrEqual of expr * expr
   | And of expr * expr
   | Or of expr * expr
+  | Not of expr
   | Value of type_struct
 
 type 'a tree =
