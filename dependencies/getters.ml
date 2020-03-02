@@ -18,12 +18,26 @@ let get_word code i =
   let rec _get_word i word =
     if i < len then
       match Buffer.nth code i with
-        ' ' | '\t' when word = "" -> _get_word (i + 1) word
+      | ' ' | '\t' when word = "" -> _get_word (i + 1) word
       | ' ' | '\n' | '(' | ',' | ')' -> word, i + 1
       | x -> _get_word (i + 1) (word ^ (String.make 1 x))
     else
       word, len
   in _get_word i "" ;;
+
+let get_word_and_returns code i =
+  let len = Buffer.length code in
+  let rec _get_word i word =
+    if i < len then
+      match Buffer.nth code i with
+
+      | ' ' | '\t' when word = "" -> _get_word (i + 1) word
+      | ' ' | '(' | ',' | ')' -> word, i + 1
+      | x -> _get_word (i + 1) (word ^ (String.make 1 x))
+    else
+      word, len
+  in _get_word i "" ;;
+
 
 let get_line code i =
   let len = Buffer.length code in

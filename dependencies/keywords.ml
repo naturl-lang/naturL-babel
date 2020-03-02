@@ -1,8 +1,6 @@
 (*#mod_use "structures.ml";;
-  #mod_use "type_operations.ml";;
-  #mod_use "getters.ml"
-  #load "str.cma";; *) (*UNCOMMENT FOR TOPLEVEL*)
-
+#mod_use "getters.ml";;
+*)
 open Structures;;
 open Getters;;
 
@@ -54,8 +52,32 @@ let eval_procedure vars code index depth =
   (*Same logic as the function except that there is no need to check a return type*)
   let name, index = get_word code (index + 10) (*10 = 9 + 1*) in
   let _, variables, index = get_param vars "" code (ignore_chrs code index) in
-  (depth ^ "def " ^ name ^ "(" ^ variables ^ "):\n", index + 1)
+  (depth ^ "def " ^ name ^ "(" ^ variables ^ "):\n", index + 1);;
 
+
+
+let get_expression code index =
+  let rec _get_expression code i =
+    match get_word_and_returns code i with
+    |("alors", k) -> (Buffer.sub code index (k-8), k)
+    |("\n", _) -> failwith("Syntax Error : no alors was found on the line")
+    |(_, _) -> _get_expression code (i+1)
+  in _get_expression code index;;
+
+
+let eval_si code index depth =
+  match get_word code index with
+  |("si", i) -> let a,b = get_expression code (index+i) in
+    (depth ^ "if " ^ a ^ ":\n", b)
+  |(_, _) -> failwith("Syntax Error : condition must start with si");;
+
+
+(*let buffer = Buffer.create 1;;
+Buffer.add_string buffer "si a > b && c > (d+8) \n";;
+
+get_word buffer 0;;
+eval_si buffer 0 "";;
+*)
 (*
 let eval_debut vars code index depth = "code", index ;;
 
@@ -63,7 +85,7 @@ let eval_pour vars code index = code, index + 1 ;;
 
 let eval_tant_que vars code index = code, index + 1 ;;
 
-let eval_si vars code index = code, index + 1 ;;
+ 
 
 let eval_sinon vars code index = code, index + 1 ;;
 
