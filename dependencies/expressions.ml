@@ -4,19 +4,19 @@ open Structures
 
 (* Binary operators *)
 let operators = [
-    "+";
-    "-";
-    "*";
-    "/";
-    ">";
-    ">=";
-    "<";
-    "<=";
-    "=";
-    "et";
-    "ou";
-    "non"
-  ] ;;
+  "+";
+  "-";
+  "*";
+  "/";
+  ">";
+  ">=";
+  "<";
+  "<=";
+  "=";
+  "et";
+  "ou";
+  "non"
+] ;;
 
 let unary_ops = ["non"]
 
@@ -57,7 +57,7 @@ let make_binary_op arg1 arg2 = function
 
 let make_unary_op arg = function
   | "non" -> Not arg
-  | op -> failwith ("make_unary_op: Unlnown unary operator: " ^ op)
+  | op -> failwith ("make_unary_op: Unknown unary operator: " ^ op)
 
 (* Converts a string to a type_struct *)
 let str_to_struct str =
@@ -74,7 +74,7 @@ let str_to_struct str =
   else if str = "faux" then
     Boolean false
   else if string_match (regexp "^[A-z_][A-z0-9_]*$") str 0 then
-    Variable {name = str; _type = Type.int}
+    Variable {name = str; type_struct = Type.Int} (* TODO: Make the type check *)
   else
     failwith ("str_to_struct: Unknown type_struct: " ^ str) ;;
 
@@ -88,21 +88,21 @@ let str_to_expr str =
       let is_new_buf_pref = is_list_prefix operators (buf ^ ch)
       and next_str = String.sub str 1 (length - 1)
       and priority = if ch = "(" then priority + 10
-                     else if ch = ")" then priority - 10
-                     else priority in
+        else if ch = ")" then priority - 10
+        else priority in
       (* If the previous buffer was an operator and the current one is no more *)
       (* Compare the priority of the new operator with the priority of the current one *)
       (* If it is lower, change the current operator and clear the buffer *)
       if String.length buf <> 0 && not is_new_buf_pref
-         && priority + op_priority buf <= op_priority current then
+         && priority + op_priority buf < op_priority current then
         find_op next_str "" buf (left ^ current ^ right) ch priority
-                (* If the new buffer is a prefix of an operator, continue feeding it *)
+        (* If the new buffer is a prefix of an operator, continue feeding it *)
       else if is_new_buf_pref then
         find_op next_str (buf ^ ch) current left right priority
-                (* If the buffer was empty, just continue reading *)
+        (* If the buffer was empty, just continue reading *)
       else if String.length buf = 0 then
         find_op next_str "" current left (right ^ ch) priority
-                (* Else add it to the right string *)
+        (* Else add it to the right string *)
       else
         find_op next_str "" current left (right ^ buf ^ ch) priority
   in let rec _str_to_expr str =
@@ -118,4 +118,43 @@ let str_to_expr str =
        else
          (* It is supposed that all unary operators are prefixes *)
          make_unary_op (_str_to_expr right) op
-     in _str_to_expr str ;;
+  in _str_to_expr str ;;
+
+let string_of_expr expr =
+  let rec string_of_expr expr d = match expr with
+    | Plus (arg1, arg2) -> d ^ "|- Plus" ^ "\n" ^
+                           (string_of_expr arg1 (d ^ "  ")) ^ "\n" ^
+                           (string_of_expr arg2 (d ^ "  "))
+    | Minus (arg1, arg2) -> d ^ "|- Minus" ^ "\n" ^
+                            (string_of_expr arg1 (d ^ "  ")) ^ "\n" ^
+                            (string_of_expr arg2 (d ^ "  "))
+    | Times (arg1, arg2) -> d ^ "|- Times" ^ "\n" ^
+                            (string_of_expr arg1 (d ^ "  ")) ^ "\n" ^
+                            (string_of_expr arg2 (d ^ "  "))
+    | Divide (arg1, arg2) -> d ^ "|- Divide" ^ "\n" ^
+                             (string_of_expr arg1 (d ^ "  ")) ^ "\n" ^
+                             (string_of_expr arg2 (d ^ "  "))
+    | Equal (arg1, arg2) -> d ^ "|- Equal" ^ "\n" ^
+                            (string_of_expr arg1 (d ^ "  ")) ^ "\n" ^
+                            (string_of_expr arg2 (d ^ "  "))
+    | Greater (arg1, arg2) -> d ^ "|- Greater" ^ "\n" ^
+                              (string_of_expr arg1 (d ^ "  ")) ^ "\n" ^
+                              (string_of_expr arg2 (d ^ "  "))
+    | GreaterOrEqual (arg1, arg2) -> d ^ "|- GreaterOrEqual" ^ "\n" ^
+                                     (string_of_expr arg1 (d ^ "  ")) ^ "\n" ^
+                                     (string_of_expr arg2 (d ^ "  "))
+    | Lower (arg1, arg2) -> d ^ "|- Lower" ^ "\n" ^
+                            (string_of_expr arg1 (d ^ "  ")) ^ "\n" ^
+                            (string_of_expr arg2 (d ^ "  "))
+    | LowerOrEqual (arg1, arg2) -> d ^ "|- LowerOrEqual" ^ "\n" ^
+                                   (string_of_expr arg1 (d ^ "  ")) ^ "\n" ^
+                                   (string_of_expr arg2 (d ^ "  "))
+    | And (arg1, arg2) -> d ^ "|- And" ^ "\n" ^
+                          (string_of_expr arg1 (d ^ "  ")) ^ "\n" ^
+                          (string_of_expr arg2 (d ^ "  "))
+    | Or (arg1, arg2) -> d ^ "|- Or" ^ "\n" ^
+                         (string_of_expr arg1 (d ^ "  ")) ^ "\n" ^
+                         (string_of_expr arg2 (d ^ "  "))
+    | Not arg -> d ^ "|- Minus" ^ "\n" ^ (string_of_expr arg (d ^ "  "))
+    | Value _ -> d ^ "|- Value"
+  in string_of_expr expr ""

@@ -9,17 +9,33 @@ struct
     | Boolean
     | List
     | Function
-  let int = Int
-  let float = Float
-  let char = Char
-  let str = String
-  let bool = Boolean
-  let list = List
-  let func = Function
+
+  let string_of_type = function
+      Int -> "entier"
+    | Float -> "reel"
+    | Char -> "caractere"
+    | String -> "chaine"
+    | Boolean -> "boolean"
+    | List -> "liste"
+    | Function -> "fonction"
+
+  let type_of_string = function
+      "entier" -> Int
+    | "reel" -> Float
+    | "caractere" -> Char
+    | "chaine" -> String
+    | "booleen" -> Boolean
+    | "liste" -> List
+    | "fonction" -> Function
+    | x -> failwith ("type_of_string: Undefined type: '" ^ x ^ "'")
 end
 
 
-type variable = {name: string; _type: Type.type_struct}
+type variable = {name: string; type_struct: Type.type_struct}
+
+let print_variable var =
+  print_endline ("var " ^ var.name ^ ": " ^ Type.string_of_type var.type_struct)
+
 
 (* Parametrized types *)
 type type_struct =

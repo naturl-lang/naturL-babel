@@ -1,9 +1,8 @@
 (*#mod_use "structures.ml";;
   #load "str.cma";; (*UNCOMMENT FOR TOPLEVEL*)
   #mod_use "type_operations.ml" *)
-open Type_operations;;
+
 open Structures;;
-open Str;;
 
 
 let rec ignore_chrs code i =
@@ -14,15 +13,34 @@ let rec ignore_chrs code i =
   else
     Buffer.length code ;;
 
-let rec get_word code word i  =
-  let l = Buffer.length code in
-  if i < l then
-    match Buffer.nth code i with
-      ' ' | '\n' | '(' | ',' | ')' -> (word, i)
-    | _ when i = Buffer.length code -> (word, i)
-    | x -> get_word code (word ^ (Char.escaped x)) (i + 1)
-  else
-    (word, l + 1) ;;
+let get_word code i =
+  let len = Buffer.length code in
+  let rec _get_word i word =
+    if i < len then
+      match Buffer.nth code i with
+        ' ' | '\t' when word = "" -> _get_word (i + 1) word
+      | ' ' | '\n' | '(' | ',' | ')' -> word, i + 1
+      | x -> _get_word (i + 1) (word ^ (String.make 1 x))
+    else
+      word, len
+  in _get_word i "" ;;
+
+let get_line code i =
+  let len = Buffer.length code in
+  let rec _get_line i line =
+    if i < len then
+      match Buffer.nth code i with
+        '\n' -> line, i + 1
+      | x -> _get_line (i + 1) (line ^ (String.make 1 x))
+    else
+      line, len
+  in _get_line i "" ;;
+
+(*Check if the specified type is a valid builtin type, if that is the case, returns the right type *)
+let get_type code index =
+  let (t, index) = get_word code index in
+  (* print_string t; print_string "\n"; Debug*)
+  (index, Type.type_of_string t) ;;
 
 (*Gets the following tokens as part of a type char*)
 let get_char code i =
@@ -55,9 +73,9 @@ let rec get_param vars variables code i =
   else if Buffer.nth code i = ':' then
     (vars, String.sub variables 0 (String.length variables - 2), i)
   else
-    let i, type_ = get_type code (ignore_chrs code i) in
-    let name, i = get_word code "" (ignore_chrs code i) in
-    get_param ({name = name; _type = type_; value = "None"; is_parametre = true} :: vars) (variables ^ name ^ ", ")
+    let i, type_struct = get_type code (ignore_chrs code i) in
+    let name, i = get_word code (ignore_chrs code i) in
+    get_param ({name; type_struct} :: vars) (variables ^ name ^ ", ")
       code (ignore_chrs code i) ;;
 
 
