@@ -61,6 +61,7 @@ let get_expression code index =
     match get_word_and_returns code i with
     |("alors", k) -> (Buffer.sub code index (k-8), k)
     |("\n", _) -> failwith("Syntax Error : no alors was found on the line")
+    |("\r", _) -> failwith("Syntax Error : no alors was found on the line")
     |(_, _) -> _get_expression code (i+1)
   in _get_expression code index;;
 
