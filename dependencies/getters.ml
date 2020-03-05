@@ -25,6 +25,7 @@ let get_word code i =
       word, len
   in _get_word i "" ;;
 
+
 let get_word_and_returns code i =
   let len = Buffer.length code in
   let rec _get_word i word =
@@ -37,6 +38,14 @@ let get_word_and_returns code i =
     else
       word, len
   in _get_word i "" ;;
+
+
+let rec get_expression code index terminator =
+  match get_word_and_returns code index with
+  |("alors", k) -> (Buffer.sub code index (k-8), k)
+  |("\n", _) |("\r", _) -> failwith("Syntax Error : no " ^ terminator ^ " was found on the line")
+  |(_, i) when i >= Buffer.length code -> failwith("Syntax Error : code was not supposed to end here")
+  |(_, _) -> get_expression code (index+1) terminator;;
 
 
 let get_line code i =
