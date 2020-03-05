@@ -60,25 +60,24 @@ let make_unary_op arg = function
   | op -> failwith ("make_unary_op: Unknown unary operator: " ^ op)
 
 (* Converts a string to a type_struct *)
-let str_to_struct str =
+let struct_of_str str =
   if string_match (regexp "^-?[0-9]+$") str 0 then
-    Int (int_of_string str)
+    Type.Int
   else if string_match (regexp "^[0-9]+\\.[0-9]+$") str 0 then
-    Float (float_of_string str)
+    Type.Float
   else if string_match (regexp "^\".*\"$") str 0 then
-    String (String.sub str 1 (String.length str - 2))
+    Type.String
   else if string_match (regexp "^'.+'$") str 0 then
-    Char str.[1]
-  else if str = "vrai" then
-    Boolean true
-  else if str = "faux" then
-    Boolean false
-  else if string_match (regexp "^[A-z_][A-z0-9_]*$") str 0 then
-    Variable {name = str; type_struct = Type.Int} (* TODO: Make the type check *)
+    Type.Char
+  else if str = "vrai" || str = "faux" then
+    Type.Boolean
+  else if string_match (regexp "^[A-z_][A-z0-9_]*$") str 0 then (* str is a variable *)
+    Type.Int (* TODO: Make the type check *)
   else
-    failwith ("str_to_struct: Unknown type_struct: " ^ str) ;;
+    failwith ("str_to_struct: Unknown type: " ^ str) ;;
 
-let str_to_expr str =
+(* Converts a string to an expression *)
+let expr_of_str str =
   let rec find_op str buf current left right priority =
     let length = String.length str in
     if length = 0 then
@@ -105,56 +104,76 @@ let str_to_expr str =
         (* Else add it to the right string *)
       else
         find_op next_str "" current left (right ^ buf ^ ch) priority
-  in let rec _str_to_expr str =
+  in let rec _expr_of_str str =
        let op, left, right = find_op str "" "" "" "" 0 in
        if op = "" then
          let str = String.trim str in
          let str = if str.[0] = '(' then String.sub str 1 (String.length str - 1) else str in
          let str = if str.[String.length str - 1] = ')' then String.sub str 0 (String.length str - 1) else str in
-         Value (str_to_struct (String.trim str))
+         Value (struct_of_str (String.trim str))
          (* If op is a binary operator: *)
        else if not (List.mem op unary_ops) then
-         make_binary_op (_str_to_expr left) (_str_to_expr right) op
+         make_binary_op (_expr_of_str left) (_expr_of_str right) op
        else
          (* It is supposed that all unary operators are prefixes *)
-         make_unary_op (_str_to_expr right) op
-  in _str_to_expr str ;;
+         make_unary_op (_expr_of_str right) op
+  in _expr_of_str str ;;
 
-let string_of_expr expr =
-  let rec string_of_expr expr d = match expr with
+(* Converts an expression to its string representation as a string. Used mostly for debugging. *)
+let tree_of_expr expr =
+  let rec _tree_of_expr expr d = match expr with
     | Plus (arg1, arg2) -> d ^ "|- Plus" ^ "\n" ^
-                           (string_of_expr arg1 (d ^ "  ")) ^ "\n" ^
-                           (string_of_expr arg2 (d ^ "  "))
+                           (_tree_of_expr arg1 (d ^ "  ")) ^ "\n" ^
+                           (_tree_of_expr arg2 (d ^ "  "))
     | Minus (arg1, arg2) -> d ^ "|- Minus" ^ "\n" ^
-                            (string_of_expr arg1 (d ^ "  ")) ^ "\n" ^
-                            (string_of_expr arg2 (d ^ "  "))
+                            (_tree_of_expr arg1 (d ^ "  ")) ^ "\n" ^
+                            (_tree_of_expr arg2 (d ^ "  "))
     | Times (arg1, arg2) -> d ^ "|- Times" ^ "\n" ^
-                            (string_of_expr arg1 (d ^ "  ")) ^ "\n" ^
-                            (string_of_expr arg2 (d ^ "  "))
+                            (_tree_of_expr arg1 (d ^ "  ")) ^ "\n" ^
+                            (_tree_of_expr arg2 (d ^ "  "))
     | Divide (arg1, arg2) -> d ^ "|- Divide" ^ "\n" ^
-                             (string_of_expr arg1 (d ^ "  ")) ^ "\n" ^
-                             (string_of_expr arg2 (d ^ "  "))
+                             (_tree_of_expr arg1 (d ^ "  ")) ^ "\n" ^
+                             (_tree_of_expr arg2 (d ^ "  "))
     | Equal (arg1, arg2) -> d ^ "|- Equal" ^ "\n" ^
-                            (string_of_expr arg1 (d ^ "  ")) ^ "\n" ^
-                            (string_of_expr arg2 (d ^ "  "))
+                            (_tree_of_expr arg1 (d ^ "  ")) ^ "\n" ^
+                            (_tree_of_expr arg2 (d ^ "  "))
     | Greater (arg1, arg2) -> d ^ "|- Greater" ^ "\n" ^
-                              (string_of_expr arg1 (d ^ "  ")) ^ "\n" ^
-                              (string_of_expr arg2 (d ^ "  "))
+                              (_tree_of_expr arg1 (d ^ "  ")) ^ "\n" ^
+                              (_tree_of_expr arg2 (d ^ "  "))
     | GreaterOrEqual (arg1, arg2) -> d ^ "|- GreaterOrEqual" ^ "\n" ^
-                                     (string_of_expr arg1 (d ^ "  ")) ^ "\n" ^
-                                     (string_of_expr arg2 (d ^ "  "))
+                                     (_tree_of_expr arg1 (d ^ "  ")) ^ "\n" ^
+                                     (_tree_of_expr arg2 (d ^ "  "))
     | Lower (arg1, arg2) -> d ^ "|- Lower" ^ "\n" ^
-                            (string_of_expr arg1 (d ^ "  ")) ^ "\n" ^
-                            (string_of_expr arg2 (d ^ "  "))
+                            (_tree_of_expr arg1 (d ^ "  ")) ^ "\n" ^
+                            (_tree_of_expr arg2 (d ^ "  "))
     | LowerOrEqual (arg1, arg2) -> d ^ "|- LowerOrEqual" ^ "\n" ^
-                                   (string_of_expr arg1 (d ^ "  ")) ^ "\n" ^
-                                   (string_of_expr arg2 (d ^ "  "))
+                                   (_tree_of_expr arg1 (d ^ "  ")) ^ "\n" ^
+                                   (_tree_of_expr arg2 (d ^ "  "))
     | And (arg1, arg2) -> d ^ "|- And" ^ "\n" ^
-                          (string_of_expr arg1 (d ^ "  ")) ^ "\n" ^
-                          (string_of_expr arg2 (d ^ "  "))
+                          (_tree_of_expr arg1 (d ^ "  ")) ^ "\n" ^
+                          (_tree_of_expr arg2 (d ^ "  "))
     | Or (arg1, arg2) -> d ^ "|- Or" ^ "\n" ^
-                         (string_of_expr arg1 (d ^ "  ")) ^ "\n" ^
-                         (string_of_expr arg2 (d ^ "  "))
-    | Not arg -> d ^ "|- Minus" ^ "\n" ^ (string_of_expr arg (d ^ "  "))
+                         (_tree_of_expr arg1 (d ^ "  ")) ^ "\n" ^
+                         (_tree_of_expr arg2 (d ^ "  "))
+    | Not arg -> d ^ "|- Minus" ^ "\n" ^ (_tree_of_expr arg (d ^ "  "))
     | Value _ -> d ^ "|- Value"
-  in string_of_expr expr ""
+  in _tree_of_expr expr ""
+
+(* Checks if the types of an expression are valid *)
+let check_expr expr =
+  let rec _check_binary_expr op1 op2 accepted_types =
+    let is_valid1, type1 = _check_expr op1
+    and is_valid2, type2 = _check_expr op2
+    in let is_valid = is_valid1 && is_valid2 && type1 = type2 && List.mem type1 accepted_types
+    in is_valid, if is_valid then type1 else Type.None
+  (* Returns a tuple (is_valid, type_struct) and checks the subtree(s). *)
+  and _check_expr expr =
+    match expr with
+    | Value type_struct -> true, type_struct
+    | Plus (op1, op2) -> _check_binary_expr op1 op2 [Type.Int; Type.Float; Type.String]
+    | Minus (op1, op2) | Times (op1, op2) | Divide (op1, op2) -> _check_binary_expr op1 op2 [Type.Int; Type.Float]
+    | Equal (op1, op2) | Greater (op1, op2) | GreaterOrEqual (op1, op2)
+    | Lower (op1, op2) | LowerOrEqual (op1, op2)
+    | And (op1, op2) | Or (op1, op2) -> _check_binary_expr op1 op2 [Type.Boolean]
+    | Not op -> _check_binary_expr op (Value Type.Boolean) [Type.Boolean]
+  in _check_expr expr

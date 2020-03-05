@@ -9,6 +9,7 @@ struct
     | Boolean
     | List
     | Function
+    | None
 
   let string_of_type = function
       Int -> "entier"
@@ -18,6 +19,7 @@ struct
     | Boolean -> "boolean"
     | List -> "liste"
     | Function -> "fonction"
+    | None -> "rien"
 
   let type_of_string = function
       "entier" -> Int
@@ -27,6 +29,7 @@ struct
     | "booleen" -> Boolean
     | "liste" -> List
     | "fonction" -> Function
+    | "rien" -> None
     | x -> failwith ("type_of_string: Undefined type: '" ^ x ^ "'")
 end
 
@@ -35,19 +38,6 @@ type variable = {name: string; type_struct: Type.type_struct}
 
 let print_variable var =
   print_endline ("var " ^ var.name ^ ": " ^ Type.string_of_type var.type_struct)
-
-
-(* Parametrized types *)
-type type_struct =
-  | Int of int
-  | Float of float
-  | Char of char
-  | String of string
-  | Boolean of bool
-  | List of type_struct
-  | Function of type_struct list * type_struct
-  | Variable of variable
-
 
 type expr =
   | Plus of expr * expr
@@ -62,7 +52,7 @@ type expr =
   | And of expr * expr
   | Or of expr * expr
   | Not of expr
-  | Value of type_struct
+  | Value of Type.type_struct
 
 type 'a tree =
   | Leaf of 'a
