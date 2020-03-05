@@ -67,3 +67,5 @@ type expr =
 type 'a tree =
   | Leaf of 'a
   | Tree of 'a * 'a tree list
+
+module VarSet = Set.Make(struct type t = variable let compare = compare end)

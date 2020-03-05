@@ -3,8 +3,7 @@
 *)
 open Structures;;
 open Getters;;
-
-module VarSet = Set.Make(struct type t = variable let compare = compare end)
+(*open Structures.VarSet if VarSet module unbound*)
 
 (* Used mostly for debugging *)
 let print_var_set set =
@@ -21,7 +20,7 @@ let eval_code _ code index = code, index + 1
 (* This function only adds the new declared variables in the set *)
 let rec eval_variables vars code index =
   let rec eval_line vars type_struct = function
-      [] -> vars
+     [] -> vars
     | name :: t -> let name = String.trim name in
       eval_line (VarSet.add {name; type_struct} vars) type_struct t
   in let word, index = get_word code index
@@ -55,7 +54,7 @@ let eval_procedure vars code index depth =
   (depth ^ "def " ^ name ^ "(" ^ variables ^ "):\n", index + 1);;
 
 
-
+(*Insert this function in eval_si to clean the code : make the recursive one inside *)
 let get_expression code index =
   let rec _get_expression code i =
     match get_word_and_returns code i with
@@ -73,13 +72,7 @@ let eval_si code index depth =
   |(_, _) -> failwith("Syntax Error : condition must start with si");;
 
 
-(*let buffer = Buffer.create 1;;
-Buffer.add_string buffer "si a > b && c > (d+8) \n";;
 
-get_word buffer 0;;
-eval_si buffer 0 "";;
-*)
-(*
 let eval_debut vars code index depth = "code", index ;;
 
 let eval_pour vars code index = code, index + 1 ;;
@@ -91,7 +84,6 @@ let eval_tant_que vars code index = code, index + 1 ;;
 let eval_sinon vars code index = code, index + 1 ;;
 
 let eval_sinon_si vars code index = code, index + 1 ;;
-*)
 
 let keywords_list = [
   "fonction";
@@ -122,3 +114,4 @@ let evaluate_keyword keyword vars code index =
     | token -> invalid_arg ("evaluate_keyword: Unknown token: " ^ token)
   ) vars (Buffer.sub code (index) (Buffer.length code)) index ;;
 *)
+

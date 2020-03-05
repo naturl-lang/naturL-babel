@@ -89,7 +89,7 @@ let rec get_param vars variables code i =
   else
     let i, type_struct = get_type code (ignore_chrs code i) in
     let name, i = get_word code (ignore_chrs code i) in
-    get_param ({name; type_struct} :: vars) (variables ^ name ^ ", ")
+    get_param (VarSet.add ({name; type_struct}) vars) (variables ^ name ^ ", ")
       code (ignore_chrs code i) ;;
 
 
