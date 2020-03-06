@@ -74,14 +74,14 @@ and eval_procedure vars code index depth =
 
 and eval_si code index depth =
   match get_word code index with
-  |("si", i) -> let a,b = get_expression code (index+i) "alors" in
+  |("si", i) -> let a,b = get_expression code i "alors" in
     (depth ^ "if " ^ a ^ ":\n", b)
   |(_, _) -> failwith("Syntax Error : condition must start with si")
 
 
 and eval_tant_que code index depth =
   match get_word code index with
-  |("tant_que", i) -> let a, b = get_expression code (index+i) "faire" in
+  |("tant_que", i) -> let a, b = get_expression code i "faire" in
     (depth ^ "while " ^ a ^":\n", b)
   |(_, _) -> failwith("Syntax Error : tantque loop must start with tantque")
 
@@ -96,7 +96,7 @@ and eval_sinon code index depth =
 
 let eval_sinon_si code index depth =
   match get_word code index with
-  |("sinon_si", i) -> let a,b = get_expression code (index+i) "alors" in
+  |("sinon_si", i) -> let a,b = get_expression code i "alors" in
     (depth ^ "elif " ^ a ^ ":\n", b)
   |(_, _) -> failwith("Syntax Error : sinon_si condition must start with sinon_si");;
 
@@ -104,7 +104,7 @@ let eval_pour_chaque code index depth =
   let rec get_foreach_core code index =
     match get_word code index with
     |("de", i) -> let a, b = get_foreach_core code (i) in (" in" ^ a, b)
-    |("faire", i) -> ("", i)
+    |("faire", i) -> ("", i+1)
     |(word, i) -> let a, b = get_foreach_core code (i) in (" " ^ word ^ a, b)
   in
   match get_word code index with
@@ -119,11 +119,11 @@ let eval_pour code index depth =
     | ("faire", i) -> ("", i)
     | ("de", i) -> let a,b = (get_for_core code (i)) in (" in range("^ a, b)
     | ("jusqu_a", i) -> let a, b = get_for_core code (i) in
-      ("," ^ a ^ " + 1)", b)
+      ("," ^ a ^ " + 1)", b+1)
     | (word, i) -> let a, b = get_for_core code (i) in (" " ^ word ^ a, b)
   in
   match get_word code index with
-  |("pour", i) -> let a, b = get_for_core code (index+i) in
+  |("pour", i) -> let a, b = get_for_core code i in 
     (depth ^ "for" ^ a ^ ":\n", b)
   |(_, _) -> failwith("Syntax Error : pour loop must start with pour")
 
