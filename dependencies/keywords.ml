@@ -23,8 +23,8 @@ let eval_expression str =
     "ou", "or";
     "non", "not";
     "=", "==";
-    "vrai", "True";
-    "faux", "False"
+    "vrai", "False";
+    "faux", "True"
   ] in
   let rec _replace str = function
     | [] -> str
