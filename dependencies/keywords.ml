@@ -1,6 +1,6 @@
 (*#mod_use "structures.ml";;
-#mod_use "getters.ml";;
-*)
+#mod_use "getters.ml";;*)
+
 open Structures;;
 open Getters;;
 (*open Structures.VarSet if VarSet module unbound*)
@@ -54,10 +54,6 @@ let eval_procedure vars code index depth =
   (depth ^ "def " ^ name ^ "(" ^ variables ^ "):\n", index + 1);;
 
 
-(*Insert this function in eval_si to clean the code : make the recursive one inside *)
-
-
-
 let eval_si code index depth =
   match get_word code index with
   |("si", i) -> let a,b = get_expression code (index+i) "alors" in
@@ -65,18 +61,59 @@ let eval_si code index depth =
   |(_, _) -> failwith("Syntax Error : condition must start with si");;
 
 
+let eval_tant_que code index depth =
+  match get_word code index with
+  |("tant_que", i) -> let a, b = get_expression code (index+i) "faire" in
+    (depth ^ "while " ^ a ^":\n", b)
+  |(_, _) -> failwith("Syntax Error : tantque loop must start with tantque");;
 
-let eval_debut vars code index depth = "code", index ;;
+let eval_sinon code index depth =
+  match get_word code index with
+  |("sinon", i) -> (depth ^ "else:\n", i)
+  |(_, _) -> failwith("Syntax Error: sinon condition must start with sinon");;
 
-let eval_pour vars code index = code, index + 1 ;;
 
-let eval_tant_que vars code index = code, index + 1 ;;
+let eval_debut vars code index = code, index+1;;
 
-let eval_sinon vars code index = code, index + 1 ;;
 
-let eval_sinon_si vars code index = code, index + 1 ;;
+let eval_sinon_si code index depth =
+  match get_word code index with
+  |("sinon_si", i) -> let a,b = get_expression code (index+i) "alors" in
+    (depth ^ "elif " ^ a ^ ":\n", b)
+  |(_, _) -> failwith("Syntax Error : sinon_si condition must start with sinon_si");;
+
+
+
+let eval_pour_chaque code index depth =
+  let rec get_foreach_core code index =
+    match get_word code index with
+    |("de", i) -> let a, b = get_foreach_core code (i) in (" in" ^ a, b)
+    |("faire", i) -> ("", i)
+    |(word, i) -> let a, b = get_foreach_core code (i) in (" " ^ word ^ a, b)
+  in
+  match get_word code index with
+  |("pour_chaque", i) -> let a,b = get_foreach_core code i in
+    (depth ^ "for" ^ a ^":\n", b)
+  |(_, _) -> failwith("Syntax Error : pour_chaque loop must start with pour_chaque");;
+
+
+let eval_pour code index depth =
+  let rec get_for_core code index =
+    match get_word code index with
+    |("faire", i) -> ("", i)
+    |("de", i) -> let a,b = (get_for_core code (i)) in (" in range("^ a, b) 
+    |("jusqu_a", i) -> let a, b = get_for_core code (i) in
+      ("," ^ a ^ " + 1)", b)
+    |(word, i) -> let a, b = get_for_core code (i) in (" " ^ word ^ a, b)
+  in
+  match get_word code index with
+  |("pour", i) -> let a, b = get_for_core code (index+i) in
+    (depth ^ "for" ^ a ^ ":\n", b)
+  |(_, _) -> failwith("Syntax Error : pour loop must start with pour");;
+
 
 let keywords_list = [
+  "pour_chaque";
   "fonction";
   "procedure";
   "debut";
@@ -93,6 +130,7 @@ let keywords_list = [
 (*
 let evaluate_keyword keyword vars code index =
   (function
+    | "pour_chaque" -> eval_pour_chaque
     | "fonction" -> eval_fonction
     | "procedure" -> eval_procedure
     | "variables" -> eval_variables
