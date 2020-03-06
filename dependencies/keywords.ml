@@ -127,15 +127,3 @@ let eval_pour code index depth =
     (depth ^ "for" ^ a ^ ":\n", b)
   |(_, _) -> failwith("Syntax Error : pour loop must start with pour")
 
-
-let keywords_list = [
-  "pour_chaque";
-  "fonction";
-  "procedure";
-  "debut";
-  "pour";
-  "tant_que";
-  "si";
-  "sinon";
-  "sinon_si"
-];;
