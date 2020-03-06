@@ -41,13 +41,12 @@ let get_word_and_returns code i =
 let get_expression code index terminator =
   let i = index in
   let rec _get_expression code index terminator =
-    match get_word code index with
-    | t, k when t = terminator -> (Buffer.sub code i (k - String.length terminator), k+1)
+    match get_word_and_returns code index with
+    | t, k when t = terminator -> (Buffer.sub code i (k - String.length terminator - 1), k)
     | ("\n", _) |("\r", _) -> failwith("Syntax Error : no " ^ terminator ^ " was found on the line")
-    | (_, i) when i >= Buffer.length code -> failwith("Syntax Error : code was not supposed to end here")
+    |(_, i) when i >= Buffer.length code -> failwith("Syntax Error : no " ^ terminator ^ " was found on the line")
     | _ -> _get_expression code (index + 1) terminator
   in _get_expression code index terminator
-
 
 let get_line code i =
   let len = Buffer.length code in

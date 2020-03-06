@@ -1,10 +1,9 @@
-(*#mod_use "structures.ml";;
-#mod_use "getters.ml";;*)
+#mod_use "structures.ml";;
+#mod_use "getters.ml";;
 
 open Str
 open Structures
 open Getters
-(*open Structures.VarSet if VarSet module unbound*)
 
 (* Used mostly for debugging *)
 let print_var_set set =
@@ -33,7 +32,8 @@ let eval_expression str =
       in _replace (global_replace r ("\\1" ^ new_word ^ "\\2") str) t
   in _replace str replacements
 
-let rec eval_code _ code index = code, index + 1
+let rec eval_code vars code index = 
+
 
 (* This function only adds the new declared variables in the set *)
 and eval_variables vars code index =
@@ -139,24 +139,3 @@ let keywords_list = [
   "sinon";
   "sinon_si"
 ];;
-
-(* Translates the code after the keyword and returns an index to continue evaluating the code *)
-(*NB: The terminating keywords such as "fin" or "faire" are ignored here.*)
-(*    We only consider the keywords starting a new scope*)
-(*
-let evaluate_keyword keyword vars code index =
-  (function
-    | "pour_chaque" -> eval_pour_chaque
-    | "fonction" -> eval_fonction
-    | "procedure" -> eval_procedure
-    | "variables" -> eval_variables
-    | "debut" -> eval_debut
-    | "pour" -> eval_pour
-    | "tant_que" -> eval_tant_que
-    | "si" -> eval_si
-    | "sinon" -> eval_sinon
-    | "sinon_si" -> eval_sinon_si
-    | token -> invalid_arg ("evaluate_keyword: Unknown token: " ^ token)
-  ) vars (Buffer.sub code (index) (Buffer.length code)) index ;;
-*)
-
