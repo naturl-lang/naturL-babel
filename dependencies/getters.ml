@@ -31,7 +31,6 @@ let get_word_and_returns code i =
   let rec _get_word i word =
     if i < len then
       match Buffer.nth code i with
-
       | ' ' | '\t' when word = "" -> _get_word (i + 1) word
       | ' ' | '(' | ',' | ')' -> word, i + 1
       | x -> _get_word (i + 1) (word ^ (String.make 1 x))
@@ -40,12 +39,15 @@ let get_word_and_returns code i =
   in _get_word i "" ;;
 
 
-let rec get_expression code index terminator =
-  match get_word_and_returns code index with
-  |("alors", k) -> (Buffer.sub code index (k-8), k)
-  |("\n", _) |("\r", _) -> failwith("Syntax Error : no " ^ terminator ^ " was found on the line")
-  |(_, i) when i >= Buffer.length code -> failwith("Syntax Error : code was not supposed to end here")
-  |(_, _) -> get_expression code (index+1) terminator;;
+let get_expression code index terminator =
+  let i = index in
+  let rec _get_expression code index terminator =
+    match get_word_and_returns code index with
+    | t, k when t = terminator -> (Buffer.sub code i (k - String.length terminator), k)
+    | ("\n", _) |("\r", _) -> failwith("Syntax Error : no " ^ terminator ^ " was found on the line")
+    | (_, i) when i >= Buffer.length code -> failwith("Syntax Error : code was not supposed to end here")
+    | _ -> _get_expression code (index + 1) terminator
+  in _get_expression code index terminator
 
 
 let get_line code i =

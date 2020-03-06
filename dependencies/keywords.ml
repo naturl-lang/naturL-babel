@@ -1,8 +1,9 @@
 (*#mod_use "structures.ml";;
 #mod_use "getters.ml";;*)
 
-open Structures;;
-open Getters;;
+open Str
+open Structures
+open Getters
 (*open Structures.VarSet if VarSet module unbound*)
 
 (* Used mostly for debugging *)
@@ -15,10 +16,27 @@ let print_var_set set =
       print_var_list t
   in print_endline "{"; print_var_list (VarSet.elements set) ;;
 
-let eval_code _ code index = code, index + 1
+let eval_expression str =
+  let separators = "\\([\t() ]?\\)"
+  and replacements = [
+    "et", "and";
+    "ou", "or";
+    "non", "not";
+    "=", "==";
+    "vrai", "True";
+    "faux", "False"
+  ] in
+  let rec _replace str = function
+    | [] -> str
+    | (prev, new_word) :: t ->
+      let r = regexp (separators ^ prev ^ separators)
+      in _replace (global_replace r ("\\1" ^ new_word ^ "\\2") str) t
+  in _replace str replacements
+
+let rec eval_code _ code index = code, index + 1
 
 (* This function only adds the new declared variables in the set *)
-let rec eval_variables vars code index =
+and eval_variables vars code index =
   let rec eval_line vars type_struct = function
      [] -> vars
     | name :: t -> let name = String.trim name in
@@ -34,7 +52,7 @@ let rec eval_variables vars code index =
     eval_variables vars code index
 
 (* Keyword evaluators *)
-let eval_fonction vars code index depth =
+and eval_fonction vars code index depth =
   (*The function is divided in a header (the name), and a rest, this fuctions gets the
     header and combines it with the rest*)
   let rec check_return_type i =
@@ -47,33 +65,33 @@ let eval_fonction vars code index depth =
   let index, _ = check_return_type index in
   (depth ^ "def " ^ name ^ "(" ^ variables ^ "):\n", index+1)
 
-let eval_procedure vars code index depth =
+and eval_procedure vars code index depth =
   (*Same logic as the function except that there is no need to check a return type*)
   let name, index = get_word code (index + 10) (*10 = 9 + 1*) in
   let _, variables, index = get_param vars "" code (ignore_chrs code index) in
-  (depth ^ "def " ^ name ^ "(" ^ variables ^ "):\n", index + 1);;
+  (depth ^ "def " ^ name ^ "(" ^ variables ^ "):\n", index + 1)
 
 
-let eval_si code index depth =
+and eval_si code index depth =
   match get_word code index with
   |("si", i) -> let a,b = get_expression code (index+i) "alors" in
     (depth ^ "if " ^ a ^ ":\n", b)
-  |(_, _) -> failwith("Syntax Error : condition must start with si");;
+  |(_, _) -> failwith("Syntax Error : condition must start with si")
 
 
-let eval_tant_que code index depth =
+and eval_tant_que code index depth =
   match get_word code index with
   |("tant_que", i) -> let a, b = get_expression code (index+i) "faire" in
     (depth ^ "while " ^ a ^":\n", b)
-  |(_, _) -> failwith("Syntax Error : tantque loop must start with tantque");;
+  |(_, _) -> failwith("Syntax Error : tantque loop must start with tantque")
 
-let eval_sinon code index depth =
+and eval_sinon code index depth =
   match get_word code index with
   |("sinon", i) -> (depth ^ "else:\n", i)
-  |(_, _) -> failwith("Syntax Error: sinon condition must start with sinon");;
+  |(_, _) -> failwith("Syntax Error: sinon condition must start with sinon")
 
 
-let eval_debut vars code index = code, index+1;;
+(*and eval_debut vars code index = code, index+1*)
 
 
 let eval_sinon_si code index depth =
@@ -81,8 +99,6 @@ let eval_sinon_si code index depth =
   |("sinon_si", i) -> let a,b = get_expression code (index+i) "alors" in
     (depth ^ "elif " ^ a ^ ":\n", b)
   |(_, _) -> failwith("Syntax Error : sinon_si condition must start with sinon_si");;
-
-
 
 let eval_pour_chaque code index depth =
   let rec get_foreach_core code index =
@@ -94,22 +110,22 @@ let eval_pour_chaque code index depth =
   match get_word code index with
   |("pour_chaque", i) -> let a,b = get_foreach_core code i in
     (depth ^ "for" ^ a ^":\n", b)
-  |(_, _) -> failwith("Syntax Error : pour_chaque loop must start with pour_chaque");;
+  |(_, _) -> failwith("Syntax Error : pour_chaque loop must start with pour_chaque")
 
 
 let eval_pour code index depth =
   let rec get_for_core code index =
     match get_word code index with
-    |("faire", i) -> ("", i)
-    |("de", i) -> let a,b = (get_for_core code (i)) in (" in range("^ a, b) 
-    |("jusqu_a", i) -> let a, b = get_for_core code (i) in
+    | ("faire", i) -> ("", i)
+    | ("de", i) -> let a,b = (get_for_core code (i)) in (" in range("^ a, b)
+    | ("jusqu_a", i) -> let a, b = get_for_core code (i) in
       ("," ^ a ^ " + 1)", b)
-    |(word, i) -> let a, b = get_for_core code (i) in (" " ^ word ^ a, b)
+    | (word, i) -> let a, b = get_for_core code (i) in (" " ^ word ^ a, b)
   in
   match get_word code index with
   |("pour", i) -> let a, b = get_for_core code (index+i) in
     (depth ^ "for" ^ a ^ ":\n", b)
-  |(_, _) -> failwith("Syntax Error : pour loop must start with pour");;
+  |(_, _) -> failwith("Syntax Error : pour loop must start with pour")
 
 
 let keywords_list = [
