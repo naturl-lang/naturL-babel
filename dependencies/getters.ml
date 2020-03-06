@@ -41,12 +41,20 @@ let get_word_and_returns code i =
 let get_expression code index terminator =
   let i = index in
   let rec _get_expression code index terminator =
-    match get_word_and_returns code index with
-    | t, k when t = terminator -> (Buffer.sub code i (k - String.length terminator - 1), k)
-    | ("\n", _) |("\r", _) -> failwith("Syntax Error : no " ^ terminator ^ " was found on the line")
+    match get_word code index with
+    | t, k when t = terminator -> let expression = Buffer.sub code i (k - String.length terminator - 1) in
+      if String.contains expression '\n' then
+        failwith("Syntax Error : no " ^ terminator ^ " was found on the line")
+      else
+        (expression, k)
     |(_, i) when i >= Buffer.length code -> failwith("Syntax Error : no " ^ terminator ^ " was found on the line")
     | _ -> _get_expression code (index + 1) terminator
   in _get_expression code index terminator
+
+
+let code = Buffer.create 10 ;;
+Buffer.add_string code "si a < b \n alors suite du code";;
+get_expression code 0 "alors";;
 
 let get_line code i =
   let len = Buffer.length code in
