@@ -2,8 +2,8 @@
   #load "str.cma";; (*UNCOMMENT FOR TOPLEVEL*)
   #mod_use "type_operations.ml" *)
 
-open Structures;;
-
+open Str
+open Structures
 
 let rec ignore_chrs code i =
   if i < (Buffer.length code) then
@@ -11,7 +11,7 @@ let rec ignore_chrs code i =
       ' ' | '\n' | '\t' | '\r' | '(' | ')' | ',' -> ignore_chrs code (i + 1)
     | _-> i
   else
-    Buffer.length code ;;
+    Buffer.length code
 
 let get_word code i =
   let len = Buffer.length code in
@@ -23,7 +23,7 @@ let get_word code i =
       | x -> _get_word (i + 1) (word ^ (String.make 1 x))
     else
       word, len
-  in _get_word i "" ;;
+  in _get_word i ""
 
 let get_word_and_returns code i =
   let len = Buffer.length code in
@@ -35,26 +35,15 @@ let get_word_and_returns code i =
       | x -> _get_word (i + 1) (word ^ (String.make 1 x))
     else
       word, len
-  in _get_word i "" ;;
+  in _get_word i ""
 
 
 let get_expression code index terminator =
-  let i = index in
-  let rec _get_expression code index terminator =
-    match get_word code index with
-    | t, k when t = terminator -> let expression = Buffer.sub code i (k - String.length terminator - 1) in
-      if String.contains expression '\n' then
-        failwith("Syntax Error : no " ^ terminator ^ " was found on the line")
-      else
-        (expression, k)
-    |(_, i) when i >= Buffer.length code -> failwith("Syntax Error : no " ^ terminator ^ " was found on the line")
-    | _ -> _get_expression code (index + 1) terminator
-  in _get_expression code index terminator
-
-
-let code = Buffer.create 10 ;;
-Buffer.add_string code "si a < b \n alors suite du code";;
-get_expression code 0 "alors";;
+  let str = Buffer.contents code in
+  if string_match (regexp ({|\([^\n]*[) ]\)\(|} ^ terminator ^ "\\)")) str index then
+    matched_group 1 str, group_end 2 + 1
+  else
+    failwith ("Syntax error: Missing token '" ^ terminator ^ "'")
 
 let get_line code i =
   let len = Buffer.length code in
@@ -98,20 +87,24 @@ let get_str code i =
     _get_str (i + 1) "" ;;
 
 (*Gets the parameters of the function or the procedure*)
-let rec get_param vars variables code i =
-  if i = Buffer.length code then
-    failwith "get_vars: Unclosed ("
-  else if Buffer.nth code i = ':' then
-    (vars, String.sub variables 0 (String.length variables - 2), i)
+let get_param vars code index =
+  let rec _get_params ?(is_first = false) vars names index = function
+    | [] -> names, index, vars
+    | h :: t -> let buf = Buffer.create (String.length h) in
+      Buffer.add_string buf h;
+      let i, type_struct = get_type buf 0 in
+      let name, i = get_word buf i in
+      let sep = if is_first then "" else ", " in
+      _get_params (VarSet.add {name; type_struct} vars) (names ^ sep ^ name) (index + i + 1) t in
+  let content = Buffer.contents code
+  and r = regexp {|\([a-z]+ [A-Za-z_][A-Za-z0-9_]*\(, ?[a-z]+ [A-Za-z_][A-Za-z0-9_]*\)*\))|} in
+  if string_match r content index then
+    _get_params vars "" (index + 1) (split (regexp ",") (matched_group 1 content)) ~is_first: true
   else
-    let i, type_struct = get_type code (ignore_chrs code i) in
-    let name, i = get_word code (ignore_chrs code i) in
-    get_param (VarSet.add ({name; type_struct}) vars) (variables ^ name ^ ", ")
-      code (ignore_chrs code i) ;;
-
+    failwith "Syntax error on function definition"
 
 let rec get_var_by_name var_name var_list =
   match var_list with
-    [] -> failwith ("get_var_by_name: var: "^var_name^" not found in the current local variables")
+    [] -> failwith ("get_var_by_name: var: " ^ var_name ^ " not found in the current local variables")
   | var :: _ when var.name = var_name -> var
   | _ :: r -> get_var_by_name var_name r ;;
