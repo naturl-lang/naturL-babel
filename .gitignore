@@ -7,8 +7,6 @@
 *.cmx
 *.cmxs
 *.cmxa
-*.nl
-*.py
 
 # dune working directory
 _build/
