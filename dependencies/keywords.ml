@@ -59,6 +59,7 @@ let rec eval_code ?(is_si = false) vars code index depth =
   in let control_keywords =
        [
          "fonction", eval_fonction;
+         "procedure", eval_procedure;
          "si", eval_si;
          "sinon", eval_sinon;
          "sinon_si", eval_sinon_si;
@@ -86,6 +87,10 @@ let rec eval_code ?(is_si = false) vars code index depth =
            let next, index, vars = _eval_code vars code index depth in
            depth ^ "return " ^ eval_expression expr vars ^ "\n" ^ next, index, vars
          | "fin" -> "", index, vars
+         | "afficher" ->
+           let expr, index = get_line code index in
+           let next, index, vars = _eval_code vars code index depth in
+           depth ^ "print(" ^ eval_expression expr vars ^ ")\n" ^ next, index, vars
          | "" -> "", index, vars
          | _ ->
            if search_variable_by_name word vars then
