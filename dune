@@ -1,5 +1,5 @@
 (executable
- (name main)
+ (name naturL)
  (libraries dependencies))
 
 (env
