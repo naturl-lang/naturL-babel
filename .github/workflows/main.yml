@@ -1,16 +1,24 @@
-name: Build Project
-on: [push]
+name: Build
+on:
+  push:
+    branches:
+      - master
 jobs:
-  run:
-    name: Build
+  build:
+    name: PostMerge
     runs-on: ${{ matrix.operating-system }}
     strategy:
+      fail-fast: false
       matrix:
-        operating-system: [macos-latest, ubuntu-latest]
-        ocaml-version: [ '4.09.0']
+        operating-system: [ubuntu-latest]
+        ocaml-version: [ '4.09.0', '4.08.1', '4.07.1', '4.06.1' ]
     steps:
-    - uses: actions/checkout@master
-    - uses: avsm/setup-ocaml@master
-      with:
-        ocaml-version: ${{ matrix.ocaml-version }}
-    - run: opam exec -- dune build
+      - uses: actions/checkout@master
+      - uses: avsm/setup-ocaml@v1.0
+        with:
+          ocaml-version: ${{ matrix.ocaml-version }}
+      - name: Install dependencies
+        run: |
+          opam install dune
+      - name: Build
+        run: opam exec -- dune build @install
