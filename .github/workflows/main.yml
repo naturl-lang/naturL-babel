@@ -13,4 +13,4 @@ jobs:
     - uses: avsm/setup-ocaml@master
       with:
         ocaml-version: ${{ matrix.ocaml-version }}
-    - run: dune build ./naturL.exe
+    - run: opam exec -- dune build
