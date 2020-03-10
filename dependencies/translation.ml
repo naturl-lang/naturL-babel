@@ -44,7 +44,7 @@ let rec eval_code context =
        | Some (scope, func) ->
          let scopes = try
              if word = "sinon" || word = "sinon_si" then
-               if List.hd scopes = If then scope :: List.tl scopes else syntax_error ("Unexpected token a'" ^ word ^ "'")
+               if List.hd scopes = If then scope :: List.tl scopes else syntax_error ("Unexpected token '" ^ word ^ "'")
              else
                scope :: scopes
            with Failure _ -> scope :: scopes in
@@ -57,14 +57,15 @@ let rec eval_code context =
          | "retourner" -> let expr, index = get_line code index in
            let next, context = _eval_code {code; index; vars; scopes; imports} in
            get_indentation depth ^ "return " ^ eval_expression expr vars ^ "\n" ^ next, context
-         | "fin" -> let scopes = try List.tl scopes
-                      with Failure _ -> syntax_error "Unexpected token a'fin'"
-           in "", {code; index; vars; scopes; imports}
+         | "fin" -> if scopes = [] then
+             syntax_error "Unexpected token 'fin'"
+           else
+             "", {code; index; vars; scopes; imports}
          | "afficher" ->
            let expr, index = get_line code index in
            let next, context = _eval_code context in
            get_indentation depth ^ "print(" ^ eval_expression expr vars ^ ")\n" ^ next, context
-         | "" -> if scopes = [] then "", context else syntax_error "Expected fin"
+         | "" -> if List.length scopes = 1 then "", context else syntax_error "Expected 'fin'"
          | _ ->
            let var = get_var_by_name word (VarSet.elements vars) in
            let next_word, index = get_word code index in
