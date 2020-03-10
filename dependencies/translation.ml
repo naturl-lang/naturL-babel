@@ -38,34 +38,35 @@ let rec eval_code context =
        let {code; index; vars; scopes; imports} = context in
        let depth = List.length scopes in
        let word, index = get_word code index in
-       let word, index = if word = "debut" then get_word code index else word, index in
        let context = {code; index; vars; scopes; imports} in
        match find_assoc word control_keywords with
        | Some (scope, func) ->
          let scopes = try
              if word = "sinon" || word = "sinon_si" then
-               if List.hd scopes = If then scope :: List.tl scopes else syntax_error ("Unexpected token '" ^ word ^ "'")
+               if List.hd scopes = If then
+                 scope :: List.tl scopes
+               else
+                 syntax_error ("Unexpected token '" ^ word ^ "'")
              else
                scope :: scopes
-           with Failure _ -> scope :: scopes in
+           with Failure _ -> syntax_error ("Unexpected token '" ^ word ^ "'") in
          let translation, context = func {code; index = (index - String.length word - 1); vars; scopes; imports} in
          let next_translation, context = _eval_code context
          in translation ^ next_translation, context
        | None ->
          match word with
          | "variables" -> _eval_code (eval_variables context)
+         | "debut" -> eval_code context
          | "retourner" -> let expr, index = get_line code index in
            let next, context = _eval_code {code; index; vars; scopes; imports} in
            get_indentation depth ^ "return " ^ eval_expression expr vars ^ "\n" ^ next, context
-         | "fin" -> if scopes = [] then
-             syntax_error "Unexpected token 'fin'"
-           else
-             "", {code; index; vars; scopes; imports}
+         | "fin" -> (try "", {code; index; vars; scopes = List.tl scopes; imports}
+                     with Failure _ -> syntax_error "")
          | "afficher" ->
            let expr, index = get_line code index in
-           let next, context = _eval_code context in
+           let next, context = _eval_code {code; index; vars; scopes; imports} in
            get_indentation depth ^ "print(" ^ eval_expression expr vars ^ ")\n" ^ next, context
-         | "" -> if List.length scopes = 1 then "", context else syntax_error "Expected 'fin'"
+         | "" -> if List.length scopes = 0 then "", context else syntax_error "Expected 'fin'"
          | _ ->
            let var = get_var_by_name word (VarSet.elements vars) in
            let next_word, index = get_word code index in
@@ -137,11 +138,35 @@ and eval_si context =
   | "si", i -> let expr, index = get_expression code i "alors" in
     let expr, type_struct = eval_expression_with_type expr vars in
     if type_struct = Type.Boolean then
-      let next, context = eval_code {code; index; vars; scopes; imports}
-      in get_indentation depth ^ "if " ^ expr ^ ":\n" ^ next, context
+      if expr = "False" then
+        let _, context = eval_code {code; index; vars; scopes; imports} in
+        "", context
+      else
+        let next, context = eval_code {code; index; vars; scopes; imports}
+        in let next = if next = "" then get_indentation (depth + 1) ^ "pass\n" else next
+        in get_indentation depth ^ "if " ^ expr ^ ":\n" ^ next, context
     else
       type_error Type.(string_of_type Boolean) (Type.string_of_type type_struct)
   | _ -> syntax_error "si statement must start with 'si'"
+
+and eval_sinon_si context =
+  let {code; index; vars; scopes; imports} = context in
+  let depth = List.length scopes - 1 in
+  (* Same as si but sinon_si *)
+  match get_word code index with
+  | "sinon_si", i -> let expr, index = get_expression code i "alors" in
+    let expr, type_struct = eval_expression_with_type expr vars in
+    let next, context = eval_code {code; index; vars; scopes; imports}  in
+    if type_struct = Type.Boolean then
+      if expr = "False" then
+        let _, context = eval_code {code; index; vars; scopes; imports} in
+        "", context
+      else
+        let next = if next = "" then get_indentation (depth + 1) ^ "pass\n" else next in
+        get_indentation depth ^ "elif " ^ expr ^ ":\n" ^ next, context
+    else
+      type_error Type.(string_of_type Boolean) (Type.string_of_type type_struct)
+  | _ -> syntax_error "sinon_si statement must start with 'sinon_si'"
 
 and eval_tant_que context =
   let {code; index; vars; scopes; imports} = context in
@@ -165,20 +190,6 @@ and eval_sinon context =
   | "sinon", i -> let next, context = eval_code context in
     get_indentation depth ^ "else:\n" ^ next, context
   | _ -> syntax_error "sinon statement must start with 'sinon'"
-
-and eval_sinon_si context =
-  let {code; index; vars; scopes; imports} = context in
-  let depth = List.length scopes - 1 in
-  (* Same as si but sinon_si *)
-  match get_word code index with
-  | "sinon_si", i -> let expr, index = get_expression code i "alors" in
-    let expr, type_struct = eval_expression_with_type expr vars in
-    let next, context = eval_code {code; index; vars; scopes; imports}  in
-    if type_struct = Type.Boolean then
-      get_indentation depth ^ "elif " ^ expr ^ ":\n" ^ next, context
-    else
-      type_error Type.(string_of_type Boolean) (Type.string_of_type type_struct)
-  | _ -> syntax_error "sinon_si statement must start with 'sinon_si'"
 
 and eval_pour_chaque context =
   let {code; index; vars; scopes; imports} = context in
@@ -235,4 +246,4 @@ and control_keywords =
 let translate_code code =
   let code = String.trim code and index = 0 and vars = VarSet.empty and scopes = [] and imports = [] in
   let translation, _ = eval_code {code; index; vars; scopes; imports} in
-  translation
+  String.trim translation
