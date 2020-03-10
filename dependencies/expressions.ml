@@ -1,6 +1,7 @@
 (* #load "str.cma" *)
 
 open Str
+open Errors
 open Getters
 open Structures
 
@@ -42,7 +43,7 @@ let op_priority = function
   | "+" | "-" -> 4
   | "*" | "/" | "div" -> 5
   | "non" -> 6
-  | op -> failwith ("op_priority: Unknown operator: " ^ op) ;;
+  | op -> syntax_error ("Unknown operator '" ^ op ^ "'") ;;
 
 let make_binary_op arg1 arg2 = function
   | "+" -> Plus (arg1, arg2)
@@ -56,11 +57,11 @@ let make_binary_op arg1 arg2 = function
   | "<=" -> LowerOrEqual (arg1, arg2)
   | "et" -> And (arg1, arg2)
   | "ou" -> Or (arg1, arg2)
-  | op -> failwith ("make_binary_op: Unknown binary operator: " ^ op)
+  | op -> syntax_error ("Unknown operator '" ^ op ^ "'")
 
 let make_unary_op arg = function
   | "non" -> Not arg
-  | op -> failwith ("make_unary_op: Unknown unary operator: " ^ op)
+  | op -> syntax_error ("Unknown operator '" ^ op ^ "'")
 
 (* Converts a string to a type_struct *)
 let struct_of_str str vars =
@@ -78,7 +79,7 @@ let struct_of_str str vars =
     let vars = get_var_by_name str (VarSet.elements vars) in
     vars.type_struct
   else
-    failwith ("Name error: Unknown type: " ^ str) ;;
+    unknown_type_error str ;;
 
 (* Converts a string to an expression *)
 let expr_of_str str vars =

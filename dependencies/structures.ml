@@ -1,4 +1,5 @@
-(* Unparametrized types *)
+open Errors
+
 module Type =
 struct
   type type_struct =
@@ -30,7 +31,7 @@ struct
     | "liste" -> List
     | "fonction" -> Function
     | "rien" -> None
-    | x -> failwith ("type_of_string: Undefined type: '" ^ x ^ "'")
+    | t -> unknown_type_error t
 end
 
 
@@ -53,9 +54,5 @@ type expr =
   | Or of expr * expr
   | Not of expr
   | Value of Type.type_struct
-
-type 'a tree =
-  | Leaf of 'a
-  | Tree of 'a * 'a tree list
 
 module VarSet = Set.Make(struct type t = variable let compare = compare end)

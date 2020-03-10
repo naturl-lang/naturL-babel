@@ -1,5 +1,6 @@
 open Str
 open Structures
+open Errors
 open Getters
 open Expressions
 
@@ -46,7 +47,7 @@ let eval_expression_with_type str vars =
   in if is_valid then
     String.trim (_replace str replacements), type_struct
   else
-    failwith "Type error: Inconsistent expression"
+    semantic_error ("Inconsistent expression '" ^ str ^ "'.")
 
 let eval_expression str vars =
   let expr, _ = eval_expression_with_type str vars in expr
@@ -101,9 +102,9 @@ let rec eval_code ?(is_si = false) vars code index depth =
                depth ^ word ^ " = " ^ (eval_expression expression vars) ^ "\n" ^ next,
                index, vars
              else
-               failwith ("Syntax error: Unexpected token: '" ^ next_word ^ "'")
+               syntax_error ("Unexpected token '" ^ next_word ^ "'")
            else
-             failwith ("Name error: Name '" ^ word ^ "' is not defined")
+             name_error word
   in _eval_code vars code index depth
 
 (* This function only adds the new declared variables in the set *)
@@ -130,7 +131,7 @@ and eval_fonction vars code index depth =
     if word = "->" then
       get_type code index
     else
-      failwith ("Syntax error: Expected '->', got '" ^ word ^ "'")
+      syntax_error ("Expected '->', got '" ^ word ^ "'")
   in
   let name, index = get_word code (index + 9) in (* 9 = 8 + 1 *)
   let names, index, vars = get_param vars code index in
@@ -153,8 +154,8 @@ and eval_si vars code index depth =
       let next, index, vars = eval_code vars code index (depth ^ "    ") ~is_si:true
       in depth ^ "if " ^ expr ^ ":\n" ^ next, index, vars
     else
-      failwith ("Type error: This expression has type " ^ Type.string_of_type type_struct ^ " but an expression was expected of type boolean")
-  | _ -> failwith "Syntax Error: condition must start with si"
+      type_error (Type.string_of_type type_struct) Type.(string_of_type Boolean)
+  | _ -> syntax_error "si statement must start with 'si'"
 
 and eval_tant_que vars code index depth =
   match get_word code index with
@@ -164,13 +165,13 @@ and eval_tant_que vars code index depth =
     if type_struct = Type.Boolean then
       depth ^ "while " ^ expr ^ ":\n" ^ next, index, vars
     else
-      failwith ("Type error: This expression has type " ^ Type.string_of_type type_struct ^ " but an expression was expected of type boolean")
-  | _ -> failwith "Syntax Error: tant_que loop must start with tant_que"
+      type_error (Type.string_of_type type_struct) Type.(string_of_type Boolean)
+  | _ -> syntax_error "tant_que loop must start with 'tant_que'"
 
 and eval_sinon vars code index depth =
   match get_word code index with
   | "sinon", i -> depth ^ "else:\n", i, vars
-  | _ -> failwith "Syntax Error: sinon condition must start with sinon"
+  | _ -> syntax_error "sinon statement must start with 'sinon'"
 
 and eval_sinon_si vars code index depth =
   match get_word code index with
@@ -180,8 +181,8 @@ and eval_sinon_si vars code index depth =
     if type_struct = Type.Boolean then
       depth ^ "elif " ^ expr ^ ":\n" ^ next, index, vars
     else
-      failwith ("Type error: This expression has type " ^ Type.string_of_type type_struct ^ " but an expression was expected of type boolean")
-  | _ -> failwith "Syntax Error: sinon_si condition must start with sinon_si"
+      type_error (Type.string_of_type type_struct) Type.(string_of_type Boolean)
+  | _ -> syntax_error "sinon_si statement must start with 'sinon_si'"
 
 and eval_pour_chaque vars code index depth =
   let rec get_foreach_core code index =
@@ -196,7 +197,7 @@ and eval_pour_chaque vars code index depth =
   | "pour_chaque", i -> let expr, index = get_foreach_core code i in
     let next, index, vars = eval_code vars code index (depth ^ "    ") in
     depth ^ "for" ^ expr ^ ":\n" ^ next, index, vars
-  | _ -> failwith "Syntax Error: pour_chaque loop must start with pour_chaque"
+  | _ -> syntax_error "pour_chaque loop must start with 'pour_chaque'"
 
 and eval_pour vars code index depth =
   let rec get_for_core code index =
@@ -213,7 +214,7 @@ and eval_pour vars code index depth =
   | "pour", i -> let expr, index = get_for_core code i in
     let next, index, vars = eval_code vars code index (depth ^ "    ") in
     depth ^ "for " ^ expr ^ ":\n" ^ next, index, vars
-  | _ -> failwith "Syntax Error: pour loop must start with pour"
+  | _ -> syntax_error "pour loop must start with 'pour'"
 
 let translate_code code =
   let buf = create_buffer (String.trim code) in

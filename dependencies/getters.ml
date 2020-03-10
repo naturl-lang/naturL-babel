@@ -1,9 +1,10 @@
 (*#mod_use "structures.ml";;
-  #load "str.cma";; (*UNCOMMENT FOR TOPLEVEL*)
-  #mod_use "type_operations.ml" *)
+#load "str.cma";;
+#mod_use "type_operations.ml" *)
 
 open Str
 open Structures
+open Errors
 
 let rec ignore_chrs code i =
   if i < (Buffer.length code) then
@@ -43,7 +44,7 @@ let get_expression code index terminator =
   if string_match (regexp ({|\([^\n]*[) ]\)\(|} ^ terminator ^ "\\)")) str index then
     matched_group 1 str, group_end 2 + 1
   else
-    failwith ("Syntax error: Missing token '" ^ terminator ^ "'")
+    syntax_error ("Missing token '" ^ terminator ^ "'")
 
 let get_line code i =
   let len = Buffer.length code in
@@ -54,37 +55,12 @@ let get_line code i =
       | x -> _get_line (i + 1) (line ^ (String.make 1 x))
     else
       line, len
-  in _get_line i "" ;;
+  in _get_line i ""
 
 (*Check if the specified type is a valid builtin type, if that is the case, returns the right type *)
 let get_type code index =
   let (t, index) = get_word code index in
-  (* print_string t; print_string "\n"; Debug*)
-  (index, Type.type_of_string t) ;;
-
-(*Gets the following tokens as part of a type char*)
-let get_char code i =
-  (*Buffer nth error if the char gives an EOF error*)
-  if Buffer.nth code i <> (Char.chr 39) || Buffer.nth code (i + 2) <> (Char.chr 39) then
-    failwith "get_char: the given value is not a char"
-  else
-    (Char.escaped (Buffer.nth code (i + 1)), i + 3)
-;;
-
-(*Gets the following tokens as part of a type string*)
-let get_str code i =
-  (*Buffer nth error if the given str gives an EOF error*)
-  if Buffer.nth code i <> '"' then
-    failwith "get_str: the given value is not a string"
-  else
-    let rec _get_str i result =
-      let c = Buffer.nth code i in
-      if c = '"' then
-        (result, i + 1)
-      else
-        _get_str (i + 1) (result ^ (Char.escaped c))
-    in
-    _get_str (i + 1) "" ;;
+  (index, Type.type_of_string t)
 
 (*Gets the parameters of the function or the procedure*)
 let get_param vars code index =
@@ -101,10 +77,10 @@ let get_param vars code index =
   if string_match r content index then
     _get_params vars "" (index + 1) (split (regexp ",") (matched_group 1 content)) ~is_first: true
   else
-    failwith "Syntax error on function definition"
+    syntax_error "Invalid function definition"
 
 let rec get_var_by_name var_name var_list =
   match var_list with
-    [] -> failwith ("get_var_by_name: var: " ^ var_name ^ " not found in the current local variables")
+    [] -> name_error var_name
   | var :: _ when var.name = var_name -> var
-  | _ :: r -> get_var_by_name var_name r ;;
+  | _ :: r -> get_var_by_name var_name r
