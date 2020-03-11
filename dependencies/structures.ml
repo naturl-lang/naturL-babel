@@ -22,7 +22,7 @@ struct
     | Function -> "fonction"
     | None -> "rien"
 
-  let type_of_string = function
+  let type_of_string oc = function
       "entier" -> Int
     | "reel" -> Float
     | "caractere" -> Char
@@ -31,7 +31,7 @@ struct
     | "liste" -> List
     | "fonction" -> Function
     | "rien" -> None
-    | t -> unknown_type_error t
+    | t -> unknown_type_error oc t
 end
 
 

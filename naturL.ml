@@ -22,5 +22,5 @@ let () =
     let output_name = if Array.length Sys.argv = 3 then Sys.argv.(2)
       else Filename.remove_extension Sys.argv.(1) ^ ".py" in
     let input = read_file Sys.argv.(1) in
-    let output = translate_code input in
+    let output = translate_code stderr input in
     write_file output_name output

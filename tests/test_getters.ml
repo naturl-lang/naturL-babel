@@ -1,6 +1,8 @@
 open Dependencies.Getters
 open Dependencies.Structures ;;
 
+let oc = stderr ;;
+
 print_string "Beginning getters.ml tests... " ;;
 
 let%expect_test "ignore_chrs" =
@@ -15,7 +17,7 @@ let%expect_test "get_word" =
   [%expect {| 9 |}] ;;
 
 let%expect_test "get_expression" =
-  let expr, index = get_expression "abab abaa aabb abba aab" 0 "abba" in
+  let expr, index = get_expression oc "abab abaa aabb abba aab" 0 "abba" in
   print_string expr;
   [%expect {| abab abaa aabb |}];
   print_int index;
@@ -29,7 +31,7 @@ let%expect_test "get_line" =
   [%expect {| 11 |}] ;;
 
 let%expect_test "get_param" =
-  let params, index, vars = get_param VarSet.empty "fonction test(entier n, reel pi) -> entier" 14 in
+  let params, index, vars = get_param oc VarSet.empty "fonction test(entier n, reel pi) -> entier" 14 in
   print_string params;
   [%expect {| n, pi |}];
   print_int index;
@@ -44,7 +46,7 @@ let%expect_test "get_param" =
 
 let%expect_test "get_var_by_name" =
   let vars = [{name = "n"; type_struct = Type.Int}; {name = "pi"; type_struct = Type.Float}] in
-  let var = get_var_by_name "pi" vars in
+  let var = get_var_by_name oc "pi" vars in
   print_variable var;
   [%expect {| var pi: reel |}] ;;
 
