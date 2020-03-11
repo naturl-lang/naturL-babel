@@ -1,0 +1,51 @@
+open Dependencies.Getters
+open Dependencies.Structures ;;
+
+print_string "Beginning getters.ml tests... " ;;
+
+let%expect_test "ignore_chrs" =
+  print_int (ignore_chrs " ()\n(abc)" 0);
+  [%expect {| 5 |}] ;;
+
+let%expect_test "get_word" =
+  let word, index = get_word "  (Hello, world!)" 0 in
+  print_string word;
+  [%expect {| Hello |}];
+  print_int index;
+  [%expect {| 9 |}] ;;
+
+let%expect_test "get_expression" =
+  let expr, index = get_expression "abab abaa aabb abba aab" 0 "abba" in
+  print_string expr;
+  [%expect {| abab abaa aabb |}];
+  print_int index;
+  [%expect {| 20 |}]
+
+let%expect_test "get_line" =
+  let line, index = get_line "first line\nsecond line" 0 in
+  print_string line;
+  [%expect {| first line  |}];
+  print_int index;
+  [%expect {| 11 |}] ;;
+
+let%expect_test "get_param" =
+  let params, index, vars = get_param VarSet.empty "fonction test(entier n, reel pi) -> entier" 14 in
+  print_string params;
+  [%expect {| n, pi |}];
+  print_int index;
+  [%expect {| 33 |}];
+  print_var_set vars;
+  [%expect {|
+{
+	var n: entier
+	var pi: reel
+}
+|}] ;;
+
+let%expect_test "get_var_by_name" =
+  let vars = [{name = "n"; type_struct = Type.Int}; {name = "pi"; type_struct = Type.Float}] in
+  let var = get_var_by_name "pi" vars in
+  print_variable var;
+  [%expect {| var pi: reel |}] ;;
+
+print_endline "Done." ;;

@@ -12,3 +12,8 @@ let get_indentation depth =
 let rec find_assoc key = function
     | (k, value) :: t -> if key = k then Some value else find_assoc key t
     | [] -> None
+
+let rec find_bad_elt default expected = function
+  | [] -> default
+  | h :: t when h <> expected -> h
+  | _ :: t -> find_bad_elt default expected t

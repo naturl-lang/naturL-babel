@@ -118,6 +118,7 @@ and eval_fonction context =
   let names, index, vars = get_param vars code index in
   let index, _ = check_return_type index in
   let next, context = eval_code {code; index; vars; scopes; imports} in
+  let next = if next = "" then get_indentation (depth + 1) ^ "pass\n" else next in
   get_indentation depth ^ "def " ^ name ^ "(" ^ names ^ "):\n" ^ next, context
 
 and eval_procedure context =
@@ -127,6 +128,7 @@ and eval_procedure context =
   let name, index = get_word code (index + 10) (*10 = 9 + 1*) in
   let names, index, vars = get_param vars code index in
   let next, context = eval_code {code; index; vars; scopes; imports} in
+  let next = if next = "" then get_indentation (depth + 1) ^ "pass\n" else next in
   get_indentation depth ^ "def " ^ name ^ "(" ^ names ^ "):\n" ^ next, context
 
 and eval_si context =
@@ -138,13 +140,9 @@ and eval_si context =
   | "si", i -> let expr, index = get_expression code i "alors" in
     let expr, type_struct = eval_expression_with_type expr vars in
     if type_struct = Type.Boolean then
-      if expr = "False" then
-        let _, context = eval_code {code; index; vars; scopes; imports} in
-        "", context
-      else
-        let next, context = eval_code {code; index; vars; scopes; imports}
-        in let next = if next = "" then get_indentation (depth + 1) ^ "pass\n" else next
-        in get_indentation depth ^ "if " ^ expr ^ ":\n" ^ next, context
+      let next, context = eval_code {code; index; vars; scopes; imports}
+      in let next = if next = "" then get_indentation (depth + 1) ^ "pass\n" else next
+      in get_indentation depth ^ "if " ^ expr ^ ":\n" ^ next, context
     else
       type_error Type.(string_of_type Boolean) (Type.string_of_type type_struct)
   | _ -> syntax_error "si statement must start with 'si'"
@@ -168,6 +166,16 @@ and eval_sinon_si context =
       type_error Type.(string_of_type Boolean) (Type.string_of_type type_struct)
   | _ -> syntax_error "sinon_si statement must start with 'sinon_si'"
 
+and eval_sinon context =
+  let {code; index; vars; scopes; imports} = context in
+  let depth = List.length scopes - 1 in
+  (* Replaces "sinon" by "else:\n"*)
+  match get_word code index with
+  | "sinon", i -> let next, context = eval_code {code; index = i; vars; scopes; imports} in
+    let next = if next = "" then get_indentation (depth + 1) ^ "pass\n" else next in
+    get_indentation depth ^ "else:\n" ^ next, context
+  | _ -> syntax_error "sinon statement must start with 'sinon'"
+
 and eval_tant_que context =
   let {code; index; vars; scopes; imports} = context in
   let depth = List.length scopes - 1 in
@@ -176,60 +184,40 @@ and eval_tant_que context =
   | "tant_que", i -> let expr, index = get_expression code i "faire" in
     let expr, type_struct = eval_expression_with_type expr vars in
     let next, context = eval_code {code; index; vars; scopes; imports} in
+    let next = if next = "" then get_indentation (depth + 1) ^ "pass\n" else next in
     if type_struct = Type.Boolean then
       get_indentation depth ^ "while " ^ expr ^ ":\n" ^ next, context
     else
       type_error Type.(string_of_type Boolean) (Type.string_of_type type_struct)
   | _ -> syntax_error "tant_que loop must start with 'tant_que'"
 
-and eval_sinon context =
-  let {code; index; vars; scopes; imports} = context in
-  let depth = List.length scopes - 1 in
-  (* Replaces "sinon" by "else:\n"*)
-  match get_word code index with
-  | "sinon", i -> let next, context = eval_code context in
-    get_indentation depth ^ "else:\n" ^ next, context
-  | _ -> syntax_error "sinon statement must start with 'sinon'"
-
 and eval_pour_chaque context =
   let {code; index; vars; scopes; imports} = context in
   let depth = List.length scopes - 1 in
-  (* A pour_chaque instruction has the form "pour_chaque <element> in <iterable> faire"*)
-  (* This functions translates it to "for element in:" *)
-  let rec get_foreach_core code index =
-    match get_word code index with
-    | "dans", i -> let expr, index = get_foreach_core code i in
-      " in" ^ expr, index
-    | "faire", i  -> "", i + 1
-    | word, i  -> let expr, index = get_foreach_core code i in
-      " " ^ word ^ expr, index
-  in
-  match get_word code index with
-  | "pour_chaque", i -> let expr, index = get_foreach_core code i in
-    let next, context = eval_code {code; index; vars; scopes; imports} in
-    get_indentation depth ^ "for" ^ expr ^ ":\n" ^ next, context
-  | _ -> syntax_error "pour_chaque loop must start with 'pour_chaque'"
+  (* A pour_chaque instruction has the form "pour_chaque <var> dans <iterable> faire"*)
+  (* This function translates it to "for <var> in <iterable>)" *)
+  let _, index = get_word code index in
+  let var, index = get_expression code index "dans"        in let var_expr = eval_expression var vars in
+  let iterable, index = get_expression code index "faire"  in let iterable_expr = eval_expression iterable vars in
+  let next, context = eval_code {code; index; vars; scopes; imports} in
+  let next = if next = "" then get_indentation (depth + 1) ^ "pass\n" else next in
+  get_indentation depth ^ "for " ^ var_expr ^ " in " ^ iterable_expr  ^ ":\n" ^ next, context
 
 and eval_pour context =
   let {code; index; vars; scopes; imports} = context in
   let depth = List.length scopes - 1 in
   (* A pour instruction has the form "pour <var> de <start> a <end> faire"*)
   (* This function translates it to "for <var> in range(start, end + 1)" *)
-  let rec get_for_core code index =
-    match get_word code index with
-    | "faire", i -> "", i
-    | "de", i -> let expr, index = (get_for_core code i) in
-      " in range(" ^ expr, index
-    | "jusqu_a", i -> let expr, index = get_for_core code i in
-      ", " ^ expr ^ " + 1)", index + 1
-    | word, i -> let expr, index = get_for_core code i in
-      word ^ expr, index
-  in
-  match get_word code index with
-  | "pour", i -> let expr, index = get_for_core code i in
+  let _, index = get_word code index in
+  let var, index = get_expression code index "de"         in let var_expr, var_type = eval_expression_with_type var vars in
+  let start, index = get_expression code index "jusqu_a"  in let start_expr, start_type = eval_expression_with_type start vars in
+  let end_, index = get_expression code index "faire"     in let end_expr, end_type = eval_expression_with_type end_ vars in
+  if var_type = Type.Int || start_type = Type.Int || end_type = Type.Int then
     let next, context = eval_code {code; index; vars; scopes; imports} in
-    get_indentation depth ^ "for " ^ expr ^ ":\n" ^ next, context
-  | _ -> syntax_error "pour loop must start with 'pour'"
+    let next = if next = "" then get_indentation (depth + 1) ^ "pass\n" else next in
+    get_indentation depth ^ "for " ^ var_expr ^ " in range(" ^ start_expr ^ ", " ^ end_expr ^ " + 1):\n" ^ next, context
+  else
+    type_error Type.(string_of_type Int) Type.(string_of_type (find_bad_elt None Int [var_type; start_type; end_type]))
 
 and control_keywords =
   [

@@ -19,8 +19,11 @@ let get_word code i =
   let rec _get_word i word =
     if i < len then
       match code.[i] with
-      | ' ' | '\t' when word = "" -> _get_word (i + 1) word
-      | ' ' | '\n' | '(' | ',' | ')' -> word, i + 1
+      | ' ' | '\n' | '(' | ',' | ')' ->
+        if word = "" then
+          _get_word (i + 1) word
+        else
+          word, i + 1
       | x -> _get_word (i + 1) (word ^ (String.make 1 x))
     else
       word, len
@@ -40,7 +43,7 @@ let get_word_and_returns code i =
 
 
 let get_expression code index terminator =
-  if string_match (regexp ({|\([^\n]*[) ]\)\(|} ^ terminator ^ "\\)")) code index then
+  if string_match (regexp ("\\([^\n]*[) ]\\)\\(" ^ terminator ^ "\\)")) code index then
     matched_group 1 code, group_end 2 + 1
   else
     syntax_error ("Missing token '" ^ terminator ^ "'")
@@ -72,6 +75,8 @@ let get_param vars code index =
   let r = regexp {|\([a-z]+ [A-Za-z_][A-Za-z0-9_]*\(, ?[a-z]+ [A-Za-z_][A-Za-z0-9_]*\)*\))|} in
   if string_match r code index then
     _get_params vars "" (index + 1) (split (regexp ",") (matched_group 1 code)) ~is_first: true
+  else if code.[index] = ')' then
+    "", index + 2, vars
   else
     syntax_error "Invalid function definition"
 
