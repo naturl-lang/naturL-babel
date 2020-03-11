@@ -1,7 +1,6 @@
 (* #load "str.cma" *)
 
 open Str
-open Utils
 open Errors
 open Getters
 open Structures
@@ -25,7 +24,18 @@ let operators = [
 
 let unary_ops = ["non"]
 
-let op_priority oc = function
+let rec is_prefix word pref =
+  let w_len = String.length word
+  and p_len = String.length pref in
+  p_len = 0 || w_len <> 0 && word.[0] = pref.[0]
+               && is_prefix (String.sub word 1 (w_len - 1)) (String.sub pref 1 (p_len - 1))
+
+(* Returns true if one word in the list starts with prefix *)
+let rec is_list_prefix list pref = match list with
+  | w :: t -> is_prefix w pref || is_list_prefix t pref
+  | _ -> false ;;
+
+let op_priority = function
   | "" -> max_int
   | "ou" -> 1
   | "et" -> 2
@@ -33,9 +43,9 @@ let op_priority oc = function
   | "+" | "-" -> 4
   | "*" | "/" | "div" -> 5
   | "non" -> 6
-  | op -> syntax_error oc ("Unknown operator '" ^ op ^ "'") ;;
+  | op -> syntax_error ("Unknown operator '" ^ op ^ "'") ;;
 
-let make_binary_op oc arg1 arg2 = function
+let make_binary_op arg1 arg2 = function
   | "+" -> Plus (arg1, arg2)
   | "-" -> Minus (arg1, arg2)
   | "*" -> Times (arg1, arg2)
@@ -47,14 +57,14 @@ let make_binary_op oc arg1 arg2 = function
   | "<=" -> LowerOrEqual (arg1, arg2)
   | "et" -> And (arg1, arg2)
   | "ou" -> Or (arg1, arg2)
-  | op -> syntax_error oc ("Unknown operator '" ^ op ^ "'")
+  | op -> syntax_error ("Unknown operator '" ^ op ^ "'")
 
-let make_unary_op oc arg = function
+let make_unary_op arg = function
   | "non" -> Not arg
-  | op -> syntax_error oc ("Unknown operator '" ^ op ^ "'")
+  | op -> syntax_error ("Unknown operator '" ^ op ^ "'")
 
 (* Converts a string to a type_struct *)
-let struct_of_str oc str vars =
+let struct_of_str str vars =
   if string_match (regexp "^-?[0-9]+$") str 0 then
     Type.Int
   else if string_match (regexp "^[0-9]+\\.[0-9]+$") str 0 then
@@ -66,13 +76,13 @@ let struct_of_str oc str vars =
   else if str = "vrai" || str = "faux" then
     Type.Boolean
   else if string_match (regexp "^[A-z_][A-z0-9_]*$") str 0 then (* str is a variable *)
-    let vars = get_var_by_name oc str (VarSet.elements vars) in
+    let vars = get_var_by_name str (VarSet.elements vars) in
     vars.type_struct
   else
-    unknown_type_error oc str ;;
+    unknown_type_error str ;;
 
 (* Converts a string to an expression *)
-let expr_of_str oc str vars =
+let expr_of_str str vars =
   let rec find_op str buf current left right priority =
     let length = String.length str in
     if length = 0 then
@@ -92,7 +102,7 @@ let expr_of_str oc str vars =
       (* Compare the priority of the new operator with the priority of the current one *)
       (* If it is lower, change the current operator and clear the buffer *)
       if String.length buf <> 0 && not is_new_buf_pref && List.mem buf operators
-         && priority + op_priority oc buf < op_priority oc current then
+         && priority + op_priority buf < op_priority current then
         find_op next_str "" buf (left ^ current ^ right) ch priority
         (* If the new buffer is a prefix of an operator, continue feeding it *)
       else if is_new_buf_pref then
@@ -109,13 +119,13 @@ let expr_of_str oc str vars =
          let str = String.trim str in
          let str = if str.[0] = '(' then String.sub str 1 (String.length str - 1) else str in
          let str = if str.[String.length str - 1] = ')' then String.sub str 0 (String.length str - 1) else str in
-         Value (struct_of_str oc (String.trim str) vars)
+         Value (struct_of_str (String.trim str) vars)
          (* If op is a binary operator: *)
        else if not (List.mem op unary_ops) then
-         make_binary_op oc (_expr_of_str left) (_expr_of_str right) op
+         make_binary_op (_expr_of_str left) (_expr_of_str right) op
        else
          (* It is supposed that all unary operators are prefixes *)
-         make_unary_op oc (_expr_of_str right) op
+         make_unary_op (_expr_of_str right) op
   in _expr_of_str str ;;
 
 (* Converts an expression to its string representation as a string. Used mostly for debugging. *)
@@ -159,7 +169,7 @@ let tree_of_expr expr =
   in _tree_of_expr expr ""
 
 (* Checks if the types of an expression are valid *)
-let check_expr oc expr vars =
+let check_expr expr vars =
   let rec _check_binary_expr ?(return_type = Type.None) op1 op2 accepted_types =
     let is_valid1, type1 = _check_expr op1
     and is_valid2, type2 = _check_expr op2
@@ -177,4 +187,4 @@ let check_expr oc expr vars =
       _check_binary_expr op1 op2 [Type.Int; Type.Float; Type.String; Type.Char] ~return_type: Type.Boolean
     | And (op1, op2) | Or (op1, op2) -> _check_binary_expr op1 op2 [Type.Boolean]
     | Not op -> _check_binary_expr op (Value Type.Boolean) [Type.Boolean]
-  in _check_expr (expr_of_str oc expr vars)
+  in _check_expr (expr_of_str expr vars)

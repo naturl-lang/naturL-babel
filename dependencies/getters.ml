@@ -1,3 +1,7 @@
+(*#mod_use "structures.ml";;
+#load "str.cma";;
+#mod_use "type_operations.ml" *)
+
 open Str
 open Structures
 open Errors
@@ -38,11 +42,11 @@ let get_word_and_returns code i =
   in _get_word i ""
 
 
-let get_expression oc code index terminator =
+let get_expression code index terminator =
   if string_match (regexp ("\\([^\n]*[) ]\\)\\(" ^ terminator ^ "\\)")) code index then
     matched_group 1 code, group_end 2 + 1
   else
-    syntax_error oc ("Missing token '" ^ terminator ^ "'")
+    syntax_error ("Missing token '" ^ terminator ^ "'")
 
 let get_line code i =
   let len = String.length code in
@@ -56,15 +60,15 @@ let get_line code i =
   in _get_line i ""
 
 (*Check if the specified type is a valid builtin type, if that is the case, returns the right type *)
-let get_type oc code index =
+let get_type code index =
   let t, index = get_word code index in
-  index, Type.type_of_string oc t
+  index, Type.type_of_string t
 
 (*Gets the parameters of the function or the procedure*)
-let get_param oc vars code index =
+let get_param vars code index =
   let rec _get_params ?(is_first = false) vars names index = function
     | [] -> names, index, vars
-    | h :: t -> let i, type_struct = get_type oc h 0 in
+    | h :: t -> let i, type_struct = get_type h 0 in
       let name, i = get_word h i in
       let sep = if is_first then "" else ", " in
       _get_params (VarSet.add {name; type_struct} vars) (names ^ sep ^ name) (index + i + 1) t in
@@ -74,10 +78,10 @@ let get_param oc vars code index =
   else if code.[index] = ')' then
     "", index + 2, vars
   else
-    syntax_error oc "Invalid function definition"
+    syntax_error "Invalid function definition"
 
-let rec get_var_by_name oc var_name var_list =
+let rec get_var_by_name var_name var_list =
   match var_list with
-    [] -> name_error oc var_name
+    [] -> name_error var_name
   | var :: _ when var.name = var_name -> var
-  | _ :: r -> get_var_by_name oc var_name r
+  | _ :: r -> get_var_by_name var_name r

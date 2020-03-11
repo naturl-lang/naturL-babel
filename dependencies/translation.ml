@@ -6,7 +6,7 @@ open Getters
 open Expressions
 
 
-let eval_expression_with_type oc str vars =
+let eval_expression_with_type str vars =
   let separators = "\\([\t() ]*\\)"
   and replacements = [
     "et", "and";
@@ -24,16 +24,16 @@ let eval_expression_with_type oc str vars =
       let r = regexp (separators ^ prev ^ separators)
       in _replace (global_replace r ("\\1" ^ new_word ^ "\\2") str) t
   in
-  let is_valid, type_struct = check_expr oc str vars
+  let is_valid, type_struct = check_expr str vars
   in if is_valid then
     String.trim (_replace str replacements), type_struct
   else
-    semantic_error oc ("Inconsistent expression '" ^ str ^ "'.")
+    semantic_error ("Inconsistent expression '" ^ str ^ "'.")
 
-let eval_expression oc str vars =
-  let expr, _ = eval_expression_with_type oc str vars in expr
+let eval_expression str vars =
+  let expr, _ = eval_expression_with_type str vars in expr
 
-let rec eval_code oc context =
+let rec eval_code context =
   let rec _eval_code context =
        let {code; index; vars; scopes; imports} = context in
        let depth = List.length scopes in
@@ -46,44 +46,44 @@ let rec eval_code oc context =
                if List.hd scopes = If then
                  scope :: List.tl scopes
                else
-                 syntax_error oc ("Unexpected token '" ^ word ^ "'")
+                 syntax_error ("Unexpected token '" ^ word ^ "'")
              else
                scope :: scopes
-           with Failure _ -> syntax_error oc ("Unexpected token '" ^ word ^ "'") in
-         let translation, context = func oc {code; index = (index - String.length word - 1); vars; scopes; imports} in
+           with Failure _ -> syntax_error ("Unexpected token '" ^ word ^ "'") in
+         let translation, context = func {code; index = (index - String.length word - 1); vars; scopes; imports} in
          let next_translation, context = _eval_code context
          in translation ^ next_translation, context
        | None ->
          match word with
-         | "variables" -> _eval_code (eval_variables oc context)
-         | "debut" -> eval_code oc context
+         | "variables" -> _eval_code (eval_variables context)
+         | "debut" -> eval_code context
          | "retourner" -> let expr, index = get_line code index in
            let next, context = _eval_code {code; index; vars; scopes; imports} in
-           get_indentation depth ^ "return " ^ eval_expression oc expr vars ^ "\n" ^ next, context
+           get_indentation depth ^ "return " ^ eval_expression expr vars ^ "\n" ^ next, context
          | "fin" -> (try "", {code; index; vars; scopes = List.tl scopes; imports}
-                     with Failure _ -> syntax_error oc "")
+                     with Failure _ -> syntax_error "")
          | "afficher" ->
            let expr, index = get_line code index in
            let next, context = _eval_code {code; index; vars; scopes; imports} in
-           get_indentation depth ^ "print(" ^ eval_expression oc expr vars ^ ")\n" ^ next, context
-         | "" -> if List.length scopes = 0 then "", context else syntax_error oc "Expected 'fin'"
+           get_indentation depth ^ "print(" ^ eval_expression expr vars ^ ")\n" ^ next, context
+         | "" -> if List.length scopes = 0 then "", context else syntax_error "Expected 'fin'"
          | _ ->
-           let var = get_var_by_name oc word (VarSet.elements vars) in
+           let var = get_var_by_name word (VarSet.elements vars) in
            let next_word, index = get_word code index in
            if next_word = "<-" then
              let expression, index = get_line code index in
-             let expression, type_struct = eval_expression_with_type oc expression vars in
+             let expression, type_struct = eval_expression_with_type expression vars in
              if type_struct = var.type_struct then
                let next, context = _eval_code {code; index; vars; scopes; imports} in
-               get_indentation depth ^ word ^ " = " ^ (eval_expression oc expression vars) ^ "\n" ^ next, context
+               get_indentation depth ^ word ^ " = " ^ (eval_expression expression vars) ^ "\n" ^ next, context
              else
-               type_error oc (Type.string_of_type var.type_struct) (Type.string_of_type type_struct)
+               type_error (Type.string_of_type var.type_struct) (Type.string_of_type type_struct)
            else
-             syntax_error oc ("Unexpected token '" ^ next_word ^ "'")
+             syntax_error ("Unexpected token '" ^ next_word ^ "'")
   in _eval_code context
 
 (* This function only adds the new declared variables in the set *)
-and eval_variables oc context =
+and eval_variables context =
   let {code; index; vars; scopes; imports} = context in
   let rec eval_line vars type_struct = function
       [] -> vars
@@ -97,12 +97,12 @@ and eval_variables oc context =
          _eval_variables vars code index
        else
          let line, index = get_line code index in
-         let vars = eval_line vars (Type.type_of_string oc word) (String.split_on_char ',' line) in
+         let vars = eval_line vars (Type.type_of_string word) (String.split_on_char ',' line) in
          _eval_variables vars code index
   in let vars, index = _eval_variables vars code index
   in {code; index; vars; scopes; imports}
 
-and eval_fonction oc context =
+and eval_fonction context =
   let {code; index; vars; scopes; imports} = context in
   let depth = List.length scopes - 1 in
   (* A function is divided in a header (the name), parameters and a return type.
@@ -110,114 +110,114 @@ and eval_fonction oc context =
   let check_return_type i =
     let word, index = get_word code i in
     if word = "->" then
-      get_type oc code index
+      get_type code index
     else
-      syntax_error oc ("Expected '->', got '" ^ word ^ "'")
+      syntax_error ("Expected '->', got '" ^ word ^ "'")
   in
   let name, index = get_word code (index + 9) in (* 9 = 8 + 1 *)
-  let names, index, vars = get_param oc vars code index in
+  let names, index, vars = get_param vars code index in
   let index, _ = check_return_type index in
-  let next, context = eval_code oc {code; index; vars; scopes; imports} in
+  let next, context = eval_code {code; index; vars; scopes; imports} in
   let next = if next = "" then get_indentation (depth + 1) ^ "pass\n" else next in
   get_indentation depth ^ "def " ^ name ^ "(" ^ names ^ "):\n" ^ next, context
 
-and eval_procedure oc context =
+and eval_procedure context =
   let {code; index; vars; scopes; imports} = context in
   let depth = List.length scopes - 1 in
   (*Same logic as functions except that there is no need to check a return type*)
   let name, index = get_word code (index + 10) (*10 = 9 + 1*) in
-  let names, index, vars = get_param oc vars code index in
-  let next, context = eval_code oc {code; index; vars; scopes; imports} in
+  let names, index, vars = get_param vars code index in
+  let next, context = eval_code {code; index; vars; scopes; imports} in
   let next = if next = "" then get_indentation (depth + 1) ^ "pass\n" else next in
   get_indentation depth ^ "def " ^ name ^ "(" ^ names ^ "):\n" ^ next, context
 
-and eval_si oc context =
+and eval_si context =
   let {code; index; vars; scopes; imports} = context in
   let depth = List.length scopes - 1 in
   (* This function checks that the expressions between 'si' and 'alors' is a boolean expression *)
   (* and returns "if <expression>:" followed by the rest of the code *)
   match get_word code index with
-  | "si", i -> let expr, index = get_expression oc code i "alors" in
-    let expr, type_struct = eval_expression_with_type oc expr vars in
+  | "si", i -> let expr, index = get_expression code i "alors" in
+    let expr, type_struct = eval_expression_with_type expr vars in
     if type_struct = Type.Boolean then
-      let next, context = eval_code oc {code; index; vars; scopes; imports}
+      let next, context = eval_code {code; index; vars; scopes; imports}
       in let next = if next = "" then get_indentation (depth + 1) ^ "pass\n" else next
       in get_indentation depth ^ "if " ^ expr ^ ":\n" ^ next, context
     else
-      type_error oc Type.(string_of_type Boolean) (Type.string_of_type type_struct)
-  | _ -> syntax_error oc "si statement must start with 'si'"
+      type_error Type.(string_of_type Boolean) (Type.string_of_type type_struct)
+  | _ -> syntax_error "si statement must start with 'si'"
 
-and eval_sinon_si oc context =
+and eval_sinon_si context =
   let {code; index; vars; scopes; imports} = context in
   let depth = List.length scopes - 1 in
   (* Same as si but sinon_si *)
   match get_word code index with
-  | "sinon_si", i -> let expr, index = get_expression oc code i "alors" in
-    let expr, type_struct = eval_expression_with_type oc expr vars in
-    let next, context = eval_code oc {code; index; vars; scopes; imports}  in
+  | "sinon_si", i -> let expr, index = get_expression code i "alors" in
+    let expr, type_struct = eval_expression_with_type expr vars in
+    let next, context = eval_code {code; index; vars; scopes; imports}  in
     if type_struct = Type.Boolean then
       if expr = "False" then
-        let _, context = eval_code oc {code; index; vars; scopes; imports} in
+        let _, context = eval_code {code; index; vars; scopes; imports} in
         "", context
       else
         let next = if next = "" then get_indentation (depth + 1) ^ "pass\n" else next in
         get_indentation depth ^ "elif " ^ expr ^ ":\n" ^ next, context
     else
-      type_error oc Type.(string_of_type Boolean) (Type.string_of_type type_struct)
-  | _ -> syntax_error oc "sinon_si statement must start with 'sinon_si'"
+      type_error Type.(string_of_type Boolean) (Type.string_of_type type_struct)
+  | _ -> syntax_error "sinon_si statement must start with 'sinon_si'"
 
-and eval_sinon oc context =
+and eval_sinon context =
   let {code; index; vars; scopes; imports} = context in
   let depth = List.length scopes - 1 in
   (* Replaces "sinon" by "else:\n"*)
   match get_word code index with
-  | "sinon", i -> let next, context = eval_code oc {code; index = i; vars; scopes; imports} in
+  | "sinon", i -> let next, context = eval_code {code; index = i; vars; scopes; imports} in
     let next = if next = "" then get_indentation (depth + 1) ^ "pass\n" else next in
     get_indentation depth ^ "else:\n" ^ next, context
-  | _ -> syntax_error oc "sinon statement must start with 'sinon'"
+  | _ -> syntax_error "sinon statement must start with 'sinon'"
 
-and eval_tant_que oc context =
+and eval_tant_que context =
   let {code; index; vars; scopes; imports} = context in
   let depth = List.length scopes - 1 in
   (* Same as si but with 'tant_que' and 'faire' instead of 'si' and 'alors' *)
   match get_word code index with
-  | "tant_que", i -> let expr, index = get_expression oc code i "faire" in
-    let expr, type_struct = eval_expression_with_type oc expr vars in
-    let next, context = eval_code oc {code; index; vars; scopes; imports} in
+  | "tant_que", i -> let expr, index = get_expression code i "faire" in
+    let expr, type_struct = eval_expression_with_type expr vars in
+    let next, context = eval_code {code; index; vars; scopes; imports} in
     let next = if next = "" then get_indentation (depth + 1) ^ "pass\n" else next in
     if type_struct = Type.Boolean then
       get_indentation depth ^ "while " ^ expr ^ ":\n" ^ next, context
     else
-      type_error oc Type.(string_of_type Boolean) (Type.string_of_type type_struct)
-  | _ -> syntax_error oc "tant_que loop must start with 'tant_que'"
+      type_error Type.(string_of_type Boolean) (Type.string_of_type type_struct)
+  | _ -> syntax_error "tant_que loop must start with 'tant_que'"
 
-and eval_pour_chaque oc context =
+and eval_pour_chaque context =
   let {code; index; vars; scopes; imports} = context in
   let depth = List.length scopes - 1 in
   (* A pour_chaque instruction has the form "pour_chaque <var> dans <iterable> faire"*)
   (* This function translates it to "for <var> in <iterable>)" *)
   let _, index = get_word code index in
-  let var, index = get_expression oc code index "dans"        in let var_expr = eval_expression oc var vars in
-  let iterable, index = get_expression oc code index "faire"  in let iterable_expr = eval_expression oc iterable vars in
-  let next, context = eval_code oc {code; index; vars; scopes; imports} in
+  let var, index = get_expression code index "dans"        in let var_expr = eval_expression var vars in
+  let iterable, index = get_expression code index "faire"  in let iterable_expr = eval_expression iterable vars in
+  let next, context = eval_code {code; index; vars; scopes; imports} in
   let next = if next = "" then get_indentation (depth + 1) ^ "pass\n" else next in
   get_indentation depth ^ "for " ^ var_expr ^ " in " ^ iterable_expr  ^ ":\n" ^ next, context
 
-and eval_pour oc context =
+and eval_pour context =
   let {code; index; vars; scopes; imports} = context in
   let depth = List.length scopes - 1 in
   (* A pour instruction has the form "pour <var> de <start> a <end> faire"*)
   (* This function translates it to "for <var> in range(start, end + 1)" *)
   let _, index = get_word code index in
-  let var, index = get_expression oc code index "de"         in let var_expr, var_type = eval_expression_with_type oc var vars in
-  let start, index = get_expression oc code index "jusqu_a"  in let start_expr, start_type = eval_expression_with_type oc start vars in
-  let end_, index = get_expression oc code index "faire"     in let end_expr, end_type = eval_expression_with_type oc end_ vars in
+  let var, index = get_expression code index "de"         in let var_expr, var_type = eval_expression_with_type var vars in
+  let start, index = get_expression code index "jusqu_a"  in let start_expr, start_type = eval_expression_with_type start vars in
+  let end_, index = get_expression code index "faire"     in let end_expr, end_type = eval_expression_with_type end_ vars in
   if var_type = Type.Int || start_type = Type.Int || end_type = Type.Int then
-    let next, context = eval_code oc {code; index; vars; scopes; imports} in
+    let next, context = eval_code {code; index; vars; scopes; imports} in
     let next = if next = "" then get_indentation (depth + 1) ^ "pass\n" else next in
     get_indentation depth ^ "for " ^ var_expr ^ " in range(" ^ start_expr ^ ", " ^ end_expr ^ " + 1):\n" ^ next, context
   else
-    type_error oc Type.(string_of_type Int) Type.(string_of_type (find_bad_elt None Int [var_type; start_type; end_type]))
+    type_error Type.(string_of_type Int) Type.(string_of_type (find_bad_elt None Int [var_type; start_type; end_type]))
 
 and control_keywords =
   [
@@ -231,7 +231,7 @@ and control_keywords =
     "tant_que", (While, eval_tant_que)
   ]
 
-let translate_code oc code =
+let translate_code code =
   let code = String.trim code and index = 0 and vars = VarSet.empty and scopes = [] and imports = [] in
-  let translation, _ = eval_code oc {code; index; vars; scopes; imports} in
+  let translation, _ = eval_code {code; index; vars; scopes; imports} in
   String.trim translation

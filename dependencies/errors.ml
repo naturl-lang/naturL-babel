@@ -4,31 +4,31 @@ open Printf
 (*let exit (_: int) = ()
 let stderr = stdout*)
 
-let syntax_error oc message =
-  fprintf oc "Syntax error: %s." message;
+(* Leave this one uncommented *)
+let prerrf arg = fprintf stderr arg
+
+let syntax_error message =
+  prerrf "Syntax error: %s." message;
   exit 2
 
-let type_error oc expected found =
-  fprintf oc
+let type_error expected found =
+  prerrf
     "Type error: An expression was expected of type '%s' but an expression was found of type '%s'."
     expected found;
   exit 2
 
-let name_error oc name =
-  fprintf oc "Name error: Name '%s' is not defined." name;
+let name_error name =
+  prerrf "Name error: Name '%s' is not defined." name;
   exit 2
 
-let unknown_type_error oc name =
-  fprintf oc "Name error: Type '%s' is not defined." name;
+let unknown_type_error name =
+  prerrf "Name error: Type '%s' is not defined." name;
   exit 2
 
-let semantic_error oc message =
-  fprintf oc "Semantic error: %s." message;
+let semantic_error message =
+  prerrf "Semantic error: %s." message;
   exit 2
 
-let unexpected_token_error oc token =
-  syntax_error oc ("Unexpected token " ^ token)
-
-let assert_type oc expected found =
+let assert_type expected found =
   if expected <> found then
-    type_error oc expected found
+    type_error expected found
