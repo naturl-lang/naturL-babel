@@ -21,6 +21,7 @@ jobs:
         run: |
           opam install dune
           opam install ppx_inline_test
+          opam install ppx_expect
       - name: Build
         run: opam exec -- dune build @install
       - name: Test  
