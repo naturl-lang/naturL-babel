@@ -87,8 +87,10 @@ let get_param vars code index =
   else
     raise_syntax_error ~line: (get_line_no code index) "Invalid function definition"
 
-let rec get_var_by_name var_name var_list =
-  match var_list with
-    [] -> raise_name_error ("Unknown variable '" ^ var_name ^ "'")
-  | var :: _ when var.name = var_name -> var
-  | _ :: r -> get_var_by_name var_name r
+let get_var_by_name var_name vars =
+  let var_name = String.trim var_name in
+  let rec _get_var_by_name = function
+      [] -> raise_name_error ("Unknown variable '" ^ var_name ^ "'")
+    | var :: _ when var.name = var_name -> var
+    | _ :: t -> _get_var_by_name t
+  in _get_var_by_name (VarSet.elements vars)

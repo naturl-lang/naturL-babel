@@ -8,32 +8,38 @@ struct
     | Char
     | String
     | Boolean
-    | List
+    | List of type_struct
     | Function
     | None
 
-  let string_of_type = function
+  let rec string_of_type = function
       Int -> "entier"
     | Float -> "reel"
     | Char -> "caractere"
     | String -> "chaine"
     | Boolean -> "boolean"
-    | List -> "liste"
+    | List t -> "liste de " ^ string_of_type t
     | Function -> "fonction"
     | None -> "rien"
 
-  let type_of_string = function
+  let rec type_of_string = function
       "entier" -> Int
     | "reel" -> Float
     | "caractere" -> Char
     | "chaine" -> String
     | "booleen" -> Boolean
-    | "liste" -> List
+    | "liste" -> List Int
     | "fonction" -> Function
     | "rien" -> None
-    | t -> raise_name_error ("Unknown type " ^ t)
-end
+    | str -> (match String.split_on_char ' ' str with
+      | "liste" :: "de" :: t -> List (type_of_string (String.concat " " t))
+      | _ -> raise_name_error ("Unknown type " ^ str))
 
+  let get_iterable_type = function
+      String -> Some Char
+    | List t -> Some t
+    | _ -> None
+end
 
 type variable = {name: string; type_struct: Type.type_struct}
 

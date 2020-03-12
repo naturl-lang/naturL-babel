@@ -81,7 +81,7 @@ let struct_of_str str vars =
   else if str = "vrai" || str = "faux" then
     Type.Boolean
   else if string_match (regexp "^[A-z_][A-z0-9_]*$") str 0 then (* str is a variable *)
-    let vars = get_var_by_name str (VarSet.elements vars) in
+    let vars = get_var_by_name str vars in
     vars.type_struct
   else
     raise_syntax_error ("Can not resolve operand '" ^ str ^ "'") ;;
@@ -175,10 +175,10 @@ let tree_of_expr expr =
 
 (* Checks if the types of an expression are valid *)
 let expr_type expr vars =
-  let rec _check_binary_expr ?return_type op1 op2 accepted_types operator =
+  let rec _check_binary_expr ?return_type op1 op2 is_accepted operator =
     let type1 = _check_expr op1
     and type2 = _check_expr op2
-    in if not (List.mem type1 accepted_types) then
+    in if not (is_accepted type1) then
       raise_type_error ("Unsupported type '" ^ (Type.string_of_type type1) ^ "' for operator " ^ (string_of_operator operator))
     else if type1 <> type2 then
       raise_unexpected_type_error (Type.string_of_type type1) (Type.string_of_type type2)
@@ -189,12 +189,12 @@ let expr_type expr vars =
   and _check_expr expr =
     match expr with
     | Value type_struct -> type_struct
-    | Plus (op1, op2) as operator -> _check_binary_expr op1 op2 [Type.Int; Type.Float; Type.String] operator
-    | Minus (op1, op2) | Times (op1, op2) | Divide (op1, op2) as operator -> _check_binary_expr op1 op2 [Type.Int; Type.Float] operator
+    | Plus (op1, op2) as operator -> _check_binary_expr op1 op2 (function Type.Int | Type.Float | Type.String -> true | _ -> false) operator
+    | Minus (op1, op2) | Times (op1, op2) | Divide (op1, op2) as operator -> _check_binary_expr op1 op2 (function Type.Int | Type.Float -> true | _ -> false) operator
     | Equal (op1, op2) as operator -> _check_binary_expr op1 op2 ~return_type: Type.Boolean
-                            [Type.Int; Type.Float; Type.String; Type.Char; Type.Boolean; Type.List] operator
+                            (function Type.Int | Type.Float | Type.String | Type.Char | Type.Boolean | Type.List _ -> true | _ -> false) operator
     | Greater (op1, op2) | GreaterOrEqual (op1, op2) | Lower (op1, op2) | LowerOrEqual (op1, op2) as operator ->
-      _check_binary_expr op1 op2 [Type.Int; Type.Float; Type.String; Type.Char] operator ~return_type: Type.Boolean
-    | And (op1, op2) | Or (op1, op2) as operator -> _check_binary_expr op1 op2 [Type.Boolean] operator
-    | Not op as operator -> _check_binary_expr op (Value Type.Boolean) [Type.Boolean] operator
+      _check_binary_expr op1 op2 (function Type.Int | Type.Float | Type.String | Type.Char -> true | _ -> false) operator ~return_type: Type.Boolean
+    | And (op1, op2) | Or (op1, op2) as operator -> _check_binary_expr op1 op2 (fun t -> t = Type.Boolean) operator
+    | Not op as operator -> _check_binary_expr op (Value Type.Boolean) (fun t -> t = Type.Boolean) operator
   in _check_expr (expr_of_str expr vars)

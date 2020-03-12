@@ -24,7 +24,7 @@ let%expect_test "get_expression" =
 let%expect_test "get_line" =
   let line, index = get_line "first line\nsecond line" 0 in
   print_string line;
-  [%expect {| first line  |}];
+  [%expect {| first line |}];
   print_int index;
   [%expect {| 11 |}] ;;
 
@@ -43,7 +43,7 @@ let%expect_test "get_param" =
 |}] ;;
 
 let%expect_test "get_var_by_name" =
-  let vars = [{name = "n"; type_struct = Type.Int}; {name = "pi"; type_struct = Type.Float}] in
+  let vars = VarSet.empty |> VarSet.add {name = "n"; type_struct = Type.Int} |> VarSet.add {name = "pi"; type_struct = Type.Float} in
   let var = get_var_by_name "pi" vars in
   print_variable var;
   [%expect {| var pi: reel |}] ;;

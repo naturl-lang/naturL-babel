@@ -69,7 +69,7 @@ let rec eval_code ?(oc = stderr) context =
          | "" -> if List.length scopes = 0 then "", context else raise_syntax_error "Unclosed scope: expected 'fin'" ~line: (get_line_no code index + 1)
          | _ ->
            let line = get_line_no code index in
-           let var = try_update_err line (fun () -> get_var_by_name word (VarSet.elements vars)) in
+           let var = try_update_err line (fun () -> get_var_by_name word vars) in
            let next_word, index = get_word code index in
            if next_word = "<-" then
              let expression, index = get_line code index in
@@ -207,11 +207,14 @@ and eval_pour_chaque context =
   (* A pour_chaque instruction has the form "pour_chaque <var> dans <iterable> faire"*)
   (* This function translates it to "for <var> in <iterable>)" *)
   let _, index = get_word code index in
-  let var, index = get_expression code index "dans"        in let var_expr = try_update_err line (fun () -> eval_expression var vars) in
-  let iterable, index = get_expression code index "faire"  in let iterable_expr = try_update_err line (fun () -> eval_expression iterable vars) in
+  let var, index = get_expression code index "dans"        in let var = try_update_err line (fun () -> get_var_by_name var vars) in
+  let iterable, index = get_expression code index "faire"  in let iterable_expr, iterable_type = try_update_err line (fun () -> eval_expression_with_type iterable vars) in
+  (match Type.get_iterable_type iterable_type with
+   | Some t -> if t <> var.type_struct then raise_unexpected_type_error (Type.string_of_type t) (Type.string_of_type var.type_struct) ~line
+   | None -> raise_type_error ("Type '" ^ (Type.string_of_type iterable_type) ^ "' is not iterable") ~line);
   let next, context = eval_code {code; index; vars; scopes; imports} in
   let next = if next = "" then get_indentation (depth + 1) ^ "pass\n" else next in
-  get_indentation depth ^ "for " ^ var_expr ^ " in " ^ iterable_expr  ^ ":\n" ^ next, context
+  get_indentation depth ^ "for " ^ var.name ^ " in " ^ iterable_expr  ^ ":\n" ^ next, context
 
 and eval_pour context =
   let {code; index; vars; scopes; imports} = context in
