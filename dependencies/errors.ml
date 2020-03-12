@@ -1,34 +1,23 @@
-open Printf
-
-(* USED FOR TEST PURPOSE ONLY. COMMENT FOR COMPILATION *)
-(*let exit (_: int) = ()
-let stderr = stdout*)
-
-(* Leave this one uncommented *)
-let prerrf arg = fprintf stderr arg
-
-let syntax_error message =
-  prerrf "Syntax error: %s." message;
+let _error name message line oc =
+  Printf.fprintf oc "%s at line %d: %s" name line message;
   exit 2
 
-let type_error expected found =
-  prerrf
-    "Type error: An expression was expected of type '%s' but an expression was found of type '%s'."
-    expected found;
-  exit 2
+let syntax_error = _error "Syntax error"
 
-let name_error name =
-  prerrf "Name error: Name '%s' is not defined." name;
-  exit 2
+let type_error = _error "Type error"
 
-let unknown_type_error name =
-  prerrf "Name error: Type '%s' is not defined." name;
-  exit 2
+let name_error = _error "Name error"
 
-let semantic_error message =
-  prerrf "Semantic error: %s." message;
-  exit 2
+exception SyntaxError of string
+exception TypeError of string
+exception NameError of string
 
-let assert_type expected found =
-  if expected <> found then
-    type_error expected found
+let raise_unexpected_type_error expected found =
+  raise (TypeError ("Expected an expression of type '" ^ expected ^ "' but got '" ^ found ^ "'"))
+
+let translate_exception exc =
+  match exc with
+  | SyntaxError msg -> syntax_error msg
+  | TypeError msg -> type_error msg
+  | NameError msg -> name_error msg
+  | _ -> raise exc

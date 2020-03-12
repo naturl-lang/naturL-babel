@@ -24,11 +24,8 @@ let eval_expression_with_type str vars =
       let r = regexp (separators ^ prev ^ separators)
       in _replace (global_replace r ("\\1" ^ new_word ^ "\\2") str) t
   in
-  let is_valid, type_struct = check_expr str vars
-  in if is_valid then
-    String.trim (_replace str replacements), type_struct
-  else
-    semantic_error ("Inconsistent expression '" ^ str ^ "'.")
+  let type_struct = expr_type str vars in
+  String.trim (_replace str replacements), type_struct
 
 let eval_expression str vars =
   let expr, _ = eval_expression_with_type str vars in expr
@@ -41,15 +38,14 @@ let rec eval_code context =
        let context = {code; index; vars; scopes; imports} in
        match find_assoc word control_keywords with
        | Some (scope, func) ->
-         let scopes = try
-             if word = "sinon" || word = "sinon_si" then
-               if List.hd scopes = If then
-                 scope :: List.tl scopes
-               else
-                 syntax_error ("Unexpected token '" ^ word ^ "'")
+         let scopes =
+           if word = "sinon" || word = "sinon_si" then
+             if scopes <> [] && List.hd scopes = If then
+               scope :: List.tl scopes
              else
-               scope :: scopes
-           with Failure _ -> syntax_error ("Unexpected token '" ^ word ^ "'") in
+               raise (SyntaxError ("Unexpected token '" ^ word ^ "'"))
+           else
+             scope :: scopes in
          let translation, context = func {code; index = (index - String.length word - 1); vars; scopes; imports} in
          let next_translation, context = _eval_code context
          in translation ^ next_translation, context
@@ -60,13 +56,15 @@ let rec eval_code context =
          | "retourner" -> let expr, index = get_line code index in
            let next, context = _eval_code {code; index; vars; scopes; imports} in
            get_indentation depth ^ "return " ^ eval_expression expr vars ^ "\n" ^ next, context
-         | "fin" -> (try "", {code; index; vars; scopes = List.tl scopes; imports}
-                     with Failure _ -> syntax_error "")
+         | "fin" -> if scopes <> [] then
+             "", {code; index; vars; scopes = List.tl scopes; imports}
+           else
+             raise (SyntaxError "Unexpected token 'fin'")
          | "afficher" ->
            let expr, index = get_line code index in
            let next, context = _eval_code {code; index; vars; scopes; imports} in
            get_indentation depth ^ "print(" ^ eval_expression expr vars ^ ")\n" ^ next, context
-         | "" -> if List.length scopes = 0 then "", context else syntax_error "Expected 'fin'"
+         | "" -> if List.length scopes = 0 then "", context else raise (SyntaxError "Unclosed scope: expected 'fin'")
          | _ ->
            let var = get_var_by_name word (VarSet.elements vars) in
            let next_word, index = get_word code index in
@@ -77,9 +75,9 @@ let rec eval_code context =
                let next, context = _eval_code {code; index; vars; scopes; imports} in
                get_indentation depth ^ word ^ " = " ^ (eval_expression expression vars) ^ "\n" ^ next, context
              else
-               type_error (Type.string_of_type var.type_struct) (Type.string_of_type type_struct)
+               raise_unexpected_type_error (Type.string_of_type var.type_struct) (Type.string_of_type type_struct)
            else
-             syntax_error ("Unexpected token '" ^ next_word ^ "'")
+             raise (SyntaxError ("Unexpected token '" ^ next_word ^ "'"))
   in _eval_code context
 
 (* This function only adds the new declared variables in the set *)
@@ -112,7 +110,7 @@ and eval_fonction context =
     if word = "->" then
       get_type code index
     else
-      syntax_error ("Expected '->', got '" ^ word ^ "'")
+      raise (SyntaxError ("Expected '->', got '" ^ word ^ "'"))
   in
   let name, index = get_word code (index + 9) in (* 9 = 8 + 1 *)
   let names, index, vars = get_param vars code index in
@@ -144,8 +142,8 @@ and eval_si context =
       in let next = if next = "" then get_indentation (depth + 1) ^ "pass\n" else next
       in get_indentation depth ^ "if " ^ expr ^ ":\n" ^ next, context
     else
-      type_error Type.(string_of_type Boolean) (Type.string_of_type type_struct)
-  | _ -> syntax_error "si statement must start with 'si'"
+      raise_unexpected_type_error Type.(string_of_type Boolean) (Type.string_of_type type_struct)
+  | _ -> raise (SyntaxError "si statement must start with 'si'")
 
 and eval_sinon_si context =
   let {code; index; vars; scopes; imports} = context in
@@ -163,8 +161,8 @@ and eval_sinon_si context =
         let next = if next = "" then get_indentation (depth + 1) ^ "pass\n" else next in
         get_indentation depth ^ "elif " ^ expr ^ ":\n" ^ next, context
     else
-      type_error Type.(string_of_type Boolean) (Type.string_of_type type_struct)
-  | _ -> syntax_error "sinon_si statement must start with 'sinon_si'"
+      raise_unexpected_type_error Type.(string_of_type Boolean) (Type.string_of_type type_struct)
+  | _ -> raise (SyntaxError "sinon_si statement must start with 'sinon_si'")
 
 and eval_sinon context =
   let {code; index; vars; scopes; imports} = context in
@@ -174,7 +172,7 @@ and eval_sinon context =
   | "sinon", i -> let next, context = eval_code {code; index = i; vars; scopes; imports} in
     let next = if next = "" then get_indentation (depth + 1) ^ "pass\n" else next in
     get_indentation depth ^ "else:\n" ^ next, context
-  | _ -> syntax_error "sinon statement must start with 'sinon'"
+  | _ -> raise (SyntaxError "sinon statement must start with 'sinon'")
 
 and eval_tant_que context =
   let {code; index; vars; scopes; imports} = context in
@@ -188,8 +186,8 @@ and eval_tant_que context =
     if type_struct = Type.Boolean then
       get_indentation depth ^ "while " ^ expr ^ ":\n" ^ next, context
     else
-      type_error Type.(string_of_type Boolean) (Type.string_of_type type_struct)
-  | _ -> syntax_error "tant_que loop must start with 'tant_que'"
+      raise_unexpected_type_error Type.(string_of_type Boolean) (Type.string_of_type type_struct)
+  | _ -> raise (SyntaxError "tant_que loop must start with 'tant_que'")
 
 and eval_pour_chaque context =
   let {code; index; vars; scopes; imports} = context in
@@ -217,7 +215,7 @@ and eval_pour context =
     let next = if next = "" then get_indentation (depth + 1) ^ "pass\n" else next in
     get_indentation depth ^ "for " ^ var_expr ^ " in range(" ^ start_expr ^ ", " ^ end_expr ^ " + 1):\n" ^ next, context
   else
-    type_error Type.(string_of_type Int) Type.(string_of_type (find_bad_elt None Int [var_type; start_type; end_type]))
+    raise_unexpected_type_error Type.(string_of_type Int) Type.(string_of_type (find_bad_elt None Int [var_type; start_type; end_type]))
 
 and control_keywords =
   [

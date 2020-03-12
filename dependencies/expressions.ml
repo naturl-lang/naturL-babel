@@ -1,6 +1,7 @@
 (* #load "str.cma" *)
 
 open Str
+open Utils
 open Errors
 open Getters
 open Structures
@@ -24,16 +25,20 @@ let operators = [
 
 let unary_ops = ["non"]
 
-let rec is_prefix word pref =
-  let w_len = String.length word
-  and p_len = String.length pref in
-  p_len = 0 || w_len <> 0 && word.[0] = pref.[0]
-               && is_prefix (String.sub word 1 (w_len - 1)) (String.sub pref 1 (p_len - 1))
-
-(* Returns true if one word in the list starts with prefix *)
-let rec is_list_prefix list pref = match list with
-  | w :: t -> is_prefix w pref || is_list_prefix t pref
-  | _ -> false ;;
+let string_of_operator = function
+  | Plus _ -> "+"
+  | Minus _ -> "-"
+  | Times _ -> "*"
+  | Divide _ -> "/"
+  | Equal _ -> "="
+  | Greater _ -> ">"
+  | GreaterOrEqual _ -> ">="
+  | Lower _ -> "<"
+  | LowerOrEqual _ -> "<="
+  | And _ -> "et"
+  | Or _ -> "ou"
+  | Not _ -> "non"
+  | Value v -> Type.string_of_type v
 
 let op_priority = function
   | "" -> max_int
@@ -43,7 +48,7 @@ let op_priority = function
   | "+" | "-" -> 4
   | "*" | "/" | "div" -> 5
   | "non" -> 6
-  | op -> syntax_error ("Unknown operator '" ^ op ^ "'") ;;
+  | op -> raise (SyntaxError ("Unknown operator '" ^ op ^ "'")) ;;
 
 let make_binary_op arg1 arg2 = function
   | "+" -> Plus (arg1, arg2)
@@ -57,11 +62,11 @@ let make_binary_op arg1 arg2 = function
   | "<=" -> LowerOrEqual (arg1, arg2)
   | "et" -> And (arg1, arg2)
   | "ou" -> Or (arg1, arg2)
-  | op -> syntax_error ("Unknown operator '" ^ op ^ "'")
+  | op -> raise (SyntaxError ("Unknown operator '" ^ op ^ "'"))
 
 let make_unary_op arg = function
   | "non" -> Not arg
-  | op -> syntax_error ("Unknown operator '" ^ op ^ "'")
+  | op -> raise (SyntaxError ("Unknown operator '" ^ op ^ "'"))
 
 (* Converts a string to a type_struct *)
 let struct_of_str str vars =
@@ -79,7 +84,7 @@ let struct_of_str str vars =
     let vars = get_var_by_name str (VarSet.elements vars) in
     vars.type_struct
   else
-    unknown_type_error str ;;
+    raise (NameError ("Unknown type '" ^ str ^ "'")) ;;
 
 (* Converts a string to an expression *)
 let expr_of_str str vars =
@@ -169,22 +174,27 @@ let tree_of_expr expr =
   in _tree_of_expr expr ""
 
 (* Checks if the types of an expression are valid *)
-let check_expr expr vars =
-  let rec _check_binary_expr ?(return_type = Type.None) op1 op2 accepted_types =
-    let is_valid1, type1 = _check_expr op1
-    and is_valid2, type2 = _check_expr op2
-    in let is_valid = is_valid1 && is_valid2 && type1 = type2 && List.mem type1 accepted_types
-    in is_valid, if is_valid then (if return_type = Type.None then type1 else return_type) else Type.None
+let expr_type expr vars =
+  let rec _check_binary_expr ?return_type op1 op2 accepted_types operator =
+    let type1 = _check_expr op1
+    and type2 = _check_expr op2
+    in if not (List.mem type1 accepted_types) then
+      raise (TypeError ("Unsupported type '" ^ (Type.string_of_type type1) ^ "' for operator " ^ (string_of_operator operator)))
+    else if type1 <> type2 then
+      raise (TypeError (""))
+    else match return_type with
+      | Some t -> t
+      | None -> type1
   (* Returns a tuple (is_valid, type_struct) and checks the subtree(s). *)
   and _check_expr expr =
     match expr with
-    | Value type_struct -> true, type_struct
-    | Plus (op1, op2) -> _check_binary_expr op1 op2 [Type.Int; Type.Float; Type.String]
-    | Minus (op1, op2) | Times (op1, op2) | Divide (op1, op2) -> _check_binary_expr op1 op2 [Type.Int; Type.Float]
-    | Equal (op1, op2) -> _check_binary_expr op1 op2 ~return_type: Type.Boolean
-                            [Type.Int; Type.Float; Type.String; Type.Char; Type.Boolean; Type.List]
-    | Greater (op1, op2) | GreaterOrEqual (op1, op2) | Lower (op1, op2) | LowerOrEqual (op1, op2) ->
-      _check_binary_expr op1 op2 [Type.Int; Type.Float; Type.String; Type.Char] ~return_type: Type.Boolean
-    | And (op1, op2) | Or (op1, op2) -> _check_binary_expr op1 op2 [Type.Boolean]
-    | Not op -> _check_binary_expr op (Value Type.Boolean) [Type.Boolean]
+    | Value type_struct -> type_struct
+    | Plus (op1, op2) as operator -> _check_binary_expr op1 op2 [Type.Int; Type.Float; Type.String] operator
+    | Minus (op1, op2) | Times (op1, op2) | Divide (op1, op2) as operator -> _check_binary_expr op1 op2 [Type.Int; Type.Float] operator
+    | Equal (op1, op2) as operator -> _check_binary_expr op1 op2 ~return_type: Type.Boolean
+                            [Type.Int; Type.Float; Type.String; Type.Char; Type.Boolean; Type.List] operator
+    | Greater (op1, op2) | GreaterOrEqual (op1, op2) | Lower (op1, op2) | LowerOrEqual (op1, op2) as operator ->
+      _check_binary_expr op1 op2 [Type.Int; Type.Float; Type.String; Type.Char] operator ~return_type: Type.Boolean
+    | And (op1, op2) | Or (op1, op2) as operator -> _check_binary_expr op1 op2 [Type.Boolean] operator
+    | Not op as operator -> _check_binary_expr op (Value Type.Boolean) [Type.Boolean] operator
   in _check_expr (expr_of_str expr vars)

@@ -46,7 +46,7 @@ let get_expression code index terminator =
   if string_match (regexp ("\\([^\n]*[) ]\\)\\(" ^ terminator ^ "\\)")) code index then
     matched_group 1 code, group_end 2 + 1
   else
-    syntax_error ("Missing token '" ^ terminator ^ "'")
+    raise (SyntaxError ("Missing token '" ^ terminator ^ "'"))
 
 let get_line code i =
   let len = String.length code in
@@ -78,10 +78,10 @@ let get_param vars code index =
   else if code.[index] = ')' then
     "", index + 2, vars
   else
-    syntax_error "Invalid function definition"
+    raise (SyntaxError "Invalid function definition")
 
 let rec get_var_by_name var_name var_list =
   match var_list with
-    [] -> name_error var_name
+    [] -> raise (NameError ("Unknwon variable '" ^ var_name ^ "'"))
   | var :: _ when var.name = var_name -> var
   | _ :: r -> get_var_by_name var_name r
