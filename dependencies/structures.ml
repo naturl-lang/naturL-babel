@@ -31,7 +31,7 @@ struct
     | "liste" -> List
     | "fonction" -> Function
     | "rien" -> None
-    | t -> raise (NameError ("Unknown type " ^ t))
+    | t -> raise_name_error ("Unknown type " ^ t)
 end
 
 

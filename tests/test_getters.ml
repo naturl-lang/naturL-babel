@@ -48,4 +48,13 @@ let%expect_test "get_var_by_name" =
   print_variable var;
   [%expect {| var pi: reel |}] ;;
 
+let %expect_test "get_line_no" =
+  let code = "First line\nSecond line\nThird line\n" in
+  print_int (get_line_no code 4);
+  [%expect {| 1 |}];
+  print_int (get_line_no code 16);
+  [%expect {| 2 |}];
+  print_int (get_line_no code 30);
+  [%expect {| 3 |}] ;;
+
 print_endline "Done." ;;

@@ -2,9 +2,10 @@ val syntax_error : string -> int -> out_channel -> 'a
 val type_error : string -> int -> out_channel -> 'a
 val name_error : string -> int -> out_channel -> 'a
 
-exception SyntaxError of string
-exception TypeError of string
-val raise_unexpected_type_error: string -> string -> 'a
-exception NameError of string
+val raise_syntax_error: ?line: int -> string -> 'a
+val raise_name_error: ?line: int -> string -> 'a
+val raise_type_error: ?line: int -> string -> 'a
+val raise_unexpected_type_error: ?line: int -> string -> string -> 'a
 
-val translate_exception : exn -> int -> out_channel -> 'a
+val try_update_err: int -> (unit -> 'a) -> 'a
+val try_catch : out_channel -> (unit -> 'a) -> 'a

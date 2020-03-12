@@ -48,7 +48,7 @@ let op_priority = function
   | "+" | "-" -> 4
   | "*" | "/" | "div" -> 5
   | "non" -> 6
-  | op -> raise (SyntaxError ("Unknown operator '" ^ op ^ "'")) ;;
+  | op -> raise_syntax_error ("Unknown operator '" ^ op ^ "'") ;;
 
 let make_binary_op arg1 arg2 = function
   | "+" -> Plus (arg1, arg2)
@@ -62,11 +62,11 @@ let make_binary_op arg1 arg2 = function
   | "<=" -> LowerOrEqual (arg1, arg2)
   | "et" -> And (arg1, arg2)
   | "ou" -> Or (arg1, arg2)
-  | op -> raise (SyntaxError ("Unknown operator '" ^ op ^ "'"))
+  | op -> raise_syntax_error ("Unknown operator '" ^ op ^ "'")
 
 let make_unary_op arg = function
   | "non" -> Not arg
-  | op -> raise (SyntaxError ("Unknown operator '" ^ op ^ "'"))
+  | op -> raise_syntax_error ("Unknown operator '" ^ op ^ "'")
 
 (* Converts a string to a type_struct *)
 let struct_of_str str vars =
@@ -84,7 +84,7 @@ let struct_of_str str vars =
     let vars = get_var_by_name str (VarSet.elements vars) in
     vars.type_struct
   else
-    raise (NameError ("Unknown type '" ^ str ^ "'")) ;;
+    raise_syntax_error ("Can not resolve operand '" ^ str ^ "'") ;;
 
 (* Converts a string to an expression *)
 let expr_of_str str vars =
@@ -179,9 +179,9 @@ let expr_type expr vars =
     let type1 = _check_expr op1
     and type2 = _check_expr op2
     in if not (List.mem type1 accepted_types) then
-      raise (TypeError ("Unsupported type '" ^ (Type.string_of_type type1) ^ "' for operator " ^ (string_of_operator operator)))
+      raise_type_error ("Unsupported type '" ^ (Type.string_of_type type1) ^ "' for operator " ^ (string_of_operator operator))
     else if type1 <> type2 then
-      raise (TypeError (""))
+      raise_unexpected_type_error (Type.string_of_type type1) (Type.string_of_type type2)
     else match return_type with
       | Some t -> t
       | None -> type1

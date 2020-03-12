@@ -6,6 +6,13 @@ open Str
 open Structures
 open Errors
 
+(* Returns the line number corresponding to the current index in the code *)
+let rec get_line_no code index =
+  if index < 0 then
+    1
+  else
+    (if index < String.length code && code.[index] = '\n' then 1 else 0) + get_line_no code (index - 1)
+
 let rec ignore_chrs code i =
   if i < (String.length code) then
     match code.[i] with
@@ -46,7 +53,7 @@ let get_expression code index terminator =
   if string_match (regexp ("\\([^\n]*[) ]\\)\\(" ^ terminator ^ "\\)")) code index then
     matched_group 1 code, group_end 2 + 1
   else
-    raise (SyntaxError ("Missing token '" ^ terminator ^ "'"))
+    raise_syntax_error ~line: (get_line_no code index) ("Missing token '" ^ terminator ^ "'")
 
 let get_line code i =
   let len = String.length code in
@@ -61,8 +68,8 @@ let get_line code i =
 
 (*Check if the specified type is a valid builtin type, if that is the case, returns the right type *)
 let get_type code index =
-  let t, index = get_word code index in
-  index, Type.type_of_string t
+  let t, i = get_word code index in
+  i, try_update_err (get_line_no code index) (fun () -> Type.type_of_string t)
 
 (*Gets the parameters of the function or the procedure*)
 let get_param vars code index =
@@ -78,10 +85,10 @@ let get_param vars code index =
   else if code.[index] = ')' then
     "", index + 2, vars
   else
-    raise (SyntaxError "Invalid function definition")
+    raise_syntax_error ~line: (get_line_no code index) "Invalid function definition"
 
 let rec get_var_by_name var_name var_list =
   match var_list with
-    [] -> raise (NameError ("Unknwon variable '" ^ var_name ^ "'"))
+    [] -> raise_name_error ("Unknown variable '" ^ var_name ^ "'")
   | var :: _ when var.name = var_name -> var
   | _ :: r -> get_var_by_name var_name r
