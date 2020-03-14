@@ -23,7 +23,7 @@
     (description "A transpiler from french pseudocode to Python.
 Analyzes syntax and semantic, and generates error messages when necessary")
     (depends
-        (ocaml (>= 4.9.0))
+        (ocaml (and (>= 4.6.0) (<= 4.10.0))
         (dune (>= 1.11))
         yojson
         ppx_inline_test
