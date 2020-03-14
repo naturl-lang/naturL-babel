@@ -15,7 +15,7 @@ let rec find_assoc key = function
 
 let rec find_bad_elt default expected = function
   | [] -> default
-  | h :: t when h <> expected -> h
+  | h :: _ when h <> expected -> h
   | _ :: t -> find_bad_elt default expected t
 
 let rec is_prefix word pref =

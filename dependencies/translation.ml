@@ -30,7 +30,7 @@ let eval_expression_with_type str vars =
 let eval_expression str vars =
   let expr, _ = eval_expression_with_type str vars in expr
 
-let rec eval_code ?(oc = stderr) context =
+let rec eval_code context =
   let rec _eval_code context =
        let {code; index; vars; scopes; imports} = context in
        let depth = List.length scopes in
@@ -247,5 +247,6 @@ and control_keywords =
 
 let translate_code code =
   let code = String.trim code and index = 0 and vars = VarSet.empty and scopes = [] and imports = [] in
+  let code = Str.global_replace (regexp "\r") "\n" code in let code = Str.global_replace (regexp "\n\n") "\n" code in
   let translation, _ = try_catch stderr (fun () -> eval_code {code; index; vars; scopes; imports})
   in String.trim translation
