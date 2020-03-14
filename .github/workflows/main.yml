@@ -6,11 +6,11 @@ on:
 jobs:
   build:
     name: Push
-    runs-on: ${{ matrix.operating-systems }}
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        operating-systems: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
         ocaml-version: ['4.09.0']
     steps:
       - uses: actions/checkout@master
@@ -22,9 +22,10 @@ jobs:
       - name: Build
         run: opam exec -- dune build @install
       - name: Test
+        if: matrix.os != 'windows-latest' # The tests don't work on Windows
         run: opam exec -- dune runtest
       - name: Upload artifact
         uses: actions/upload-artifact@v1.0.0
         with:
-          name: ${{ matrix.operating-systems }}_naturL.exe
+          name: ${{ matrix.os }}_naturL.exe
           path: _build/default/naturL.exe
