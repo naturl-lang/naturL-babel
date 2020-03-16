@@ -20,7 +20,7 @@ authors: [
 homepage: "https://github.com/TheNaturLFoundation/naturL"
 bug-reports: "https://github.com/TheNaturLFoundation/naturL/issues"
 depends: [
-  "ocaml" {>= "4.9.0"}
+  "ocaml" {>= "4.6.0" & <= "4.10.0"}
   "dune" {>= "1.11"}
   "yojson"
   "ppx_inline_test"

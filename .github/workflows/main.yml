@@ -5,13 +5,13 @@ on:
       - master
 jobs:
   build:
-    name: Push
+    name: Build on push
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        ocaml-version: ['4.09.0']
+        ocaml-version: ['4.06.0', '4.07.0', '4.08.0', '4.09.0', '4.10.0']
     steps:
       - uses: actions/checkout@master
       - uses: avsm/setup-ocaml@v1.0
