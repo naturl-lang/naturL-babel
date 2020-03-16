@@ -1,11 +1,3 @@
-(*#mod_use "structures.ml";;
-#mod_use "errors.ml";;
-  #load "str.cma";;*)
-
-open Structures
-open Errors
-open Str
-
 type token =
   |Litteral of string
   |Identifier of string
