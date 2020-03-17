@@ -11,7 +11,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        ocaml-version: ['4.06.0', '4.07.0', '4.08.0', '4.09.0', '4.10.0']
+        ocaml-version: ['4.08.0', '4.09.0', '4.10.0']
     steps:
       - uses: actions/checkout@master
       - uses: avsm/setup-ocaml@v1.0
@@ -19,6 +19,8 @@ jobs:
           ocaml-version: ${{ matrix.ocaml-version }}
       - name: Install dependencies
         run: opam install .
+        if: matrix.os == 'windows-latest'
+        continue-on-error: true
       - name: Build
         run: opam exec -- dune build @install
       - name: Test
