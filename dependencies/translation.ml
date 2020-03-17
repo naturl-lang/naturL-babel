@@ -7,25 +7,8 @@ open Expressions
 
 
 let eval_expression_with_type str vars =
-  let separators = "\\([\t() ]*\\)"
-  and replacements = [
-    "et", "and";
-    "ou", "or";
-    "non", "not";
-    "=", "==";
-    ">==", ">=";
-    "<==", "<=";
-    "vrai", "True";
-    "faux", "False"
-  ] in
-  let rec _replace str = function
-    | [] -> str
-    | (prev, new_word) :: t ->
-      let r = regexp (separators ^ prev ^ separators)
-      in _replace (global_replace r ("\\1" ^ new_word ^ "\\2") str) t
-  in
-  let type_struct = expr_type str vars in
-  String.trim (_replace str replacements), type_struct
+  let expr = expr_of_string str in
+  string_of_expr expr, Expr.get_type vars expr
 
 let eval_expression str vars =
   let expr, _ = eval_expression_with_type str vars in expr
@@ -69,16 +52,16 @@ let rec eval_code context =
          | "" -> if List.length scopes = 0 then "", context else raise_syntax_error "Unclosed scope: expected 'fin'" ~line: (get_line_no code index + 1)
          | _ ->
            let line = get_line_no code index in
-           let var = try_update_err line (fun () -> get_var_by_name word vars) in
+           let var_type = try_update_err line (fun () -> get_var  word vars) in
            let next_word, index = get_word code index in
            if next_word = "<-" then
              let expression, index = get_line code index in
              let expression, type_struct = try_update_err (get_line_no code index) (fun () -> eval_expression_with_type expression vars) in
-             if type_struct = var.type_struct then
+             if type_struct = var_type || type_struct = `Any then
                let next, context = _eval_code {code; index; vars; scopes; imports} in
                get_indentation depth ^ word ^ " = " ^ expression ^ "\n" ^ next, context
              else
-               raise_unexpected_type_error (Type.string_of_type var.type_struct) (Type.string_of_type type_struct) ~line: (get_line_no code index)
+               raise_unexpected_type_error (Type.to_string var_type) (Type.to_string type_struct) ~line: (get_line_no code index)
            else
              raise_syntax_error ("Unexpected token '" ^ next_word ^ "'") ~line: (get_line_no code index)
   in _eval_code context
@@ -89,7 +72,7 @@ and eval_variables context =
   let rec eval_line vars type_struct = function
       [] -> vars
     | name :: t -> let name = String.trim name in
-      eval_line (VarSet.add {name; type_struct} vars) type_struct t
+      eval_line (StringMap.add name type_struct vars) type_struct t
   in let rec _eval_variables vars code index =
        let line_no = get_line_no code index in
        let word, index = get_word code index
@@ -101,7 +84,7 @@ and eval_variables context =
          raise_syntax_error "Unexpected token 'fin'" ~line: line_no
        else
          let line, index = get_line code index in
-         let type_struct = try_update_err line_no (fun () -> Type.type_of_string word) in
+         let type_struct = try_update_err line_no (fun () -> Type.of_string word) in
          let vars = eval_line vars type_struct (String.split_on_char ',' line) in
          _eval_variables vars code index
   in let vars, index = _eval_variables vars code index
@@ -145,12 +128,12 @@ and eval_si context =
   match get_word code index with
   | "si", i -> let expr, index = get_expression code i "alors" in
     let expr, type_struct = try_update_err line (fun () -> eval_expression_with_type expr vars) in
-    if type_struct = Type.Boolean then
+    if type_struct = `Bool then
       let next, context = eval_code {code; index; vars; scopes; imports}
       in let next = if next = "" then get_indentation (depth + 1) ^ "pass\n" else next
       in get_indentation depth ^ "if " ^ expr ^ ":\n" ^ next, context
     else
-      raise_unexpected_type_error Type.(string_of_type Boolean) (Type.string_of_type type_struct)  ~line
+      raise_unexpected_type_error (Type.to_string `Bool) (Type.to_string type_struct)  ~line
   | _ -> raise_syntax_error "si statement must start with 'si'" ~line
 
 and eval_sinon_si context =
@@ -161,7 +144,7 @@ and eval_sinon_si context =
   match get_word code index with
   | "sinon_si", i -> let expr, index = get_expression code i "alors" in
     let expr, type_struct = try_update_err line (fun () -> eval_expression_with_type expr vars) in
-    if type_struct = Type.Boolean then
+    if type_struct = `Bool then
       if expr = "False" then
         let _, context = eval_code {code; index; vars; scopes; imports} in
         "", context
@@ -170,7 +153,7 @@ and eval_sinon_si context =
         let next = if next = "" then get_indentation (depth + 1) ^ "pass\n" else next in
         get_indentation depth ^ "elif " ^ expr ^ ":\n" ^ next, context
     else
-      raise_unexpected_type_error Type.(string_of_type Boolean) (Type.string_of_type type_struct) ~line
+      raise_unexpected_type_error (Type.to_string `Bool) (Type.to_string `Bool) ~line
   | _ -> raise_syntax_error "sinon_si statement must start with 'sinon_si'" ~line
 
 and eval_sinon context =
@@ -194,10 +177,10 @@ and eval_tant_que context =
     let expr, type_struct = try_update_err line (fun () -> eval_expression_with_type expr vars) in
     let next, context = eval_code {code; index; vars; scopes; imports} in
     let next = if next = "" then get_indentation (depth + 1) ^ "pass\n" else next in
-    if type_struct = Type.Boolean then
+    if type_struct = `Bool then
       get_indentation depth ^ "while " ^ expr ^ ":\n" ^ next, context
     else
-      raise_unexpected_type_error Type.(string_of_type Boolean) (Type.string_of_type type_struct) ~line
+      raise_unexpected_type_error (Type.to_string `Bool) (Type.to_string type_struct) ~line
   | _ -> raise_syntax_error "tant_que loop must start with 'tant_que'" ~line
 
 and eval_pour_chaque context =
@@ -207,14 +190,14 @@ and eval_pour_chaque context =
   (* A pour_chaque instruction has the form "pour_chaque <var> dans <iterable> faire"*)
   (* This function translates it to "for <var> in <iterable>)" *)
   let _, index = get_word code index in
-  let var, index = get_expression code index "dans"        in let var = try_update_err line (fun () -> get_var_by_name var vars) in
+  let var, index = get_expression code index "dans"        in let var_type = try_update_err line (fun () -> get_var var vars) in
   let iterable, index = get_expression code index "faire"  in let iterable_expr, iterable_type = try_update_err line (fun () -> eval_expression_with_type iterable vars) in
   (match Type.get_iterable_type iterable_type with
-   | Some t -> if t <> var.type_struct then raise_unexpected_type_error (Type.string_of_type t) (Type.string_of_type var.type_struct) ~line
-   | None -> raise_type_error ("Type '" ^ (Type.string_of_type iterable_type) ^ "' is not iterable") ~line);
+   | Some t -> if t <> var_type then raise_unexpected_type_error (Type.to_string t) (Type.to_string var_type) ~line
+   | None -> raise_type_error ("Type '" ^ (Type.to_string iterable_type) ^ "' is not iterable") ~line);
   let next, context = eval_code {code; index; vars; scopes; imports} in
   let next = if next = "" then get_indentation (depth + 1) ^ "pass\n" else next in
-  get_indentation depth ^ "for " ^ var.name ^ " in " ^ iterable_expr  ^ ":\n" ^ next, context
+  get_indentation depth ^ "for " ^ (String.trim var) ^ " in " ^ iterable_expr  ^ ":\n" ^ next, context
 
 and eval_pour context =
   let {code; index; vars; scopes; imports} = context in
@@ -226,12 +209,12 @@ and eval_pour context =
   let var, index = get_expression code index "de"         in let var_expr, var_type = try_update_err line (fun () -> eval_expression_with_type var vars) in
   let start, index = get_expression code index "jusqu_a"  in let start_expr, start_type = try_update_err line (fun () -> eval_expression_with_type start vars) in
   let end_, index = get_expression code index "faire"     in let end_expr, end_type = try_update_err line (fun () -> eval_expression_with_type end_ vars) in
-  if var_type = Type.Int || start_type = Type.Int || end_type = Type.Int then
+  if var_type = `Int || start_type = `Int || end_type = `Int then
     let next, context = eval_code {code; index; vars; scopes; imports} in
     let next = if next = "" then get_indentation (depth + 1) ^ "pass\n" else next in
     get_indentation depth ^ "for " ^ var_expr ^ " in range(" ^ start_expr ^ ", " ^ end_expr ^ " + 1):\n" ^ next, context
   else
-    raise_unexpected_type_error Type.(string_of_type Int) Type.(string_of_type (find_bad_elt None Int [var_type; start_type; end_type])) ~line
+    raise_unexpected_type_error (Type.to_string `Int) (Type.to_string (find_bad_elt `None `Int [var_type; start_type; end_type])) ~line
 
 and control_keywords =
   [
@@ -246,7 +229,7 @@ and control_keywords =
   ]
 
 let translate_code code =
-  let code = String.trim code and index = 0 and vars = VarSet.empty and scopes = [] and imports = [] in
+  let code = String.trim code and index = 0 and vars = StringMap.empty and scopes = [] and imports = [] in
   let code = Str.global_replace (regexp "\r") "\n" code in let code = Str.global_replace (regexp "\n\n") "\n" code in
   let translation, _ = try_catch stderr (fun () -> eval_code {code; index; vars; scopes; imports})
   in String.trim translation
