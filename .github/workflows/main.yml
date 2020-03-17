@@ -17,10 +17,13 @@ jobs:
       - uses: avsm/setup-ocaml@v1.0
         with: 
           ocaml-version: ${{ matrix.ocaml-version }}
-      - name: Install dependencies
-        run: opam install .
+      - name: Install dependencies (Windows)
         if: matrix.os == 'windows-latest' 
+        run: opam install .
         continue-on-error: true
+      - name: Install dependencies (Unix)
+        if: matrix.os != 'windows-latest'
+        run: opam install .
       - name: Build
         run: opam exec -- dune build @install
       - name: Test
