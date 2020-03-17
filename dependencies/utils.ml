@@ -28,3 +28,22 @@ let rec is_prefix word pref =
 let rec is_list_prefix list pref = match list with
   | w :: t -> is_prefix w pref || is_list_prefix t pref
   | _ -> false ;;
+
+let rec append_rev l1 l2 =
+  match l2 with
+  | [] -> l1
+  | h :: t -> append_rev (h :: l1) t
+
+let split_list ?(from = 0) ?(to_ = max_int) sep list =
+  let rec _split_list ?(current = []) ?(i = 0) list =
+    match list with
+    | [] -> if current = [] then [] else [current]
+    | _ when i > to_ -> if current = [] then [] else [current]
+    | _ :: t when i < from -> _split_list t ~i: (i + 1)
+    | h :: t when h = sep -> current :: _split_list t ~i: (i + 1)
+    | h :: t -> _split_list t ~current: (current @ [h]) ~i: (i + 1)
+  in _split_list list
+
+let list_of_queue queue = List.init (Queue.length queue) (fun _ -> Queue.take queue)
+
+let ( let* ) = Option.bind

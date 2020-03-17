@@ -120,8 +120,9 @@ and eval_fonction context =
       raise_syntax_error ("Expected '->', got '" ^ word ^ "'") ~line: (get_line_no code index)
   in
   let name, index = get_word code (index + 9) in (* 9 = 8 + 1 *)
-  let names, index, vars = get_param vars code index in
-  let index, _ = check_return_type index in
+  let names, index, vars, types = get_param vars code index in
+  let index, type_ = check_return_type index in
+  let vars = StringMap.add name (`Function (types, type_)) vars in
   let next, context = eval_code {code; index; vars; scopes; imports} in
   let next = if next = "" then get_indentation (depth + 1) ^ "pass\n" else next in
   get_indentation depth ^ "def " ^ name ^ "(" ^ names ^ "):\n" ^ next, context
@@ -131,7 +132,8 @@ and eval_procedure context =
   let depth = List.length scopes - 1 in
   (*Same logic as functions except that there is no need to check a return type*)
   let name, index = get_word code (index + 10) (*10 = 9 + 1*) in
-  let names, index, vars = get_param vars code index in
+  let names, index, vars, types = get_param vars code index in
+  let vars = StringMap.add name (`Function (types, `None)) vars in
   let next, context = eval_code {code; index; vars; scopes; imports} in
   let next = if next = "" then get_indentation (depth + 1) ^ "pass\n" else next in
   get_indentation depth ^ "def " ^ name ^ "(" ^ names ^ "):\n" ^ next, context
