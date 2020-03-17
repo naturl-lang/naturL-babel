@@ -23,7 +23,7 @@ let%expect_test "si" = let context = {code = "si 2 > 3 alors\nfin"; index = 0; v
   let translation, _ = eval_si context in
   print_string translation;
   [%expect {|
-    if (2 > 3):
+    if 2 > 3:
         pass |}]
 ;;
 
@@ -80,7 +80,7 @@ fin
     def multiplication(a, b):
         total = 0
         for i in range(1, b + 1):
-            total = (total + a)
+            total = total + a
         return total |}] ;;
 
 print_endline "Done." ;;

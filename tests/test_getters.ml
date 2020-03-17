@@ -36,8 +36,10 @@ let%expect_test "get_param" =
   [%expect {| 33 |}];
   print_var_set vars;
   [%expect {|
-var n : entier
-var pi : reel
+{
+	var n: entier
+	var pi: reel
+}
 |}] ;;
 
 let%expect_test "get_var_by_name" =
