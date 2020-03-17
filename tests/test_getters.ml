@@ -36,10 +36,8 @@ let%expect_test "get_param" =
   [%expect {| 33 |}];
   print_vars vars;
   [%expect {|
-{
-	var n: entier
-	var pi: reel
-}
+var n : entier
+var pi : reel
 |}] ;;
 
 let %expect_test "get_line_no" =
