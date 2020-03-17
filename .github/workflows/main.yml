@@ -18,9 +18,9 @@ jobs:
         with: 
           ocaml-version: ${{ matrix.ocaml-version }}
       - name: Install dependencies
+        run: opam install .
         if: matrix.os == 'windows-latest' 
         continue-on-error: true
-        run: opam install .
       - name: Build
         run: opam exec -- dune build @install
       - name: Test
