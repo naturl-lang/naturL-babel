@@ -15,9 +15,11 @@ jobs:
     steps:
       - uses: actions/checkout@master
       - uses: avsm/setup-ocaml@v1.0
-        with:
+        with: 
           ocaml-version: ${{ matrix.ocaml-version }}
       - name: Install dependencies
+        if: matrix.os == 'windows-latest' 
+        continue-on-error: true
         run: opam install .
       - name: Build
         run: opam exec -- dune build @install
