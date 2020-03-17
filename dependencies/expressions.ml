@@ -23,6 +23,24 @@ let binary_ops = [
 
 let unary_ops = ["non"; "neg"]
 
+let expr_to_op : Expr.t -> string = function
+  | Plus _ -> "+"
+  | Minus _ | Neg _ -> "-"
+  | Times _ -> "*"
+  | Div _ -> "/"
+  | Div_int _ -> "div"
+  | Modulus _ -> "mod"
+  | Eq _ -> "="
+  | Gt _ -> ">"
+  | Gt_eq _ -> ">="
+  | Lt _ -> "<"
+  | Lt_eq _ -> "<="
+  | And _ -> "et"
+  | Or _ -> "or"
+  | Not _ -> "non"
+  | List _ -> "["
+  | Call (name, _) -> name
+  | Value _ -> ""
 
 let precedence = function
   | "" -> max_int
@@ -105,22 +123,28 @@ let expr_of_string str : Expr.t =
            Call (op, List.map expr_of_tokens right)
   in expr_of_tokens (tokenize str)
 
-let rec string_of_expr : Expr.t -> string = function
-  | Plus (e1, e2) -> "(" ^ (string_of_expr e1) ^ " + " ^ (string_of_expr e2) ^ ")"
-  | Minus (e1, e2) -> "(" ^ (string_of_expr e1) ^ " - " ^ (string_of_expr e2) ^ ")"
-  | Times (e1, e2) -> "(" ^ (string_of_expr e1) ^ " * " ^ (string_of_expr e2) ^ ")"
-  | Div (e1, e2) -> "(" ^ (string_of_expr e1) ^ " / " ^ (string_of_expr e2) ^ ")"
-  | Div_int (e1, e2) -> "(" ^ (string_of_expr e1) ^ " div " ^ (string_of_expr e2) ^ ")"
-  | Modulus (e1, e2) -> "(" ^ (string_of_expr e1) ^ " mod " ^ (string_of_expr e2) ^ ")"
-  | Eq (e1, e2) -> "(" ^ (string_of_expr e1) ^ " = " ^ (string_of_expr e2) ^ ")"
-  | Gt (e1, e2) -> "(" ^ (string_of_expr e1) ^ " > " ^ (string_of_expr e2) ^ ")"
-  | Gt_eq (e1, e2) -> "(" ^ (string_of_expr e1) ^ " >= " ^ (string_of_expr e2) ^ ")"
-  | Lt (e1, e2) -> "(" ^ (string_of_expr e1) ^ " < " ^ (string_of_expr e2) ^ ")"
-  | Lt_eq (e1, e2) -> "(" ^ (string_of_expr e1) ^ " <= " ^ (string_of_expr e2) ^ ")"
-  | And (e1, e2) -> "(" ^ (string_of_expr e1) ^ " et " ^ (string_of_expr e2) ^ ")"
-  | Or (e1, e2) -> "(" ^ (string_of_expr e1) ^ " ou " ^ (string_of_expr e2) ^ ")"
-  | Not e -> "(non "  ^ (string_of_expr e) ^ ")"
-  | Neg e -> "(-" ^ (string_of_expr e) ^ ")"
-  | List l -> "[" ^ (String.concat ", " (List.map string_of_expr l)) ^ "]"
-  | Call (name, args) -> name ^  "(" ^ (String.concat ", " (List.map string_of_expr args)) ^ ")"
-  | Value v -> Value.to_string v
+let string_of_expr expr =
+  let rec _string_of_expr ?parent (expr : Expr.t) =
+    let str, op = match expr with
+      | Plus (e1, e2) as op -> _string_of_expr ~parent: op e1 ^ " + " ^ (_string_of_expr ~parent: op e2), op
+      | Minus (e1, e2) as op -> _string_of_expr ~parent: op e1 ^ " - " ^ (_string_of_expr ~parent: op e2), op
+      | Times (e1, e2) as op -> _string_of_expr ~parent: op e1 ^ " * " ^ (_string_of_expr ~parent: op e2), op
+      | Div (e1, e2) as op-> _string_of_expr ~parent: op e1 ^ " / "^ (_string_of_expr ~parent: op e2), op
+      | Div_int (e1, e2) as op-> _string_of_expr ~parent: op e1 ^ " div " ^ (_string_of_expr ~parent: op e2), op
+      | Modulus (e1, e2) as op-> _string_of_expr ~parent: op e1 ^ " mod " ^ (_string_of_expr ~parent: op e2), op
+      | Eq (e1, e2) as op-> _string_of_expr ~parent: op e1 ^ " = " ^ (_string_of_expr ~parent: op e2), op
+      | Gt (e1, e2) as op -> _string_of_expr ~parent: op e1 ^ " > " ^ (_string_of_expr ~parent: op e2), op
+      | Gt_eq (e1, e2) as op-> _string_of_expr ~parent: op e1 ^ " >= " ^ (_string_of_expr ~parent: op e2), op
+      | Lt (e1, e2) as op -> _string_of_expr ~parent: op e1 ^ " < " ^ (_string_of_expr ~parent: op e2), op
+      | Lt_eq (e1, e2) as op -> _string_of_expr ~parent: op e1 ^ " <= " ^ (_string_of_expr ~parent: op e2), op
+      | And (e1, e2) as op -> _string_of_expr ~parent: op e1 ^ " et " ^ (_string_of_expr ~parent: op e2), op
+      | Or (e1, e2) as op ->  _string_of_expr ~parent: op e1 ^ " ou " ^ (_string_of_expr ~parent: op e2), op
+      | Not e as op -> "non "  ^ (_string_of_expr ~parent: op e), op
+      | Neg e as op-> "-" ^ _string_of_expr ~parent: op e ^ ")", op
+      | List l as op -> "[" ^ (String.concat ", " (List.map _string_of_expr l)) ^ "]", op
+      | Call (name, args) as op -> name ^  "(" ^ String.concat ", " (List.map _string_of_expr args) ^ ")", op
+      | Value v as op -> Value.to_string v, op
+    in match parent with
+    | Some parent when precedence (expr_to_op parent) > precedence (expr_to_op op) -> "(" ^ str ^ ")"
+    | _ -> str
+  in _string_of_expr expr

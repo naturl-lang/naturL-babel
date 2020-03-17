@@ -29,17 +29,15 @@ let%expect_test "get_line" =
   [%expect {| 11 |}] ;;
 
 let%expect_test "get_param" =
-  let params, index, vars = get_param StringMap.empty "fonction test(entier n, reel pi) -> entier" 14 in
+  let params, index, vars, _ = get_param StringMap.empty "fonction test(entier n, reel pi) -> entier" 14 in
   print_string params;
   [%expect {| n, pi |}];
   print_int index;
   [%expect {| 33 |}];
   print_vars vars;
   [%expect {|
-{
-	var n: entier
-	var pi: reel
-}
+var n : entier
+var pi : reel
 |}] ;;
 
 let %expect_test "get_line_no" =
