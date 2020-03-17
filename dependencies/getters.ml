@@ -73,17 +73,17 @@ let get_type code index =
 
 (*Gets the parameters of the function or the procedure*)
 let get_param vars code index =
-  let rec _get_params ?(is_first = false) vars names index = function
-    | [] -> names, index, vars
+  let rec _get_params ?(is_first = false) vars names index ?(types = []) = function
+    | [] -> names, index, vars, List.rev types
     | h :: t -> let i, type_ = get_type h 0 in
       let name, i = get_word h i in
       let sep = if is_first then "" else ", " in
-      _get_params (StringMap.add (String.trim name) type_ vars) (names ^ sep ^ name) (index + i + 1) t in
+      _get_params (StringMap.add (String.trim name) type_ vars) (names ^ sep ^ name) (index + i + 1) ~types: (type_ :: types) t in
   let r = regexp {|\([a-z]+ [A-Za-z_][A-Za-z0-9_]*\(, ?[a-z]+ [A-Za-z_][A-Za-z0-9_]*\)*\))|} in
   if string_match r code index then
     _get_params vars "" (index + 1) (split (regexp ",") (matched_group 1 code)) ~is_first: true
   else if code.[index] = ')' then
-    "", index + 2, vars
+    "", index + 2, vars, []
   else
     raise_syntax_error ~line: (get_line_no code index) "Invalid function definition"
 

@@ -63,23 +63,19 @@ module Value = struct
     | Char of char
     | String of string
     | Bool of bool
-    | List of t list
     | Variable of string
-    | Function_call of string * t list
     | None
 
-  let rec to_string = function
+  let to_string = function
       Int i -> string_of_int i
     | Float f -> string_of_float f
     | Char c -> "'" ^ String.make 1 c ^ "'"
     | String s -> {|"|} ^ s ^ {|"|}
     | Bool b -> if b then "True" else "False"
-    | List l -> "[" ^ String.concat ", " (List.map to_string l) ^ "]"
     | Variable name -> name
-    | Function_call (name, params) -> name ^ "(" ^ (String.concat ", " (List.map to_string params))
     | None -> "None"
 
-  let rec of_string = function str ->
+  let of_string = function str ->
     let str = String.trim str
     and name_re = "[_a-zA-Z][_a-zA-Z0-9]*" in
     if Str.string_match (Str.regexp "^-?[0-9]+$") str 0 then
@@ -92,42 +88,18 @@ module Value = struct
       String (Str.matched_group 1 str)
     else if str = "vrai" || str = "false" then
       Bool (str = "vrai")
-    else if str = "[]" then
-      List []
-    else if Str.string_match (Str.regexp {|^\[\(.+\)\]$|}) str 0 then
-      List (List.map of_string (String.split_on_char ',' (Str.matched_group 1 str)))
     else if Str.string_match (Str.regexp ("^" ^ name_re ^ "$")) str 0 then
       Variable str
-    else if Str.string_match (Str.regexp ("^\\(" ^ name_re ^ {|\) *(\(.*\))|})) str 0 then
-      let name = Str.matched_group 1 str
-      and args = String.trim (Str.matched_group 2 str) in
-      Function_call (name, if args = "" then [] else List.map of_string (String.split_on_char ',' args))
     else
       raise_name_error ("Can not resolve operand '" ^ str ^ "'")
 
-  open (struct
-    let rec is_list_uniform vars = function
-      | h1 :: h2 :: t -> h1 = h2 && is_list_uniform vars (h2 :: t)
-      | _ -> true
-  end)
-
-  let rec get_type vars = function
+  let get_type vars = function
     | Int _ -> `Int
     | Float _ -> `Float
     | Char _ -> `Char
     | String _ -> `String
-    | List [] -> `List `Any
-    | List (h :: t) -> if is_list_uniform vars (List.map (get_type vars) (h :: t)) then `List (get_type vars h)
-          else raise_name_error ("All elements of a list must have the same type")
     | Variable name -> (try StringMap.find name vars
-                             with Not_found -> raise_name_error ("Unknown variable " ^ name))
-    | Function_call (name, params) ->
-      (try (match StringMap.find name vars with
-           | `Function (p, return) as f -> let params_type = List.map (get_type vars) params in
-             if params_type = p then return
-             else raise_unexpected_type_error (Type.to_string f) (Type.to_string (`Function (params_type, `Any)))
-           | _ as t -> raise_type_error ("Variables of type " ^ (Type.to_string t) ^ " are not callable"))
-       with Not_found -> raise_name_error ("Unknown function " ^ name))
+                        with Not_found -> raise_name_error ("Unknown variable: '" ^ name ^ "'"))
     | Bool _ -> `Bool
     | None -> `None
 end
@@ -135,22 +107,24 @@ end
 module Expr = struct
 
   type t =
-    | Plus of t * t    (* x + y *)
-    | Minus of t * t   (* x * y *)
-    | Neg of t         (* -x *)
-    | Times of t * t   (* x * y *)
-    | Div of t * t     (* x / y *)
-    | Div_int of t * t (* x div y *)
-    | Modulus of t * t (* x mod y *)
-    | Eq of t * t      (* x = y *)
-    | Gt of t * t      (* x > y *)
-    | Gt_eq of t * t   (* x >= y *)
-    | Lt of t * t      (* x < y *)
-    | Lt_eq of t * t   (* x <= y *)
-    | And of t * t     (* x et y *)
-    | Or of t * t      (* x ou y *)
-    | Not of t         (* non x *)
-    | Value of Value.t (* x *)
+    | Plus of t * t           (* x + y *)
+    | Minus of t * t          (* x * y *)
+    | Neg of t                (* -x *)
+    | Times of t * t          (* x * y *)
+    | Div of t * t            (* x / y *)
+    | Div_int of t * t        (* x div y *)
+    | Modulus of t * t        (* x mod y *)
+    | Eq of t * t             (* x = y *)
+    | Gt of t * t             (* x > y *)
+    | Gt_eq of t * t          (* x >= y *)
+    | Lt of t * t             (* x < y *)
+    | Lt_eq of t * t          (* x <= y *)
+    | And of t * t            (* x et y *)
+    | Or of t * t             (* x ou y *)
+    | Not of t                (* non x *)
+    | List of t list          (* [x, y, ...] *)
+    | Call of string * t list (* <function-name>(x, y, ...) *)
+    | Value of Value.t        (* x *)
 
   open (struct
     let is_type_accepted t = function
@@ -161,6 +135,10 @@ module Expr = struct
       | Eq _ | Gt _ | Gt_eq _ | Lt _ | Lt_eq _ -> true
       | And _ | Or _ | Not _ -> t = `Bool
       | _ -> assert false
+
+    let rec is_list_uniform vars = function
+      | h1 :: h2 :: t -> h1 = h2 && is_list_uniform vars (h2 :: t)
+      | _ -> true
   end)
 
   let rec get_type vars = function
@@ -173,8 +151,17 @@ module Expr = struct
     | Eq (l, r) | Gt (l, r) | Gt_eq (l, r) | Lt (l, r) | Lt_eq (l, r) -> let l_type = get_type vars l and r_type = get_type vars r in
       if l_type = r_type then `Bool else
         raise_type_error ("Can't compare expressions of type " ^ (Type.to_string l_type) ^ " and type " ^ (Type.to_string r_type))
+    | List [] -> `List `Any
+    | List (h :: t) -> if is_list_uniform vars (List.map (get_type vars) (h :: t)) then `List (get_type vars h)
+      else raise_name_error ("All elements of a list must have the same type")
+    | Call (name, params) ->
+      (try (match StringMap.find name vars with
+           | `Function (p, return) as f -> let params_type = List.map (get_type vars) params in
+             if params_type = p then return
+             else raise_unexpected_type_error (Type.to_string f) (Type.to_string (`Function (params_type, `Any)))
+           | _ as t -> raise_type_error ("Variables of type " ^ (Type.to_string t) ^ " are not callable"))
+       with Not_found -> raise_name_error ("Unknown function: '" ^ name ^ "'"))
     | Value v -> Value.get_type vars v
-
 end
 
 type scope =

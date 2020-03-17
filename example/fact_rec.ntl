@@ -1,0 +1,8 @@
+fonction factorielle(entier n) -> entier
+debut
+  si n = 0 alors
+    retourner 1
+  sinon
+    retourner n * factorielle(n - 1)
+  fin
+fin

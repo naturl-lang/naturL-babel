@@ -1,11 +1,11 @@
 (* #load "str.cma" *)
 
-open Utils
 open Errors
+open Utils
+open Tokenizer
 open Structures
 
-(* Binary operators *)
-let operators = [
+let binary_ops = [
   "+";
   "-";
   "*";
@@ -21,35 +21,18 @@ let operators = [
   "non"
 ] ;;
 
-let unary_ops = ["non"]
+let unary_ops = ["non"; "neg"]
 
-let string_of_operator : Expr.t -> string = function
-  | Plus _ -> "+"
-  | Minus _ | Expr.Neg _ -> "-"
-  | Times _ -> "*"
-  | Div _ -> "/"
-  | Div_int _ -> "div"
-  | Modulus _ -> "mod"
-  | Eq _ -> "="
-  | Gt _ -> ">"
-  | Gt_eq _ -> ">="
-  | Lt _ -> "<"
-  | Lt_eq _ -> "<="
-  | And _ -> "et"
-  | Or _ -> "ou"
-  | Not _ -> "non"
-  | Value v -> raise_syntax_error (Value.to_string v ^ "is no operator")
 
-let op_priority = function
+let precedence = function
   | "" -> max_int
   | "ou" -> 1
   | "et" -> 2
   | ">" | ">=" | "<" | "<=" | "=" -> 3
   | "+" | "-" -> 4
   | "*" | "/" | "div" -> 5
-  | "non" -> 6
-  | op -> raise_syntax_error ("Unknown operator '" ^ op ^ "'") ;;
-
+  | "non" | "neg" | "[" -> 6
+  | _ -> 6 (* Function call *)
 
 let make_binary_op op e1 e2 : Expr.t =
   match op with
@@ -70,57 +53,57 @@ let make_binary_op op e1 e2 : Expr.t =
 
 let make_unary_op op arg : Expr.t =
   match op with
-  | "-" -> Neg arg
+  | "neg" -> Neg arg
   | "non" -> Not arg
   | op -> raise_syntax_error ("Unknown operator '" ^ op ^ "'")
 
-(* Converts a string to an expression (bonus : returns its type)*)
-let expr_of_string str =
-  let rec find_op str buf current left right priority =
-    let length = String.length str in
-    if length = 0 then
-      let right = if String.length buf <> 0 && not (List.mem buf operators) then
-          right ^ buf
-        else
-          right
-      in current, left, right
-    else
-      let ch = String.make 1 str.[0] in
-      let is_new_buf_pref = is_list_prefix operators (buf ^ ch)
-      and next_str = String.sub str 1 (length - 1)
-      and priority = if ch = "(" then priority + 10
-        else if ch = ")" then priority - 10
-        else priority in
-      (* If the previous buffer was an operator and the current one is no more *)
-      (* Compare the priority of the new operator with the priority of the current one *)
-      (* If it is lower, change the current operator and clear the buffer *)
-      if String.length buf <> 0 && not is_new_buf_pref && List.mem buf operators
-         && priority + op_priority buf < op_priority current then
-        find_op next_str "" buf (left ^ current ^ right) ch priority
-        (* If the new buffer is a prefix of an operator, continue feeding it *)
-      else if is_new_buf_pref then
-        find_op next_str (buf ^ ch) current left right priority
-        (* If the buffer was empty, just continue reading *)
-      else if String.length buf = 0 then
-        find_op next_str "" current left (right ^ ch) priority
-        (* Else add it to the right string *)
-      else
-        find_op next_str "" current left (right ^ buf ^ ch) priority
-  in let rec _expr_of_str str =
-       let op, left, right = find_op str "" "" "" "" 0 in
-       if op = "" then
-         let str = String.trim str in
-         let str = if str.[0] = '(' then String.sub str 1 (String.length str - 1) else str in
-         let str = if str.[String.length str - 1] = ')' then String.sub str 0 (String.length str - 1) else str in
-         Expr.Value (Value.of_string str)
-         (* If op is a binary operator: *)
-       else if not (List.mem op unary_ops) then
-         let left_expr = _expr_of_str left and right_expr = _expr_of_str right
-         in make_binary_op op left_expr right_expr
-       else
-         (* It is supposed that all unary operators are prefixes *)
-         make_unary_op op (_expr_of_str right)
-  in _expr_of_str str ;;
+let string_of_token = function
+  | Operator str | Identifier str | Litteral str -> str
+  | OpenP | CloseP | OpenHook | CloseHook -> ""
+  | Coma -> ","
+
+let rec string_of_tokens = function
+    [] -> ""
+  | token :: t -> string_of_token token ^ string_of_tokens t
+
+let expr_of_string str : Expr.t =
+  let split_params list =
+    let rec _split_params ?(current = []) ?(depth = 0) list =
+      match list with
+      | [] | _ :: [] -> if current = [] then [] else [List.rev current]
+      | (OpenP | OpenHook as h) :: t -> _split_params t ~current: (h :: current) ~depth: (depth + 1)
+      | (CloseP | CloseHook as h) :: t -> _split_params t ~current: (h :: current) ~depth: (depth - 1)
+      | Coma :: t when depth = 0 -> (List.rev current) :: _split_params t ~depth
+      | h :: t -> _split_params t ~current: (h :: current) ~depth
+    in _split_params (List.tl list)
+  in let rec find_op ?(current = "") ?(min_prec = max_int) ?(left = Queue.create()) ?(right = Queue.create()) ?(prec = 0) tokens =
+    match tokens with
+    | [] -> current, left, right
+    | (OpenP | OpenHook as token) :: t -> Queue.add token right;
+      find_op t ~current ~left ~right ~prec: (prec + 10) ~min_prec
+    | (CloseP | CloseHook as token) :: t -> Queue.add token right;
+      find_op t ~current ~left ~right ~prec: (prec - 10) ~min_prec
+    | Operator op :: t when prec + precedence op < min_prec ->
+      if current <> "" then Queue.add (Operator current) left; Queue.transfer right left;
+      find_op t ~current: op ~min_prec: (prec + precedence op) ~left ~right ~prec
+    | token :: t -> Queue.add token right;
+      find_op t ~current ~left ~right ~prec ~min_prec
+  in let rec expr_of_tokens tokens =
+       match find_op tokens with
+       | "", _, _ -> Expr.Value (Value.of_string (string_of_tokens tokens))
+       | op, left, right ->
+         if List.mem op binary_ops then
+           let left_expr = expr_of_tokens (list_of_queue left) and right_expr = expr_of_tokens (list_of_queue right)
+           in make_binary_op op left_expr right_expr
+         else if List.mem op unary_ops then  (* All unary tokens are prefixes *)
+           make_unary_op op (expr_of_tokens (list_of_queue right))
+         else if op = "[" then begin
+           let right = split_params (list_of_queue right) in
+           List (List.map expr_of_tokens right) end
+         else (* Function call *)
+           let right = split_params (list_of_queue right) in
+           Call (op, List.map expr_of_tokens right)
+  in expr_of_tokens (tokenize str)
 
 let rec string_of_expr : Expr.t -> string = function
   | Plus (e1, e2) -> "(" ^ (string_of_expr e1) ^ " + " ^ (string_of_expr e2) ^ ")"
@@ -138,4 +121,6 @@ let rec string_of_expr : Expr.t -> string = function
   | Or (e1, e2) -> "(" ^ (string_of_expr e1) ^ " ou " ^ (string_of_expr e2) ^ ")"
   | Not e -> "(non "  ^ (string_of_expr e) ^ ")"
   | Neg e -> "(-" ^ (string_of_expr e) ^ ")"
+  | List l -> "[" ^ (String.concat ", " (List.map string_of_expr l)) ^ "]"
+  | Call (name, args) -> name ^  "(" ^ (String.concat ", " (List.map string_of_expr args)) ^ ")"
   | Value v -> Value.to_string v
