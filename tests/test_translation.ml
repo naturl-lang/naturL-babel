@@ -3,7 +3,7 @@ open Dependencies.Structures ;;
 
 print_string "Beginning translation.ml tests... " ;;
 
-let vars = StringMap.empty ;;
+let vars = VarSet.empty ;;
 
 let%expect_test "fonction" = let context = {code = "fonction test() -> entier\nfin"; index = 0; vars; scopes = [Function]; imports = []} in
   let translation, _ = eval_fonction context in
@@ -48,14 +48,14 @@ let%expect_test "tant_que" = let context = {code = "tant_que vrai faire\nfin"; i
     while True:
         pass|}] ;;
 
-let%expect_test "pour" = let vars = StringMap.add "n" `Int (StringMap.add "i" `Int vars) in
+let%expect_test "pour" = let vars = VarSet.add {name = "n"; type_struct = Type.Int} (VarSet.add {name = "i"; type_struct = Type.Int} vars) in
   let translation, _ = eval_pour {code = "pour i de 1 jusqu_a n faire\nfin"; index = 0; vars; scopes = [For]; imports = []} in
   print_string translation;
   [%expect {|
     for i in range(1, n + 1):
         pass|}] ;;
 
-let%expect_test "pour_chaque" = let vars = StringMap.add "c" `Char (StringMap.add  "str" `String vars) in
+let%expect_test "pour_chaque" = let vars = VarSet.add {name = "c"; type_struct = Type.Char} (VarSet.add {name = "str"; type_struct = Type.String} vars) in
   let translation, _ = eval_pour_chaque {code = "pour_chaque c dans str faire\nfin"; index = 0; vars; scopes = [For]; imports = []} in
   print_string translation;
   [%expect {|

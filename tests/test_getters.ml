@@ -29,16 +29,22 @@ let%expect_test "get_line" =
   [%expect {| 11 |}] ;;
 
 let%expect_test "get_param" =
-  let params, index, vars = get_param StringMap.empty "fonction test(entier n, reel pi) -> entier" 14 in
+  let params, index, vars = get_param VarSet.empty "fonction test(entier n, reel pi) -> entier" 14 in
   print_string params;
   [%expect {| n, pi |}];
   print_int index;
   [%expect {| 33 |}];
-  print_vars vars;
+  print_var_set vars;
   [%expect {|
 var n : entier
 var pi : reel
 |}] ;;
+
+let%expect_test "get_var_by_name" =
+  let vars = VarSet.empty |> VarSet.add {name = "n"; type_struct = Type.Int} |> VarSet.add {name = "pi"; type_struct = Type.Float} in
+  let var = get_var_by_name "pi" vars in
+  print_variable var;
+  [%expect {| var pi: reel |}] ;;
 
 let %expect_test "get_line_no" =
   let code = "First line\nSecond line\nThird line\n" in
