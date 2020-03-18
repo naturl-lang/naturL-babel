@@ -15,12 +15,15 @@ jobs:
     steps:
       - uses: actions/checkout@master
       - uses: avsm/setup-ocaml@v1.0
-        with:
+        with: 
           ocaml-version: ${{ matrix.ocaml-version }}
-      - name: Install dependencies
+      - name: Install dependencies (Windows)
+        if: matrix.os == 'windows-latest' 
         run: opam install .
-        if: matrix.os == 'windows-latest'
         continue-on-error: true
+      - name: Install dependencies (Unix)
+        if: matrix.os != 'windows-latest'
+        run: opam install .
       - name: Build
         run: opam exec -- dune build @install
       - name: Test
@@ -29,5 +32,5 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v1.0.0
         with:
-          name: ${{ matrix.os }}_naturL.exe
+          name: ${{ matrix.os }}-naturL.exe
           path: _build/default/naturL.exe
