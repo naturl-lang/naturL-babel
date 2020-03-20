@@ -85,6 +85,62 @@ let rec string_of_tokens = function
   | token :: t -> string_of_token token ^ string_of_tokens t
 
 let expr_of_string str : Expr.t =
+  (*Expression simplification functions: *) 
+  let is_var value = 
+    match value with 
+      |Value.Variable _ -> true 
+      |_-> false 
+  in 
+  let perform_op e1 e2 op expr_ = 
+    match op,e1,e2 with 
+      |"+", Expr.Value(Value.Int x1), Expr.Value(Value.Int x2) -> Expr.Value(Value.Int (x1+x2))
+      |"+", Expr.Value(Value.Float x1), Expr.Value(Value.Float x2) -> Expr.Value(Value.Float (x1 +. x2))
+      |"+", Expr.Value(Value.String x1), Expr.Value(Value.String x2) -> Expr.Value(Value.String (x1^x2))
+      |"-", Expr.Value(Value.Int x1), Expr.Value(Value.Int x2) -> Expr.Value(Value.Int (x1 - x2))
+      |"-", Expr.Value(Value.Float x1), Expr.Value(Value.Float x2) -> Expr.Value(Value.Float (x1 -. x2))
+      |"*", Expr.Value(Value.Int x1), Expr.Value(Value.Int x2) -> Expr.Value (Value.Int (x1 *x2)) 
+      |"*", Expr.Value(Value.Float x1), Expr.Value(Value.Float x2) -> Expr.Value (Value.Float (x1 *. x2)) 
+      |"\\", Expr.Value(Value.Float x1), Expr.Value(Value.Float x2) -> Expr.Value (Value.Float (x1 /. x2))
+      |"div", Expr.Value(Value.Int x1), Expr.Value(Value.Int x2) -> Expr.Value (Value.Int (x1 / x2))
+      |"%",Expr.Value(Value.Int x1), Expr.Value(Value.Int x2) -> Expr.Value(Value.Int (x1 mod x2))
+      |"=", Expr.Value v1, Expr.Value v2 when not((is_var v1) || (is_var v2)) -> Expr.Value(Value.Bool ((Value.to_string v1) = (Value.to_string v2)))
+      |">", Expr.Value (Value.Int x1), Expr.Value(Value.Int x2) -> Expr.Value (Value.Bool (x1 > x2)) 
+      |">", Expr.Value (Value.Float x1), Expr.Value(Value.Float x2) -> Expr.Value (Value.Bool (x1 > x2)) 
+      |">=", Expr.Value (Value.Int x1), Expr.Value(Value.Int x2) -> Expr.Value (Value.Bool (x1 >=x2)) 
+      |">=", Expr.Value (Value.Float x1), Expr.Value(Value.Float x2) -> Expr.Value (Value.Bool (x1 >= x2)) 
+      |"<", Expr.Value (Value.Int x1), Expr.Value(Value.Int x2) -> Expr.Value (Value.Bool (x1 < x2)) 
+      |"<", Expr.Value (Value.Float x1), Expr.Value(Value.Float x2) -> Expr.Value (Value.Bool (x1 < x2))
+      |"<=", Expr.Value (Value.Int x1), Expr.Value(Value.Int x2) -> Expr.Value (Value.Bool (x1 <= x2)) 
+      |"<=", Expr.Value (Value.Float x1), Expr.Value(Value.Float x2) -> Expr.Value (Value.Bool (x1 <= x2))  
+      |"and", Expr.Value (Value.Bool x1), Expr.Value(Value.Bool x2) -> Expr.Value (Value.Bool (x1 && x2))
+      |"and", Expr.Value (Value.Bool false), _ | "and", _, Expr.Value(Value.Bool false) -> Expr.Value(Value.Bool false)
+      |"or", Expr.Value (Value.Bool x1), Expr.Value(Value.Bool x2) -> Expr.Value (Value.Bool (x1 || x2))
+      |"or", Expr.Value (Value.Bool true), _ | "or", _ , Expr.Value(Value.Bool true) -> Expr.Value(Value.Bool true)
+      |"not", Expr.Value (Value.Bool x), _ -> Expr.Value(Value.Bool (not x))
+      |"neg", Expr.Value (Value.Int x), _ -> Expr.Value(Value.Int (-x))
+      |"neg", Expr.Value (Value.Float x), _ -> Expr.Value (Value.Float (-1.*. x))
+      |_-> expr_ (*Case containing a variable*)
+  in 
+  let rec _simplify expr = 
+    match expr with 
+      |Expr.Plus (e1,e2) -> let e1,e2 = (_simplify e1, _simplify e2) in perform_op e1 e2 "+" (Expr.Plus(e1,e2))
+      |Expr.Minus (e1,e2) -> let e1, e2 = (_simplify e1, _simplify e2) in perform_op e1 e2 "-" (Expr.Minus(e1,e2))
+      |Expr.Times (e1,e2) -> let e1,e2 = (_simplify e1, _simplify e2) in perform_op e1 e2 "*" (Expr.Times(e1,e2))
+      |Expr.Div (e1,e2) -> let e1,e2 = (_simplify e1, _simplify e2) in perform_op e1 e2 "\\" (Expr.Div(e1,e2))
+      |Expr.Div_int (e1,e2) -> let e1,e2 = (_simplify e1, _simplify e2) in perform_op e1 e2 "div" (Expr.Div_int(e1,e2))
+      |Expr.Modulus (e1,e2) -> let e1,e2 = (_simplify e1, _simplify e2) in perform_op e1 e2 "%" (Expr.Modulus(e1,e2))
+      |Expr.Eq(e1,e2) -> let e1,e2 = (_simplify e1, _simplify e2) in perform_op e1 e2 "=" (Expr.Eq(e1,e2))
+      |Expr.Gt(e1,e2) -> let e1,e2 = (_simplify e1, _simplify e2) in perform_op e1 e2 ">" (Expr.Gt(e1,e2))
+      |Expr.Gt_eq(e1,e2) -> let e1,e2 = (_simplify e1, _simplify e2) in perform_op e1 e2 ">=" (Expr.Gt_eq(e1,e2))
+      |Expr.Lt(e1,e2) -> let e1,e2 = (_simplify e1, _simplify e2) in perform_op e1 e2 "<" (Expr.Lt(e1,e2))
+      |Expr.Lt_eq(e1,e2) -> let e1,e2 = (_simplify e1, _simplify e2) in perform_op e1 e2 "<=" (Expr.Lt_eq(e1,e2))
+      |Expr.And(e1,e2) -> let e1,e2 = (_simplify e1, _simplify e2) in perform_op e1 e2 "and" (Expr.And(e1,e2))
+      |Expr.Or(e1,e2) -> let e1,e2 = (_simplify e1, _simplify e2) in perform_op e1 e2 "or" (Expr.Or(e1,e2))
+      |Expr.Not e -> let e = _simplify e in perform_op e e "not" (Expr.Not e)
+      |Expr.Neg e -> let e = _simplify e in perform_op e e "neg" (Expr.Neg e)
+      |_-> expr 
+  in 
+  (*Core functions: *)
   let split_params list =
     let rec _split_params ?(current = []) ?(depth = 0) list =
       match list with
@@ -121,7 +177,7 @@ let expr_of_string str : Expr.t =
          else (* Function call *)
            let right = split_params (list_of_queue right) in
            Call (op, List.map expr_of_tokens right)
-  in expr_of_tokens (tokenize str)
+  in  _simplify (expr_of_tokens (tokenize str))
 
 let string_of_expr expr =
   let rec _string_of_expr ?parent (expr : Expr.t) =
