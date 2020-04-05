@@ -1,3 +1,7 @@
+module StringMap = Map.Make(String)
+module StringSet = Set.Make(String)
+
+
 let get_indentation depth =
   let rec _get_indentation depth =
     if depth = 0 then
@@ -45,5 +49,10 @@ let split_list ?(from = 0) ?(to_ = max_int) sep list =
   in _split_list list
 
 let list_of_queue queue = List.init (Queue.length queue) (fun _ -> Queue.take queue)
+
+(* Create a map from a list of tuples *)
+let rec string_map_of_list = function
+  | [] -> StringMap.empty
+  | (key, value) :: t -> StringMap.add key value (string_map_of_list t)
 
 let ( let* ) = Option.bind

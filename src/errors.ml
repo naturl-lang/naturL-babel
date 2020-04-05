@@ -24,6 +24,11 @@ let raise_unexpected_type_error ?(line) expected found =
   match line with
   | Some line -> raise_type_error message ~line
   | None -> raise_type_error message
+let raise_unexpected_type_error_with_name ?(line) name expected found =
+  let message = "'" ^ name ^ "' has type '" ^ expected ^ "' but got '" ^ found ^ "'" in
+  match line with
+  | Some line -> raise_type_error message ~line
+  | None -> raise_type_error message
 
 (* Executes a function. *)
 (* If an error is raised with no line, raises the same error with a line *)

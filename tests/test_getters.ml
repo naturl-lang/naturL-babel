@@ -1,5 +1,6 @@
-open Dependencies.Getters
-open Dependencies.Structures ;;
+open Src.Utils
+open Src.Getters
+open Src.Structures ;;
 
 print_string "Beginning getters.ml tests... " ;;
 

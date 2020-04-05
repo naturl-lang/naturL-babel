@@ -1,8 +1,5 @@
-(*#mod_use "structures.ml";;
-#load "str.cma";;
-#mod_use "type_operations.ml" *)
-
 open Str
+open Utils
 open Structures
 open Errors
 
@@ -79,7 +76,7 @@ let get_param vars code index =
       let name, i = get_word h i in
       let sep = if is_first then "" else ", " in
       _get_params (StringMap.add (String.trim name) type_ vars) (names ^ sep ^ name) (index + i + 1) ~types: (type_ :: types) t in
-  let r = regexp {|\([a-z]+ [A-Za-z_][A-Za-z0-9_]*\(, ?[a-z]+ [A-Za-z_][A-Za-z0-9_]*\)*\))|} in
+  let r = regexp {|\(\([a-z_]+\|\?\) [A-Za-z_][A-Za-z0-9_]*\(, ?\([a-z_]\|\?\)+ [A-Za-z_][A-Za-z0-9_]*\)*\))|} in
   if string_match r code index then
     _get_params vars "" (index + 1) (split (regexp ",") (matched_group 1 code)) ~is_first: true
   else if code.[index] = ')' then
@@ -88,5 +85,6 @@ let get_param vars code index =
     raise_syntax_error ~line: (get_line_no code index) "Invalid function definition"
 
 let get_var name vars =
-  try StringMap.find (String.trim name) vars
+  let name = String.trim name in
+  try StringMap.find name vars
   with Not_found -> raise_name_error ("Unknown variable " ^ name)

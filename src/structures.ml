@@ -1,3 +1,4 @@
+open Utils
 open Errors
 
 module Type = struct
@@ -9,7 +10,6 @@ module Type = struct
     | `String
     | `Bool
     | `List of t
-    | `Variable of t
     | `Function of t list * t
     | `None
     | `Any
@@ -21,39 +21,54 @@ module Type = struct
     | `Char -> "caractere"
     | `String -> "chaine"
     | `Bool -> "boolean"
+    | `List `Any -> "liste"
     | `List t -> "liste de " ^ to_string t
-    | `Variable t -> "variable : " ^ (to_string t)
-    | `Function (params, return) ->
-      "fonction : " ^ String.concat " x " (List.map to_string params) ^ " -> " ^ to_string return
-    | `None -> "rien"
-    | `Any -> "-"
+    | `Function (params, return) -> (match return with
+          `None -> "procedure: " ^ String.concat " x " (List.map to_string params)
+        | _ -> "fonction: " ^ String.concat " x " (List.map to_string params) ^ " -> " ^ to_string return)
+    | `None -> "Ø"
+    | `Any -> "?"
 
-  let rec of_string str =
-    match String.split_on_char ' ' (String.trim str) with
+  let rec of_string str : t =
+    let splitted = List.map (fun s -> String.split_on_char '_' s)
+        (String.split_on_char ' ' (String.trim str)) in
+    match List.flatten splitted with
     | "entier" :: [] -> `Int
     | "reel" :: [] -> `Float
     | "caractere" :: [] -> `Char
     | "chaine" :: [] -> `String
     | "boolean" :: [] -> `Bool
+    | "liste" :: [] -> `List `Any
     | "liste" :: "de" :: t -> `List (of_string (String.concat " " t))
-    | "variable" :: ":" :: t :: [] -> `Variable (of_string t)
-    | "fonction" :: ":" :: tail -> (match Str.split (Str.regexp " -> ") (String.concat " " tail) with
-        | params :: return :: [] -> `Function (List.map of_string (String.split_on_char 'x' params), of_string return)
+    | "procedure" :: params  :: [] -> `Function (List.map of_string (String.split_on_char 'x' params), `None)
+    | "fonction:" :: tail -> (match Str.split (Str.regexp " -> ") (String.concat " " tail) with
+          params :: return :: [] -> `Function (List.map of_string (String.split_on_char 'x' params), of_string return)
         | _ -> raise_name_error ("Unknown type '" ^ str ^ "'"))
-    | "rien" :: [] -> `None
+    | ("Ø" | "rien") :: [] -> `None
+    | "?" :: [] -> `Any
     | _ -> raise_name_error ("Unknown type '" ^ str ^ "'")
 
-  let get_iterable_type = function
+  let get_iterable_type : t -> t option = function
       `String -> Some `Char
     | `List t -> Some t
     | _ -> None
+
+  let rec is_compatible (type1: t) (type2: t) =
+    type2 = `Any || match type1 with
+    | `Any -> true
+    | `Int | `Float | `Char | `String | `Bool | `None -> type1 = type2
+    | `List t1 -> (match type2 with
+        | `List t2 -> is_compatible t1 t2
+        | _ -> false)
+    | `Function (params1, return1) -> (match type2 with
+        | `Function (params2, return2) -> List.for_all2 is_compatible params1 params2 && is_compatible return1 return2
+        | _ -> false)
+
 end
-
-
-module StringMap = Map.Make(String)
 
 let print_vars = StringMap.iter (function name -> function t ->
     print_endline ("var " ^ name ^ " : " ^ Type.to_string t))
+
 
 module Value = struct
 
@@ -86,7 +101,7 @@ module Value = struct
       Char (Str.matched_group 1 str).[0]
     else if Str.string_match (Str.regexp {|^"\(.*\)"$|}) str 0 then
       String (Str.matched_group 1 str)
-    else if str = "vrai" || str = "false" then
+    else if str = "vrai" || str = "faux" then
       Bool (str = "vrai")
     else if Str.string_match (Str.regexp ("^" ^ name_re ^ "$")) str 0 then
       Variable str
@@ -103,6 +118,7 @@ module Value = struct
     | Bool _ -> `Bool
     | None -> `None
 end
+
 
 module Expr = struct
 
@@ -124,45 +140,10 @@ module Expr = struct
     | Not of t                (* non x *)
     | List of t list          (* [x, y, ...] *)
     | Call of string * t list (* <function-name>(x, y, ...) *)
+    | Subscript of t * t      (* list[x] *)
     | Value of Value.t        (* x *)
-
-  open (struct
-    let is_type_accepted t = function
-        Plus _ -> List.mem t [`Int; `Float; `String]
-      | Minus _ | Times _ | Neg _ -> List.mem t [`Int; `String]
-      | Div_int _ | Modulus _ -> t = `Int
-      | Div _ -> t = `Float
-      | Eq _ | Gt _ | Gt_eq _ | Lt _ | Lt_eq _ -> true
-      | And _ | Or _ | Not _ -> t = `Bool
-      | _ -> assert false
-
-    let rec is_list_uniform vars = function
-      | h1 :: h2 :: t -> h1 = h2 && is_list_uniform vars (h2 :: t)
-      | _ -> true
-  end)
-
-  let rec get_type vars = function
-    | Plus (l, r) | Minus (l, r) | Times (l, r) | Div (l, r) | Div_int (l, r) | Modulus (l, r) | And (l, r) | Or (l, r) as e ->
-      let l_type = get_type vars l and r_type = get_type vars r in
-      if l_type = r_type && is_type_accepted l_type e then l_type else
-        raise_type_error ("Invalid operation for expressions of type " ^ (Type.to_string l_type) ^ " and type " ^ (Type.to_string r_type))
-    | Not arg | Neg arg as e -> let arg_type = get_type vars arg in if is_type_accepted arg_type e then arg_type else
-        raise_type_error ("Invalid operation for expression of type " ^ (Type.to_string arg_type))
-    | Eq (l, r) | Gt (l, r) | Gt_eq (l, r) | Lt (l, r) | Lt_eq (l, r) -> let l_type = get_type vars l and r_type = get_type vars r in
-      if l_type = r_type then `Bool else
-        raise_type_error ("Can't compare expressions of type " ^ (Type.to_string l_type) ^ " and type " ^ (Type.to_string r_type))
-    | List [] -> `List `Any
-    | List (h :: t) -> if is_list_uniform vars (List.map (get_type vars) (h :: t)) then `List (get_type vars h)
-      else raise_name_error ("All elements of a list must have the same type")
-    | Call (name, params) ->
-      (try (match StringMap.find name vars with
-           | `Function (p, return) as f -> let params_type = List.map (get_type vars) params in
-             if params_type = p then return
-             else raise_unexpected_type_error (Type.to_string f) (Type.to_string (`Function (params_type, `Any)))
-           | _ as t -> raise_type_error ("Variables of type " ^ (Type.to_string t) ^ " are not callable"))
-       with Not_found -> raise_name_error ("Unknown function: '" ^ name ^ "'"))
-    | Value v -> Value.get_type vars v
 end
+
 
 type scope =
   | If
@@ -177,5 +158,4 @@ type context = {
   index: int;                      (* The index *)
   vars: Type.t StringMap.t;        (* The set of known variables *)
   scopes: scope list;              (* The stack of scopes *)
-  imports: string list;            (* The list of imports that need to be added at the beginning of the code *)
 }

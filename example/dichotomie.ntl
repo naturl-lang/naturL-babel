@@ -1,0 +1,22 @@
+fonction __rechercher(liste l, ? x, entier g, entier d) -> boolean
+variables
+    entier m
+debut
+    si d < g alors
+        retourner faux
+    fin
+    m <- (g + d) div 2
+    si x < l[m] alors
+        retourner __rechercher(l, x, g, m - 1)
+    sinon_si x > l[m] alors
+        retourner __rechercher(l, x, m + 1, d)
+    fin
+    retourner vrai
+fin
+
+fonction rechercher(liste l, ? x) -> boolean
+debut
+    ajouter(taille(l), x)
+    retourner __rechercher(l, x, 1, taille(l)) 
+fin
+
