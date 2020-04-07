@@ -32,7 +32,7 @@ jobs:
       - name: Check syntax update
         run: |
           ls example
-          for e in $(ls example); do opam exec -- dune exec ./naturL --input $e; done
+          for e in $(ls example); ./_build/default/naturL.exe --input $e; done
       - name: Upload artifact
         uses: actions/upload-artifact@v1.0.0
         with:
