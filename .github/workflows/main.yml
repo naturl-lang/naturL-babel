@@ -31,8 +31,8 @@ jobs:
         run: opam exec -- dune runtest
       - name: Check syntax update
         run: |
-          ls example
-          for e in $(ls example); do opam exec -- dune exec ./naturL --input $e; done
+          ls; ls example
+          for e in $(ls example); do opam exec -- dune exec ./naturL.exe -- --input example/$e; done
       - name: Upload artifact
         uses: actions/upload-artifact@v1.0.0
         with:
