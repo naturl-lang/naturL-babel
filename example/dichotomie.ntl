@@ -16,7 +16,6 @@ fin
 
 fonction rechercher(liste l, ? x) -> boolean
 debut
-    ajouter(taille(l), x)
     retourner __rechercher(l, x, 1, taille(l)) 
 fin
 

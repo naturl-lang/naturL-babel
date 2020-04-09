@@ -3,6 +3,6 @@ variables
   entier i
 debut
   pour i de 0 jusqu_a n faire
-    afficher n - i
+    afficher(n - i)
   fin
 fin

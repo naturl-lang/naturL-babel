@@ -23,7 +23,7 @@ let get_word code i =
   let rec _get_word i word =
     if i < len then
       match code.[i] with
-      | ' ' | '\n' | '(' | ',' | ')' ->
+        ' ' | '\n' | '\t' | '\r' | '(' | ',' | ')' ->
         if word = "" then
           _get_word (i + 1) word
         else
@@ -79,8 +79,8 @@ let get_param vars code index =
   let r = regexp {|\(\([a-z_]+\|\?\) [A-Za-z_][A-Za-z0-9_]*\(, ?\([a-z_]\|\?\)+ [A-Za-z_][A-Za-z0-9_]*\)*\))|} in
   if string_match r code index then
     _get_params vars "" (index + 1) (split (regexp ",") (matched_group 1 code)) ~is_first: true
-  else if code.[index] = ')' then
-    "", index + 2, vars, []
+  else if string_match (regexp {|\( *)\)|}) code index then
+    "", match_end() + 1, vars, []
   else
     raise_syntax_error ~line: (get_line_no code index) "Invalid function definition"
 
