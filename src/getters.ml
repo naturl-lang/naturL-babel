@@ -10,13 +10,25 @@ let rec get_line_no code index =
   else
     (if index < String.length code && code.[index] = '\n' then 1 else 0) + get_line_no code (index - 1)
 
+let get_last_line code =
+  get_line_no code (String.length code - 1)
+
 let rec ignore_chrs code i =
   if i < (String.length code) then
     match code.[i] with
       ' ' | '\n' | '\t' | '\r' | '(' | ')' | ',' -> ignore_chrs code (i + 1)
     | _-> i
   else
-    String.length code
+    raise_syntax_error ~line: (get_last_line code) "Unexpected EOF while parsing"
+
+let rec ignore_spaces code i =
+  if i < (String.length code) then
+    if code.[i] = ' ' then
+      ignore_spaces code (i + 1)
+    else
+      i
+  else
+    raise_syntax_error ~line: (get_last_line code) "Unexpected EOF while parsing"
 
 let get_word code i =
   let len = String.length code in
@@ -80,7 +92,7 @@ let get_param vars code index =
   if string_match r code index then
     _get_params vars "" (index + 1) (split (regexp ",") (matched_group 1 code)) ~is_first: true
   else if string_match (regexp {|\( *)\)|}) code index then
-    "", match_end() + 1, vars, []
+    "", match_end(), vars, []
   else
     raise_syntax_error ~line: (get_line_no code index) "Invalid function definition"
 

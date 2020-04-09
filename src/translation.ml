@@ -29,7 +29,14 @@ let rec eval_code context =
             raise_syntax_error ("Unexpected token '" ^ word ^ "'") ~line: (get_line_no code context.index)
         else
           scope :: context.scopes in
-      let translation, context = func {context with index = (context.index - String.length word - 1); scopes} in
+      let translation, context =
+        (try
+           func {context with index = (context.index - String.length word - 1); scopes}
+         with Invalid_argument m as e ->
+           if m = "index out of bounds" then
+             raise_syntax_error ~line: (get_last_line context.code) "Unexpected EOF"
+           else
+             raise e) in
       let next_translation, context = _eval_code context
       in translation ^ next_translation, context
     | None ->
@@ -96,11 +103,13 @@ and eval_fonction context =
   (* A function is divided in a header (the name), parameters and a return type.
     This functions combine those parts *)
   let check_return_type i =
-    let word, index = get_word context.code i in
-    if word = "->" then
-      get_type context.code index
+    let i = ignore_spaces context.code i in
+    if context.code.[i] <> '-' then
+      raise_syntax_error ("Unexpected character '" ^ (String.make 1 context.code.[i]) ^ "' in function definition") ~line: (get_line_no context.code i)
+    else if context.code.[i + 1] <> '>' then
+      raise_syntax_error ("Unexpected character '" ^ (String.make 1 context.code.[i + 1]) ^ "' in function definition") ~line: (get_line_no context.code (i + 1))
     else
-      raise_syntax_error ("Expected '->', got '" ^ word ^ "'") ~line: (get_line_no context.code index)
+      get_type context.code (i + 2)
   in
   let name, index = get_word context.code (context.index + 9) in (* 9 = 8 + 1 *)
   let prev_vars = context.vars in
