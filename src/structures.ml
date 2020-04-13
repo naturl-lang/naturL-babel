@@ -151,6 +151,7 @@ type scope =
   | While
   | For
   | Function
+  | Function_definition
 
 (* The current context of the code *)
 type context = {

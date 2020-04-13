@@ -1,5 +1,5 @@
 let _error name message line oc =
-  Printf.fprintf oc "%s at line %d: %s" name line message;
+  Printf.fprintf oc "%s at line %d: %s\n" name line message;
   exit 2
 
 let syntax_error = _error "Syntax error"

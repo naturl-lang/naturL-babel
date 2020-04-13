@@ -40,37 +40,43 @@ let rec eval_code context =
       let next_translation, context = _eval_code context
       in translation ^ next_translation, context
     | None ->
-      match word with
-      | "variables" -> _eval_code (eval_variables context)
-      | "debut" -> eval_code context
-      | "retourner" -> let expr, i = get_line code context.index in
-        let expr = try_update_err (get_line_no code context.index) (fun () -> eval_expression expr context.vars) in
-        let next, context = _eval_code {context with index = i} in
-        get_indentation depth ^ "return " ^ expr ^ "\n" ^ next, context
-      | "fin" -> if context.scopes <> [] then
-          "", {context with scopes = List.tl context.scopes}
-        else
-          raise_syntax_error "Unexpected token 'fin'" ~line: (get_line_no code context.index)
-      | "" -> if List.length context.scopes = 0 then "", context else raise_syntax_error "Unclosed scope: expected 'fin'" ~line: (get_line_no code context.index + 1)
-      | _ -> (* Expression or affectation *)
-        let line_no = get_line_no code context.index in
-        let r = regexp ("^[\n\t ]*\\([A-Za-z_][A-Za-z_0-9]*\\) *<- *\\(.*\\)\n") in
-        if string_match r code start_index then   (* Affectation *)
-          let end_index = match_end() in
-          let var = matched_group 1 code
-          and expr = matched_group 2 code in
-          let var_type = try_update_err line_no (fun () -> get_var var context.vars)
-          and expr, expr_type = try_update_err line_no (fun () -> eval_expression_with_type expr context.vars) in
-          if Type.is_compatible var_type expr_type then
-            let next, context = _eval_code {context with index = end_index} in
-            get_indentation depth ^ word ^ " = " ^ expr ^ "\n" ^ next, context
+      if word <> "debut" && word <> "variables" &&
+         context.scopes <> [] && List.hd context.scopes = Function_definition then
+        raise_syntax_error ~line: (get_line_no code (start_index + 2)) "Expected 'debut' after function definition"
+      else match word with
+        | "variables" -> _eval_code (eval_variables context)
+        | "debut" -> if context.scopes <> [] && List.hd context.scopes = Function_definition then
+            eval_code {context with scopes = Function :: List.tl context.scopes}
           else
-            raise_unexpected_type_error_with_name var (Type.to_string var_type) (Type.to_string expr_type) ~line: (get_line_no code index)
-        else (* Expression, e.g: function call *)
-          let expr, index = get_line code (index - 1) in
-          let expr = try_update_err line_no (fun () -> eval_expression (word ^ expr) context.vars) in
-          let next, context = _eval_code {context with index} in
-          get_indentation depth ^ expr ^ "\n" ^ next, context
+            raise_syntax_error ~line: (get_line_no code start_index) "Unexpected token token 'debut'"
+        | "retourner" -> let expr, i = get_line code context.index in
+          let expr = try_update_err (get_line_no code context.index) (fun () -> eval_expression expr context.vars) in
+          let next, context = _eval_code {context with index = i} in
+          get_indentation depth ^ "return " ^ expr ^ "\n" ^ next, context
+        | "fin" -> if context.scopes <> [] then
+            "", {context with scopes = List.tl context.scopes}
+          else
+            raise_syntax_error "Unexpected token 'fin'" ~line: (get_line_no code context.index)
+        | "" -> if List.length context.scopes = 0 then "", context else raise_syntax_error "Unclosed scope: expected 'fin'" ~line: (get_line_no code context.index)
+        | _ -> (* Expression or affectation *)
+          let line_no = get_line_no code context.index in
+          let r = regexp ("^[\n\t ]*\\([A-Za-z_][A-Za-z_0-9]*\\) *<- *\\(.*\\)\n") in
+          if string_match r code start_index then   (* Affectation *)
+            let end_index = match_end() in
+            let var = matched_group 1 code
+            and expr = matched_group 2 code in
+            let var_type = try_update_err line_no (fun () -> get_var var context.vars)
+            and expr, expr_type = try_update_err line_no (fun () -> eval_expression_with_type expr context.vars) in
+            if Type.is_compatible var_type expr_type then
+              let next, context = _eval_code {context with index = end_index} in
+              get_indentation depth ^ word ^ " = " ^ expr ^ "\n" ^ next, context
+            else
+              raise_unexpected_type_error_with_name var (Type.to_string var_type) (Type.to_string expr_type) ~line: (get_line_no code index)
+          else (* Expression, e.g: function call *)
+            let expr, index = get_line code (index - 1) in
+            let expr = try_update_err line_no (fun () -> eval_expression (word ^ expr) context.vars) in
+            let next, context = _eval_code {context with index} in
+            get_indentation depth ^ expr ^ "\n" ^ next, context
   in _eval_code context
 
 
@@ -101,13 +107,13 @@ and eval_variables context =
 and eval_fonction context =
   let depth = List.length context.scopes - 1 in
   (* A function is divided in a header (the name), parameters and a return type.
-    This functions combine those parts *)
+     This functions combine those parts *)
   let check_return_type i =
     let i = ignore_spaces context.code i in
     if context.code.[i] <> '-' then
-      raise_syntax_error ("Unexpected character '" ^ (String.make 1 context.code.[i]) ^ "' in function definition") ~line: (get_line_no context.code i)
+      raise_syntax_error ("Unexpected character '" ^ (Char.escaped context.code.[i]) ^ "' in function definition") ~line: (get_line_no context.code i)
     else if context.code.[i + 1] <> '>' then
-      raise_syntax_error ("Unexpected character '" ^ (String.make 1 context.code.[i + 1]) ^ "' in function definition") ~line: (get_line_no context.code (i + 1))
+      raise_syntax_error ("Unexpected character '" ^ (Char.escaped context.code.[i + 1]) ^ "' in function definition") ~line: (get_line_no context.code (i + 1))
     else
       get_type context.code (i + 2)
   in
@@ -234,8 +240,8 @@ and eval_pour context =
 
 and control_keywords =
   [
-    "fonction", (Function, eval_fonction);
-    "procedure", (Function, eval_procedure);
+    "fonction", (Function_definition, eval_fonction);
+    "procedure", (Function_definition, eval_procedure);
     "si", (If, eval_si);
     "sinon", (Else, eval_sinon);
     "sinon_si", (If, eval_sinon_si);
