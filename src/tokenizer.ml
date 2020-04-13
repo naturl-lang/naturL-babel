@@ -55,7 +55,10 @@ let tokenize input =
         (Litteral token) :: _tokenize input (index + (String.length token))
       else if Str.string_match reg_identifier input index then
         let token = Str.matched_string input in
-        (Identifier token) :: _tokenize input (index + (String.length token))
+        if List.mem token Syntax.keywords then
+          raise_syntax_error ("Invalid token in expression: '" ^ token ^ "' is a reserved keyword")
+        else
+          (Identifier token) :: _tokenize input (index + (String.length token))
       else if Str.string_match reg_openp input index then
         OpenP :: _tokenize input (index+1)
       else if Str.string_match reg_closep input index then
