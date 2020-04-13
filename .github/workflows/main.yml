@@ -30,6 +30,7 @@ jobs:
         if: matrix.os != 'windows-latest' # The tests don't work on Windows
         run: opam exec -- dune runtest
       - name: Check syntax update
+        if: matrix.os != 'windows-latest'
         run: |
           ls; ls example
           for e in $(ls example); do opam exec -- dune exec ./naturL.exe -- --input example/$e; done
