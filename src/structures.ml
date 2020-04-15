@@ -149,9 +149,16 @@ type scope =
   | If
   | Else
   | While
-  | For
-  | Function
-  | Function_definition
+  | For 
+  | Function of string
+  | Function_definition of string
+  | ReturnedFunction
+
+let set_fscope_name scopes name = 
+  match scopes with 
+    |(Function _)::r -> (Function name)::r 
+    |(Function_definition _)::r -> (Function_definition name)::r
+    |_ -> failwith "set_fscope_name: Illegal use of the function"
 
 (* The current context of the code *)
 type context = {

@@ -70,7 +70,7 @@ let tokenize input =
       else if Str.string_match reg_closehook input index then
         CloseHook :: _tokenize input (index+1)
       else
-        raise_syntax_error "Could not capture the unknown token"
+        raise_syntax_error "Could not capture the unknown token" 
     in _tokenize input 0
   in
   let improve_tokens tokens =
