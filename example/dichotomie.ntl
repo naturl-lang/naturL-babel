@@ -1,5 +1,5 @@
 fonction __rechercher(liste l, ? x, entier g, entier d) -> boolean
-variables
+  variables
     entier m
 debut
     si d < g alors
