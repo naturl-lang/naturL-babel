@@ -6,14 +6,14 @@ print_string "Beginning translation.ml tests... " ;;
 
 let vars = StringMap.empty ;;
 
-let%expect_test "fonction" = let context = {code = "fonction test() -> entier\ndebut\nretourner 5\nfin"; index = 0; vars; scopes = [Function ""]} in
+let%expect_test "fonction" = let context = {code = "fonction test() -> entier\ndebut\nretourner 5\nfin"; index = 0; vars; scopes = [Function_definition ""]} in
   let translation, _ = eval_fonction context in
   print_string translation;
   [%expect {|
     def test():
         return 5|}] ;;
 
-let%expect_test "procedure" = let context = {code = "procedure test()\ndebut\nfin"; index = 0; vars; scopes = [Function ""]} in
+let%expect_test "procedure" = let context = {code = "procedure test()\ndebut\nfin"; index = 0; vars; scopes = [Function_definition ""]} in
   let translation, _ = eval_procedure context in
   print_string translation;
   [%expect {|
