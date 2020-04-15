@@ -22,13 +22,15 @@ let _verify_type ret_expr var context =
 let rec _check_retcall ret_expr context =
   match context.scopes with
     | [] -> raise_syntax_error "Unexpected instruction 'retourner' " ~line: (get_line_no context.code context.index)
-    | Function name :: _ -> _verify_type ret_expr (StringMap.find name context.vars) context
+    | (Function (name,_)) :: _ -> _verify_type ret_expr (StringMap.find name context.vars) context
     | _-> _check_retcall ret_expr {context with scopes = List.tl context.scopes}
 
-let _is_func_definition scopes =
+let rec get_fname_def_status scopes =
   match scopes with
+    | [] -> false, ""
     | Function_definition name :: _ -> true, name
-    | _-> false, ""
+    | (Function (name,_))::_ -> false, name 
+    | _::r -> get_fname_def_status r 
 
 let _valid_pos context =
   let get_return_type name =
@@ -37,13 +39,16 @@ let _valid_pos context =
       | _ -> failwith "Illegal use"
   in
   match context.scopes with
-    | Function name :: _ when not (get_return_type name) -> false
+    | (Function (name,_)) :: _ when not (get_return_type name) -> false
     | _-> true
 
 (*Core*)
 
 let rec eval_code context =
   let rec _eval_code context =
+    (if !Global.debug then 
+    print_string ("[+]Scopes: [" ^(str_of_scopes context.scopes)^"\n")
+    else  () );
     let code = context.code and start_index = context.index in
     let depth = List.length context.scopes in
     let word, index = get_word code context.index in
@@ -69,26 +74,22 @@ let rec eval_code context =
       let next_translation, context = _eval_code context
       in translation ^ next_translation, context
     | None ->
-      let is_def, name = _is_func_definition context.scopes in
+      let is_def, name = get_fname_def_status context.scopes in
       if word <> "debut" && word <> "variables" && is_def then
         raise_syntax_error ~line: (get_line_no code (start_index + 2)) "Expected 'debut' after function definition"
       else match word with
         | "variables" -> _eval_code (eval_variables context)
         | "debut" -> if is_def then
-            eval_code {context with scopes = (Function name):: List.tl context.scopes}
+            eval_code {context with scopes = (Function (name,false)):: List.tl context.scopes}
           else
             raise_syntax_error ~line: (get_line_no code start_index) "Unexpected token token 'debut'"
         | "retourner" -> let expr, i = get_line code context.index in
           let py_expr = try_update_err (get_line_no code context.index) (fun () -> eval_expression expr context.vars) in
           _check_retcall (expr_of_string expr) context;
-          let new_scopes =
-            match context.scopes with
-              Function _ :: tl -> ReturnedFunction :: tl
-            | x -> x
-          in
+          let new_scopes = ret context.scopes name in 
           let next, context = _eval_code {context with index = i; scopes = new_scopes} in
           get_indentation depth ^ "return " ^ py_expr ^ "\n" ^ next, context
-        | "fin" -> if context.scopes <> [] && (List.hd context.scopes) = ReturnedFunction then
+        | "fin" -> if (has_returned context.scopes name) then
             "", {context with scopes = List.tl context.scopes}
           else if context.scopes = [] then
             raise_syntax_error "Unexpected token 'fin'" ~line: (get_line_no code context.index)

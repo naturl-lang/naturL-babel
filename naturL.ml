@@ -21,13 +21,14 @@ let write_translation chan_name text =
 
 
 let input_name = ref ""
-let output_name = ref ""
+let output_name = ref "" 
 
 let usage = "usage: " ^ Sys.argv.(0) ^ " [options]"
 
 let speclist = [
   "--input", Arg.Set_string input_name, "The file that should be read. Default is stdin";
-  "--output", Arg.Set_string output_name, "The file where the output should be printed. Default is stdout"
+  "--output", Arg.Set_string output_name, "The file where the output should be printed. Default is stdout";
+  "--debug", Arg.Set Src.Global.debug, "Display debug infos"
 ]
 
 
