@@ -30,7 +30,7 @@ let tokenize input =
     let reg_identifier = Str.regexp "[a-zA-Z_][a-zA-Z_0-9]*"
     and reg_boolean = Str.regexp "vrai\\|faux"
     and reg_number = Str.regexp "[0-9]+\\.?[0-9]*"
-    and reg_operator = Str.regexp {|ou\|et\|non\|=\|!=\|<=\|>=\|<\|>\|*\|+\|-\|/\|div\|mod|}
+    and reg_operator = Str.regexp {|ou\|et\|non\|=\|!=\|<=\|>=\|<\|>\|*\|fois\|+\|-\|/\|div\|mod|}
     and reg_string = Str.regexp  {|"\([^"]\|\"\)*"|}
     and reg_char = Str.regexp "'[a-Za-z0-9]*'"
     and reg_openp = Str.regexp "("
@@ -70,7 +70,7 @@ let tokenize input =
       else if Str.string_match reg_closehook input index then
         CloseHook :: _tokenize input (index+1)
       else
-        raise_syntax_error "Could not capture the unknown token" 
+        raise_syntax_error "Could not capture the unknown token"
     in _tokenize input 0
   in
   let improve_tokens tokens =
