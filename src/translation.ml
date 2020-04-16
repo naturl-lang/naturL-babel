@@ -136,7 +136,7 @@ and eval_variables context =
        let word, index = get_word code index
        in if word = "debut" then
          vars, index - 6
-       else if word = "variables" then
+       else if word = "àvariables" then
          _eval_variables vars code index
        else if word = "fin" then
          raise_syntax_error "Unexpected token 'fin'" ~line: line_no

@@ -9,6 +9,7 @@ open (struct
     "+";
     "-";
     "*";
+    "fois";
     "div";
     "/";
     ">";
@@ -49,7 +50,7 @@ open (struct
     | "et" -> 2
     | ">" | ">=" | "<" | "<=" | "=" -> 3
     | "+" | "-" -> 4
-    | "*" | "/" | "div" | "get[" -> 5
+    | "*" | "fois" | "/" | "div" | "get[" -> 5
     | "non" | "neg" | "[" -> 6
     | _ -> 6 (* Function call *)
 
@@ -57,7 +58,7 @@ open (struct
     match op with
     | "+" ->  Plus (e1, e2)
     | "-" -> Minus (e1, e2)
-    | "*" -> Times (e1, e2)
+    | "*" | "fois" -> Times (e1, e2)
     | "/" -> Div (e1, e2)
     | "div" -> Div_int (e1, e2)
     | "mod" -> Modulus (e1, e2)
@@ -120,7 +121,7 @@ let expr_of_string str : Expr.t =
     | "+", Value (String x1), Value (String x2) -> Value (String (x1 ^ x2))
     | "-", Value (Int x1), Value (Int x2) -> Value(Int (x1 - x2))
     | "-", Value (Float x1), Value (Float x2) -> Value (Float (x1 -. x2))
-    | "*", Value (Int x1), Value (Int x2) -> Value (Int (x1 * x2))
+    | ("*" | "fois"), Value (Int x1), Value (Int x2) -> Value (Int (x1 * x2))
     | "*", Value (Float x1), Value (Float x2) -> Value (Float (x1 *. x2))
     | "\\", Value (Float x1), Value (Float x2) -> Value (Float (x1 /. x2))
     | "div", Value (Int x1), Value (Int x2) -> Value (Int (x1 / x2))
