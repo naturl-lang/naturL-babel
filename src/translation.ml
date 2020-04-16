@@ -1,6 +1,7 @@
 open Str
 open Utils
 open Errors
+open Warnings
 open Structures
 open Getters
 open Expressions
@@ -29,8 +30,8 @@ let rec get_fname_def_status scopes =
   match scopes with
     | [] -> false, ""
     | Function_definition name :: _ -> true, name
-    | (Function (name,_))::_ -> false, name 
-    | _::r -> get_fname_def_status r 
+    | (Function (name,_))::_ -> false, name
+    | _::r -> get_fname_def_status r
 
 let _valid_pos context =
   let get_return_type name =
@@ -46,7 +47,7 @@ let _valid_pos context =
 
 let rec eval_code context =
   let rec _eval_code context =
-    (if !Global.debug then 
+    (if !Global.debug then
     print_string ("[+]Scopes: [" ^(str_of_scopes context.scopes)^"\n")
     else  () );
     let code = context.code and start_index = context.index in
@@ -86,7 +87,7 @@ let rec eval_code context =
         | "retourner" -> let expr, i = get_line code context.index in
           let py_expr = try_update_err (get_line_no code context.index) (fun () -> eval_expression expr context.vars) in
           _check_retcall (expr_of_string expr) context;
-          let new_scopes = ret context.scopes name in 
+          let new_scopes = ret context.scopes name in
           let next, context = _eval_code {context with index = i; scopes = new_scopes} in
           get_indentation depth ^ "return " ^ py_expr ^ "\n" ^ next, context
         | "fin" -> if (has_returned context.scopes name) then
@@ -140,12 +141,14 @@ and eval_variables context =
          let line, index = get_line code index in
          let type_struct = try_update_err line_no (fun () -> Type.of_string word) in
          let vars = eval_line vars type_struct (String.split_on_char ',' line) in
+         try_update_warnings ~line: line_no;
          _eval_variables vars code index
   in let vars, index = _eval_variables vars code index
   in {code; index; vars; scopes}
 
 and eval_fonction context =
   let depth = List.length context.scopes - 1 in
+  let line = get_line_no context.code context.index  in
   (* A function is divided in a header (the name), parameters and a return type.
      This functions combine those parts *)
   let check_return_type i =
@@ -165,12 +168,14 @@ and eval_fonction context =
   let prev_vars = StringMap.add name fx prev_vars in
   let vars = StringMap.add name fx vars in
   let cscopes = context.scopes in (*cscopes = current scopes*)
+  try_update_warnings ~line;
   let next, context = eval_code {context with index = index; vars = vars; scopes = set_fscope_name cscopes name} in
   let next = if next = "" then get_indentation (depth + 1) ^ "pass\n" else next in
   get_indentation depth ^ "def " ^ name ^ "(" ^ names ^ "):\n" ^ next, {context with vars = prev_vars}
 
 and eval_procedure context =
   let depth = List.length context.scopes - 1 in
+  let line = get_line_no context.code context.index in
   (*Same logic as functions except that there is no need to check a return type*)
   let name, index = get_word context.code (context.index + 10) (*10 = 9 + 1*) in
   let prev_vars = context.vars in
@@ -179,6 +184,7 @@ and eval_procedure context =
   let prev_vars = StringMap.add name fx prev_vars in
   let vars = StringMap.add name fx vars in
   let cscopes = context.scopes in (*cscopes = current scopes*)
+  try_update_warnings ~line;
   let next, context = eval_code {context with vars = vars; index = index; scopes = set_fscope_name cscopes name} in
   let next = if next = "" then get_indentation (depth + 1) ^ "pass\n" else next in
   get_indentation depth ^ "def " ^ name ^ "(" ^ names ^ "):\n" ^ next, {context with vars = prev_vars}
@@ -192,6 +198,7 @@ and eval_si context =
   match get_word code context.index with
   | "si", i -> let expr, index = get_expression code i "alors" in
     let expr, type_struct = try_update_err line (fun () -> eval_expression_with_type expr context.vars) in
+    try_update_warnings ~line;
     if Type.is_compatible type_struct `Bool then
       let next, context = eval_code {context with index}
       in let next = if next = "" then get_indentation (depth + 1) ^ "pass\n" else next
@@ -208,6 +215,7 @@ and eval_sinon_si context =
   match get_word code context.index with
   | "sinon_si", i -> let expr, index = get_expression code i "alors" in
     let expr, type_struct = try_update_err line (fun () -> eval_expression_with_type expr context.vars) in
+    try_update_warnings ~line;
     if Type.is_compatible type_struct `Bool then
       if expr = "False" then
         let _, context = eval_code {context with index} in
@@ -239,6 +247,7 @@ and eval_tant_que context =
   match get_word code context.index with
   | "tant_que", i -> let expr, index = get_expression code i "faire" in
     let expr, type_struct = try_update_err line (fun () -> eval_expression_with_type expr context.vars) in
+    try_update_warnings ~line;
     let next, context = eval_code {context with index} in
     let next = if next = "" then get_indentation (depth + 1) ^ "pass\n" else next in
     if Type.is_compatible type_struct `Bool then
@@ -259,6 +268,7 @@ and eval_pour_chaque context =
   (match Type.get_iterable_type iterable_type with
    | Some t -> if not (Type.is_compatible t var_type) then raise_unexpected_type_error (Type.to_string t) (Type.to_string var_type) ~line
    | None -> raise_type_error ("Type '" ^ (Type.to_string iterable_type) ^ "' is not iterable") ~line);
+  try_update_warnings ~line;
   let next, context = eval_code {context with index} in
   let next = if next = "" then get_indentation (depth + 1) ^ "pass\n" else next in
   get_indentation depth ^ "for " ^ (String.trim var) ^ " in " ^ iterable_expr  ^ ":\n" ^ next, context
@@ -273,6 +283,7 @@ and eval_pour context =
   let var, index = get_expression code index "de"         in let var_expr, var_type = try_update_err line (fun () -> eval_expression_with_type var context.vars) in
   let start, index = get_expression code index "jusqu_a"  in let start_expr, start_type = try_update_err line (fun () -> eval_expression_with_type start context.vars) in
   let end_, index = get_expression code index "faire"     in let end_expr, end_type = try_update_err line (fun () -> eval_expression_with_type (end_ ^ "+1") context.vars) in
+  try_update_warnings ~line;
   if Type.is_compatible var_type `Int && Type.is_compatible start_type `Int then
     let next, context = eval_code {context with index} in
     let next = if next = "" then get_indentation (depth + 1) ^ "pass\n" else next in
