@@ -17,21 +17,23 @@ let eval_expression str vars =
 (*AUX for eval_code*)
 let _verify_type ret_expr var context =
   match var with
-    | `Function(_, t) when t = (type_of_expr context.vars ret_expr) -> ()
+    | `Function(_, t) when t = type_of_expr context.vars ret_expr -> ()
     | _ -> raise_type_error "The return type does not match the function type " ~line: (get_line_no context.code context.index)
 
-let rec _check_retcall ret_expr context =
+let rec _check_retcall ?(is_first = true) ret_expr context =
   match context.scopes with
     | [] -> raise_syntax_error "Unexpected instruction 'retourner' " ~line: (get_line_no context.code context.index)
-    | (Function (name,_)) :: _ -> _verify_type ret_expr (StringMap.find name context.vars) context
-    | _-> _check_retcall ret_expr {context with scopes = List.tl context.scopes}
+    | Function (name,_) :: _ -> _verify_type ret_expr (StringMap.find name context.vars) context
+    | (For | While) :: t -> if is_first then add_warning "Return inside of a loop" 0;
+      _check_retcall ret_expr {context with scopes = t} ~is_first: false
+    | _ :: t -> _check_retcall ret_expr {context with scopes = t} ~is_first
 
 let rec get_fname_def_status scopes =
   match scopes with
     | [] -> false, ""
     | Function_definition name :: _ -> true, name
     | (Function (name,_))::_ -> false, name
-    | _::r -> get_fname_def_status r
+    | _ :: r -> get_fname_def_status r
 
 let _valid_pos context =
   let get_return_type name =
@@ -40,7 +42,7 @@ let _valid_pos context =
       | _ -> failwith "Illegal use"
   in
   match context.scopes with
-    | (Function (name,_)) :: _ when not (get_return_type name) -> false
+  | (Function (name,_)) :: _ when not (get_return_type name) -> false
     | _-> true
 
 (*Core*)
@@ -48,7 +50,7 @@ let _valid_pos context =
 let rec eval_code context =
   let rec _eval_code context =
     (if !Global.debug then
-    print_string ("[+]Scopes: [" ^(str_of_scopes context.scopes)^"\n")
+    print_string ("[+] Scopes: [" ^(str_of_scopes context.scopes)^"\n")
     else  () );
     let code = context.code and start_index = context.index in
     let depth = List.length context.scopes in
@@ -87,6 +89,7 @@ let rec eval_code context =
         | "retourner" -> let expr, i = get_line code context.index in
           let py_expr = try_update_err (get_line_no code context.index) (fun () -> eval_expression expr context.vars) in
           _check_retcall (expr_of_string expr) context;
+          try_update_warnings ~line: (get_line_no code start_index);
           let new_scopes = ret context.scopes name in
           let next, context = _eval_code {context with index = i; scopes = new_scopes} in
           get_indentation depth ^ "return " ^ py_expr ^ "\n" ^ next, context
@@ -200,9 +203,18 @@ and eval_si context =
     let expr, type_struct = try_update_err line (fun () -> eval_expression_with_type expr context.vars) in
     try_update_warnings ~line;
     if Type.is_compatible type_struct `Bool then
-      let next, context = eval_code {context with index}
-      in let next = if next = "" then get_indentation (depth + 1) ^ "pass\n" else next
-      in get_indentation depth ^ "if " ^ expr ^ ":\n" ^ next, context
+      if expr = "False" then
+        let _, context = eval_code {context with index} in
+        add_warning ~line "Condition is always false" 3;
+        "", context
+      else
+        begin
+          if expr = "True" then
+            add_warning ~line "Condition is always true" 3;
+          let next, context = eval_code {context with index}
+          in let next = if next = "" then get_indentation (depth + 1) ^ "pass\n" else next
+          in get_indentation depth ^ "if " ^ expr ^ ":\n" ^ next, context
+        end
     else
       raise_unexpected_type_error (Type.to_string `Bool) (Type.to_string type_struct) ~line
   | _ -> raise_syntax_error "si statement must start with 'si'" ~line
@@ -219,11 +231,16 @@ and eval_sinon_si context =
     if Type.is_compatible type_struct `Bool then
       if expr = "False" then
         let _, context = eval_code {context with index} in
+        add_warning ~line "Condition is always false" 3;
         "", context
       else
-        let next, context = eval_code {context with index}  in
-        let next = if next = "" then get_indentation (depth + 1) ^ "pass\n" else next in
-        get_indentation depth ^ "elif " ^ expr ^ ":\n" ^ next, context
+        begin
+          if expr = "True" then
+            add_warning ~line "Condition is always true" 3;
+          let next, context = eval_code {context with index}  in
+          let next = if next = "" then get_indentation (depth + 1) ^ "pass\n" else next in
+          get_indentation depth ^ "elif " ^ expr ^ ":\n" ^ next, context
+        end
     else
       raise_unexpected_type_error (Type.to_string `Bool) (Type.to_string `Bool) ~line
   | _ -> raise_syntax_error "sinon_si statement must start with 'sinon_si'" ~line

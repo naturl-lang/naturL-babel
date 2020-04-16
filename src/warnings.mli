@@ -1,4 +1,4 @@
 type warning
-val add_warning: ?line:int -> ?severity:int -> message:string -> unit
+val add_warning: ?line:int -> string -> int -> unit
 val try_update_warnings: line:int -> unit
-val warnings: warning Queue.t
+val print_warnings: severity:int -> unit

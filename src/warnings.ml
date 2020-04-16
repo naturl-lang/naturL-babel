@@ -8,7 +8,7 @@ let final = Queue.create()
 let staged  = Queue.create()
 
 
-let add_warning ?line ?(severity = 0) ~message =
+let add_warning ?line message severity =
   let warning = { message; severity; line } in
   match line with
     | None -> Queue.add warning staged
@@ -20,4 +20,11 @@ let try_update_warnings ~line =
     (fun { message; severity; _ } -> Queue.add { message; severity; line } final);
   Queue.clear staged
 
-let warnings = Queue.copy final
+let print_warning min_severity = function
+    { message; severity; line = Some line} when severity >= min_severity ->
+    Printf.fprintf stderr "Warning at line %d: %s.\n" line message
+  | _ -> ()
+
+let print_warnings ~severity =
+  final |> Queue.iter
+    (fun warning -> print_warning severity warning)
