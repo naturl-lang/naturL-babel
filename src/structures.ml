@@ -20,7 +20,7 @@ module Type = struct
     | `Float -> "reel"
     | `Char -> "caractere"
     | `String -> "chaine"
-    | `Bool -> "boolean"
+    | `Bool -> "booleen"
     | `List `Any -> "liste"
     | `List t -> "liste de " ^ to_string t
     | `Function (params, return) -> (match return with
@@ -37,7 +37,7 @@ module Type = struct
     | "reel" :: [] -> `Float
     | "caractere" :: [] -> `Char
     | "chaine" :: [] -> `String
-    | "boolean" :: [] -> `Bool
+    | "booleen" :: [] -> `Bool
     | "liste" :: [] -> `List `Any
     | "liste" :: "de" :: t -> `List (of_string (String.concat " " t))
     | "procedure" :: params  :: [] -> `Function (List.map of_string (String.split_on_char 'x' params), `None)
@@ -149,37 +149,37 @@ type scope =
   | If
   | Else
   | While
-  | For 
+  | For
   | Function of string * bool
-  | Function_definition of string 
+  | Function_definition of string
 
-let set_fscope_name scopes name = 
-  match scopes with 
-    |(Function (_, rflag))::r -> (Function (name,rflag))::r 
-    |(Function_definition _)::r -> (Function_definition name)::r
-    |_ -> failwith "set_fscope_name: Illegal use of the function"
+let set_fscope_name scopes name =
+  match scopes with
+    | Function (_, rflag) :: r -> Function (name, rflag) :: r
+    | Function_definition _ :: r -> Function_definition name :: r
+    | _ -> failwith "set_fscope_name: Illegal use of the function"
 
-let rec has_returned scopes name = 
-  match scopes with 
-    |(Function (fname, ret))::_ when fname = name -> ret
-    |[] -> false   
-    |_::r -> has_returned r name 
+let rec has_returned scopes name =
+  match scopes with
+    | Function (fname, ret) :: _ when fname = name -> ret
+    | [] -> false
+    | _ :: r -> has_returned r name
 
-let rec ret scopes name = 
-  match scopes with 
-    |(Function (fname,_))::r when fname = name -> (Function (name, true))::r
-    |[] -> failwith ("ret: Unexpected error: the function name does not match: "^name)
-    |e::r -> e::(ret r name)  
+let rec ret scopes name =
+  match scopes with
+    | Function (fname, _) :: r when fname = name -> Function (name, true) :: r
+    | [] -> failwith ("ret: Unexpected error: the function name does not match: " ^ name)
+    | e :: r -> e :: ret r name
 
-let rec str_of_scopes scopes = 
-  match scopes with 
-    |[] -> "]"
-    | If::r -> "if, "^(str_of_scopes r)
-    | Else::r -> "else, "^(str_of_scopes r)
-    | While::r -> "while, "^(str_of_scopes r)
-    | For ::r -> "for, "^(str_of_scopes r)
-    | (Function(name, rflag))::r -> "fun " ^ name ^" "^(string_of_bool rflag)^", "^(str_of_scopes r)
-    | (Function_definition name)::r -> "fun_def " ^ name ^", "^(str_of_scopes r)
+let rec str_of_scopes scopes =
+  match scopes with
+    | [] -> "]"
+    | If :: r -> "if, " ^ str_of_scopes r
+    | Else :: r -> "else, " ^ str_of_scopes r
+    | While :: r -> "while, " ^ str_of_scopes r
+    | For :: r -> "for, " ^ str_of_scopes r
+    | Function (name, rflag) :: r -> "fun " ^ name ^ " " ^ (string_of_bool rflag) ^ ", " ^ str_of_scopes r
+    | Function_definition name :: r -> "fun_def " ^ name ^ ", " ^ str_of_scopes r
 
 (* The current context of the code *)
 type context = {
