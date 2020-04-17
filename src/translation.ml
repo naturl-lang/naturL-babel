@@ -117,8 +117,8 @@ let rec eval_code context =
             else
               raise_unexpected_type_error_with_name var (Type.to_string var_type) (Type.to_string expr_type) ~line: (get_line_no code index)
           else (* Expression, e.g: function call *)
-            let expr, index = get_line code (index - 1) in
-            let expr = try_update_err line_no (fun () -> eval_expression (word ^ expr) context.vars) in
+            let expr, index = get_line code start_index in
+            let expr = try_update_err line_no (fun () -> eval_expression expr context.vars) in
             let next, context = _eval_code {context with index} in
             get_indentation depth ^ expr ^ "\n" ^ next, context
   in _eval_code context
@@ -136,7 +136,7 @@ and eval_variables context =
        let word, index = get_word code index
        in if word = "debut" then
          vars, index - 6
-       else if word = "àvariables" then
+       else if word = "variables" then
          _eval_variables vars code index
        else if word = "fin" then
          raise_syntax_error "Unexpected token 'fin'" ~line: line_no

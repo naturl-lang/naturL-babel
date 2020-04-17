@@ -1,4 +1,4 @@
-fonction __rechercher(liste l, ? x, entier g, entier d) -> boolean
+fonction __rechercher(liste l, ? x, entier g, entier d) -> booleen
   variables
     entier m
 debut
@@ -14,7 +14,7 @@ debut
     retourner vrai
 fin
 
-fonction rechercher(liste l, ? x) -> boolean
+fonction rechercher(liste l, ? x) -> booleen
 debut
     retourner __rechercher(l, x, 1, taille(l)) 
 fin
