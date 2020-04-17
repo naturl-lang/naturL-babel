@@ -105,8 +105,10 @@ module Value = struct
       Bool (str = "vrai")
     else if Str.string_match (Str.regexp ("^" ^ name_re ^ "$")) str 0 then
       Variable str
+    else if str = "" then
+      raise_syntax_error "Expected operand"
     else
-      raise_name_error ("Can not resolve operand '" ^ str ^ "'")
+      raise_syntax_error "Invalid expression"
 
   let get_type vars = function
     | Int _ -> `Int

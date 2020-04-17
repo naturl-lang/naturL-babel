@@ -79,7 +79,7 @@ open (struct
     | op -> raise_syntax_error ("Unknown operator '" ^ op ^ "'")
 
   let string_of_token = function
-    | Operator str | Identifier str | Litteral str -> " " ^ str ^ " "
+    | Operator str | Identifier str | Litteral str -> str ^ " "
     | OpenP | CloseP | OpenHook | CloseHook -> ""
     | Coma -> ", "
 
@@ -129,7 +129,7 @@ let expr_of_string str : Expr.t =
     | "=", Value v1, Value v2 when not (is_var v1 || is_var v2) -> Value (Bool Value.(to_string v1 = to_string v2))
     | ">", Value (Int x1), Value (Int x2) -> Value (Bool (x1 > x2))
     | ">", Value (Float x1), Value (Float x2) -> Value (Bool (x1 > x2))
-    | ">=", Value (Int x1), Value (Int x2) -> Value (Bool (x1 >=x2))
+    | ">=", Value (Int x1), Value (Int x2) -> Value (Bool (x1 >= x2))
     | ">=", Value (Float x1), Value (Float x2) -> Value (Bool (x1 >= x2))
     | "<", Value (Int x1), Value (Int x2) -> Value (Bool (x1 < x2))
     | "<", Value (Float x1), Value (Float x2) -> Value (Bool (x1 < x2))
@@ -199,8 +199,10 @@ let expr_of_string str : Expr.t =
            let right = split_params (list_of_queue right) in
            List (List.map expr_of_tokens right) end
          else (* Function call *)
-           let right = split_params (list_of_queue right) in
-           Call (op, List.map expr_of_tokens right)
+           ((if not (Queue.is_empty left) then
+               raise_syntax_error "Invalid expression");
+            let right = split_params (list_of_queue right) in
+            Call (op, List.map expr_of_tokens right))
   in  _simplify (expr_of_tokens (tokenize str))
 
 
@@ -222,7 +224,7 @@ let rec type_of_expr vars : Expr.t -> Type.t = function
       raise_type_error ("Can't compare expressions of type " ^ (Type.to_string l_type) ^ " and type " ^ (Type.to_string r_type))
   | List [] -> `List `Any
   | List (h :: t) -> if is_list_uniform vars (List.map (type_of_expr vars) (h :: t)) then `List (type_of_expr vars h)
-    else raise_name_error ("All elements of a list must have the same type")
+    else raise_type_error ("All elements of a list must have the same type")
   | Call (name, params) -> let params_types = List.map (type_of_expr vars) params in
     (try (match StringMap.find name vars with
          | `Function (p, return) as f ->
