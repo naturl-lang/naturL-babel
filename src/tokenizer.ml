@@ -28,6 +28,7 @@ let print_tokens tokens = List.iter print_token tokens;;
 let tokenize input =
   let _tokenize input =
     let reg_identifier = Str.regexp "[a-zA-Z_][a-zA-Z_0-9]*"
+    and reg_mod_identifier = Str.regexp {|\([a-zA-Z_][\.a-Za-z_0-9]*\)\.[a-zA-Z_0-9][a-zA-Z_0-9]*|}
     and reg_boolean = Str.regexp "vrai\\|faux"
     and reg_number = Str.regexp "[0-9]+\\.?[0-9]*"
     and reg_operator = Str.regexp {|ou\|et\|non\|=\|!=\|<=\|>=\|<\|>\|*\|fois\|+\|-\|/\|div\|mod|}
@@ -44,7 +45,7 @@ let tokenize input =
         []
       else
       if input.[index] = ' ' then
-        _tokenize input (index+1)
+        _tokenize input (index + 1)
       else
       if Str.string_match reg_operator input index then
         let token = Str.matched_string input in
@@ -53,6 +54,16 @@ let tokenize input =
               || Str.string_match reg_boolean input index || Str.string_match reg_char input index then
         let token = Str.matched_string input in
         (Litteral token) :: _tokenize input (index + (String.length token))
+      else if Str.string_match reg_mod_identifier input index then
+        let dependency = Str.matched_group 1 input in
+        let token = Str.matched_group 0 input in
+        if List.mem token Syntax.keywords then
+          raise_syntax_error ("Invalid token in expression: '" ^ token ^ "' is a reserved keyword")
+        else if not (List.mem dependency !Global.imports) then begin
+          List.iter (fun d -> print_endline d) !Global.imports;
+          raise_name_error ("Unknown module '" ^ dependency ^ "'") end
+        else
+          (Identifier token) :: _tokenize input (index + (String.length token))
       else if Str.string_match reg_identifier input index then
         let token = Str.matched_string input in
         if List.mem token Syntax.keywords then
@@ -60,9 +71,9 @@ let tokenize input =
         else
           (Identifier token) :: _tokenize input (index + (String.length token))
       else if Str.string_match reg_openp input index then
-        OpenP :: _tokenize input (index+1)
+        OpenP :: _tokenize input (index + 1)
       else if Str.string_match reg_closep input index then
-        CloseP :: _tokenize input (index+1)
+        CloseP :: _tokenize input (index + 1)
       else if Str.string_match reg_coma input index then
         Coma :: _tokenize input (index+1)
       else if Str.string_match reg_openhook input index then

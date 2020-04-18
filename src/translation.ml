@@ -81,6 +81,7 @@ let rec eval_code context =
       if word <> "debut" && word <> "variables" && is_def then
         raise_syntax_error ~line: (get_line_no code (start_index + 2)) "Expected 'debut' after function definition"
       else match word with
+        | "utilise" -> _eval_code (eval_utilise context)
         | "variables" -> _eval_code (eval_variables context)
         | "debut" -> if is_def then
             eval_code {context with scopes = (Function (name,false)):: List.tl context.scopes}
@@ -125,6 +126,20 @@ let rec eval_code context =
   in _eval_code context
 
 
+(* Eval the files corresponding to the modules and import them in the python code *)
+and eval_utilise context =
+  let line_no = get_line_no context.code context.index in
+  let line, index = get_line context.code context.index in
+  let dependencies = String.split_on_char ',' line in
+  let contents = try_update_err line_no (fun () -> dependencies |> List.map (fun m -> get_imported_content m)) in
+  let vars = contents
+             |> List.map (function prefix, code ->
+                 StringMap.empty
+                 |> ((get_code_context code).vars
+                     |> StringMap.fold (fun key -> fun v -> fun m -> StringMap.add (prefix ^ "." ^ key) v m)))
+             |> List.fold_left (StringMap.union (fun _ -> fun _ -> fun t -> Some t)) context.vars
+  in { context with index; vars }
+
 (* This function only adds the new declared variables in the set *)
 and eval_variables context =
   let {code; index; vars; scopes} = context in
@@ -152,7 +167,7 @@ and eval_variables context =
 
 and eval_fonction context =
   let depth = List.length context.scopes - 1 in
-  let line = get_line_no context.code context.index  in
+  let line = get_line_no context.code context.index in
   (* A function is divided in a header (the name), parameters and a return type.
      This functions combine those parts *)
   let check_return_type i =
@@ -174,8 +189,9 @@ and eval_fonction context =
   let cscopes = context.scopes in (*cscopes = current scopes*)
   try_update_warnings ~line;
   let next, context = eval_code {context with index = index; vars = vars; scopes = set_fscope_name cscopes name} in
+  let offset = if context.index >= String.length context.code - 1 then "" else "\n\n" in
   let next = if next = "" then get_indentation (depth + 1) ^ "pass\n" else next in
-  get_indentation depth ^ "def " ^ name ^ "(" ^ names ^ "):\n" ^ next, {context with vars = prev_vars}
+  get_indentation depth ^ "def " ^ name ^ "(" ^ names ^ "):\n" ^ next ^ offset, {context with vars = prev_vars}
 
 and eval_procedure context =
   let depth = List.length context.scopes - 1 in
@@ -190,8 +206,9 @@ and eval_procedure context =
   let cscopes = context.scopes in (*cscopes = current scopes*)
   try_update_warnings ~line;
   let next, context = eval_code {context with vars = vars; index = index; scopes = set_fscope_name cscopes name} in
+  let offset = if context.index >= String.length context.code - 1 then "" else "\n\n" in
   let next = if next = "" then get_indentation (depth + 1) ^ "pass\n" else next in
-  get_indentation depth ^ "def " ^ name ^ "(" ^ names ^ "):\n" ^ next, {context with vars = prev_vars}
+  get_indentation depth ^ "def " ^ name ^ "(" ^ names ^ "):\n" ^ next ^ offset, {context with vars = prev_vars}
 
 and eval_si context =
   let code = context.code in
@@ -321,7 +338,18 @@ and control_keywords =
     "tant_que", (While, eval_tant_que)
   ]
 
+
+and get_code_context code =
+  let code = String.trim code and index = 0 and vars = StringMap.empty and scopes = [] in
+  let _, context = try_catch stderr (fun () -> eval_code {code; index; vars; scopes})
+  in context
+
 let translate_code code =
   let code = String.trim code and index = 0 and vars = StringMap.empty and scopes = [] in
-  let translation, _ = try_catch stderr (fun () -> eval_code {code; index; vars; scopes})
-  in String.trim translation
+  let translation, _ = try_catch stderr (fun () -> eval_code {code; index; vars; scopes}) in
+  let translation = String.trim translation in
+  let translation = if (!Global.imports <> [] && let word, _ = get_word code 0 in word = "fonction")
+    then translation ^ "\n"
+    else translation
+  in List.fold_left (fun imports -> fun import -> "import " ^ import ^ "\n" ^ imports) "\n" !Global.imports
+     ^ String.trim translation

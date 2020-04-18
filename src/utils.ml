@@ -2,6 +2,16 @@ module StringMap = Map.Make(String)
 module StringSet = Set.Make(String)
 
 
+let read_file name =
+  let chan = open_in name in
+  let content = ref "" in
+  (try
+     while true do
+       content := !content ^ "\n" ^ input_line chan;
+     done
+   with End_of_file -> close_in chan);
+  !content
+
 let get_indentation depth =
   let rec _get_indentation depth =
     if depth = 0 then

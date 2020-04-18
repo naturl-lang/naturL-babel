@@ -45,5 +45,3 @@ let functions =
 
 let add_builtins map =
   StringMap.fold (function name -> function value -> StringMap.add name value) map functions
-
-let imports = ref StringSet.empty

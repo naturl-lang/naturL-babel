@@ -5,6 +5,7 @@ val name_error : string -> int -> out_channel -> 'a
 val raise_syntax_error: ?line: int -> string -> 'a
 val raise_name_error: ?line: int -> string -> 'a
 val raise_type_error: ?line: int -> string -> 'a
+val raise_import_error: ?line: int -> string -> 'a
 val raise_unexpected_type_error: ?line: int -> string -> string -> 'a
 val raise_unexpected_type_error_with_name: ?line: int -> string -> string -> string -> 'a
 
