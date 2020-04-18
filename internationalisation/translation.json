@@ -1,0 +1,14 @@
+{
+    "SyntaxError": {
+        "fr": "Erreur de Syntaxe:",
+        "en": "Syntax Error:"
+    },
+    "TypeError": {
+        "fr": "Erreur de Type:",
+        "en": "Type Error:"
+    },
+    "NameError": {
+        "fr": "Erreur de nommage:",
+        "en": "Name error:"
+   }
+}

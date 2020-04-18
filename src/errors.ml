@@ -1,12 +1,14 @@
+open Internationalisation.Translation
+
 let _error name message line oc =
   Printf.fprintf oc "%s at line %d: %s\n" name line message;
   exit 2
 
-let syntax_error = _error "Syntax error"
+let syntax_error message line oc = _error (get_string SyntaxError)  message line oc
 
-let type_error = _error "Type error"
+let type_error message line oc = _error (get_string TypeError) message line oc
 
-let name_error = _error "Name error"
+let name_error message line oc = _error (get_string NameError) message line oc
 
 exception SyntaxError of string * int option
 exception TypeError of string * int option
