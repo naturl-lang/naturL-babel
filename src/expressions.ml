@@ -203,7 +203,7 @@ let expr_of_string str : Expr.t =
                raise_syntax_error "Invalid expression");
             let right = split_params (list_of_queue right) in
             Call (op, List.map expr_of_tokens right))
-  in  _simplify (expr_of_tokens (tokenize str))
+  in _simplify (expr_of_tokens (tokenize str))
 
 
 (* Returns the type of an expression *)
@@ -228,8 +228,10 @@ let rec type_of_expr vars : Expr.t -> Type.t = function
   | Call (name, params) -> let params_types = List.map (type_of_expr vars) params in
     (try (match StringMap.find name vars with
          | `Function (p, return) as f ->
-           if List.for_all2 Type.is_compatible params_types p then return
-           else raise_unexpected_type_error_with_name name (Type.to_string f) (Type.to_string (`Function (params_types, `Any)))
+           if List.length p = List.length params && List.for_all2 Type.is_compatible params_types p then
+             return
+           else
+             raise_unexpected_type_error_with_name name (Type.to_string f) (Type.to_string (`Function (params_types, `Any)))
          | _ as t -> raise_type_error ("Variables of type " ^ (Type.to_string t) ^ " are not callable"))
      with Not_found -> (
          try let builtin = StringMap.find name Builtins.functions in

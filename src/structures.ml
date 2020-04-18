@@ -97,7 +97,7 @@ module Value = struct
       Int (int_of_string str)
     else if Str.string_match (Str.regexp {|^[0-9]+.[0-9]*$|}) str 0 then
       Float (float_of_string str)
-    else if Str.string_match (Str.regexp {|^'\(.)\)'$|}) str 0 then
+    else if Str.string_match (Str.regexp {|^'\(.\)'$|}) str 0 then
       Char (Str.matched_group 1 str).[0]
     else if Str.string_match (Str.regexp {|^"\(.*\)"$|}) str 0 then
       String (Str.matched_group 1 str)
@@ -107,8 +107,9 @@ module Value = struct
       Variable str
     else if str = "" then
       raise_syntax_error "Expected operand"
-    else
-      raise_syntax_error "Invalid expression"
+    else begin
+      print_endline str;
+      raise_syntax_error "Invalid expression" end
 
   let get_type vars = function
     | Int _ -> `Int

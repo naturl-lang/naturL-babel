@@ -117,8 +117,9 @@ let rec eval_code context =
             else
               raise_unexpected_type_error_with_name var (Type.to_string var_type) (Type.to_string expr_type) ~line: (get_line_no code index)
           else (* Expression, e.g: function call *)
-            let expr, index = get_line code start_index in
-            let expr = try_update_err line_no (fun () -> eval_expression expr context.vars) in
+            let index = ignore_chrs code start_index in
+            let line, index = get_line code index in
+            let expr = try_update_err line_no (fun () -> eval_expression line context.vars) in
             let next, context = _eval_code {context with index} in
             get_indentation depth ^ expr ^ "\n" ^ next, context
   in _eval_code context
