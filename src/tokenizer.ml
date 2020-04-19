@@ -1,4 +1,3 @@
-open Utils
 open Errors
 
 type token =
@@ -55,12 +54,12 @@ let tokenize input =
         let token = Str.matched_string input in
         (Litteral token) :: _tokenize input (index + (String.length token))
       else if Str.string_match reg_mod_identifier input index then
-        let dependency = Str.matched_group 1 input in
+        let namespace = Str.matched_group 1 input in
         let token = Str.matched_group 0 input in
         if List.mem token Syntax.keywords then
           raise_syntax_error ("Invalid token in expression: '" ^ token ^ "' is a reserved keyword")
-        else if not (StringSet.mem dependency !Global.imports) then
-          raise_name_error ("Unknown module '" ^ dependency ^ "'")
+        else if not (Imports.is_namespace_imported namespace) then
+          raise_name_error ("Unknown module '" ^ namespace ^ "'")
         else
           (Identifier token) :: _tokenize input (index + (String.length token))
       else if Str.string_match reg_identifier input index then

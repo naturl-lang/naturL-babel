@@ -2,6 +2,7 @@ open Str
 open Utils
 open Errors
 open Warnings
+open Imports
 open Structures
 open Getters
 open Expressions
@@ -132,10 +133,11 @@ and eval_utiliser context =
   let line, index = get_line context.code context.index in
   let dependencies = String.split_on_char ',' line in
   let vars = List.flatten (try_update_err line_no (fun () -> dependencies |> List.map get_imported_files_infos))
-             |> List.map (function content, cwdir, namespace, _ ->
-                 if namespace <> "" then Global.imports := StringSet.add namespace !Global.imports; Sys.chdir cwdir;
+             |> List.map (function content, cwdir, namespace, _, element ->
+                 add_import namespace element;
+                 Sys.chdir cwdir;
                  let new_context = get_code_context content in Sys.chdir "..";
-                 let prefix = if namespace <> "" then namespace ^ "." else "" in
+                 let prefix = if element = None then namespace ^ "." else "" in
                  context.vars
                  |> StringMap.fold (fun key -> fun value -> fun map -> StringMap.add (prefix ^ key) value map) new_context.vars)
              |> List.fold_left (StringMap.union (fun _ -> fun _ -> fun t -> Some t)) context.vars
@@ -349,8 +351,7 @@ let translate_code code =
   let code = String.trim code and index = 0 and vars = StringMap.empty and scopes = [] in
   let translation, _ = try_catch stderr (fun () -> eval_code {code; index; vars; scopes}) in
   let translation = String.trim translation in
-  let translation = if (not (StringSet.is_empty !Global.imports) && let word, _ = get_word translation 0 in word = "def")
+  let translation = if not (are_imports_empty ()) && let word, _ = get_word translation 0 in word = "def"
     then "\n" ^ translation
     else translation
-  in StringSet.fold (fun import -> fun imports -> "import " ^ import ^ "\n" ^ imports) !Global.imports ""
-     ^ (if StringSet.is_empty !Global.imports then "" else "\n") ^ translation
+  in get_imports () ^ (if are_imports_empty () then "" else "\n") ^ translation
