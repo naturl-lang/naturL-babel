@@ -172,7 +172,11 @@
 		"en": " is not subscriptable"
 	},
 	"ListIndicesIntegers": {
-		"fr": "Les indices d'accès aux listes doivent êtres entiers",
-		"en": "List indices must be integers"
-	}
+	   "fr": "Les indices d'accès aux listes doivent êtres entiers",
+     "en": "List indices must be integers"
+  },
+  "ImportError":{
+      "fr": "Erreur lors de l'importation du module '",
+      "en": "Error while importing module '"
+  }
 }
