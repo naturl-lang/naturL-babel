@@ -25,7 +25,7 @@ let raise_name_error ?(line) message =
 let raise_type_error ?(line) message =
   raise (TypeError (message, line))
 let raise_unexpected_type_error ?(line) expected found =
-  let message = (get_string NameTypeMessage) ^ expected ^ (get_string ButGotMessage) ^ found ^ "'" in
+  let message = (get_string NameTypeMessage) ^ expected ^ (get_string NameButGotMessage) ^ found ^ "'" in
   match line with
   | Some line -> raise_type_error message ~line
   | None -> raise_type_error message
