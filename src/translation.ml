@@ -133,7 +133,7 @@ and eval_utiliser context =
   let dependencies = String.split_on_char ',' line in
   let vars = List.flatten (try_update_err line_no (fun () -> dependencies |> List.map get_imported_files_infos))
              |> List.map (function content, cwdir, namespace, _ ->
-                 if namespace <> "" then Global.imports := namespace :: !Global.imports; Sys.chdir cwdir;
+                 if namespace <> "" then Global.imports := StringSet.add namespace !Global.imports; Sys.chdir cwdir;
                  let new_context = get_code_context content in Sys.chdir "..";
                  let prefix = if namespace <> "" then namespace ^ "." else "" in
                  context.vars
@@ -349,8 +349,8 @@ let translate_code code =
   let code = String.trim code and index = 0 and vars = StringMap.empty and scopes = [] in
   let translation, _ = try_catch stderr (fun () -> eval_code {code; index; vars; scopes}) in
   let translation = String.trim translation in
-  let translation = if (!Global.imports <> [] && let word, _ = get_word code 0 in word = "fonction")
-    then translation ^ "\n"
+  let translation = if (not (StringSet.is_empty !Global.imports) && let word, _ = get_word translation 0 in word = "def")
+    then "\n" ^ translation
     else translation
-  in List.fold_left (fun imports -> fun import -> "import " ^ import ^ "\n" ^ imports) "\n" !Global.imports
-     ^ String.trim translation
+  in StringSet.fold (fun import -> fun imports -> "import " ^ import ^ "\n" ^ imports) !Global.imports ""
+     ^ (if StringSet.is_empty !Global.imports then "" else "\n") ^ translation

@@ -105,34 +105,39 @@ let get_var name vars =
 (* Returns information about the files that need to be imported : *)
 (* A list of tuples (file_content, cwdir, namespace, infos) *)
 (* where cwdir is the absolute path of the file's parent directory *)
-let rec get_imported_files_infos ?(prefix = "") name =
+let rec get_imported_files_infos ?(prefix = "") ?(is_wild_card = false) name =
   let id_reg = "[a-zA-Z_][a-zA-Z0-9_]*" in
-  let r = regexp ("\\(" ^ id_reg ^ "\\)\\(\\(\\." ^ id_reg ^ "\\)+\\)") in
-  if Str.string_match r name 0 then
+  let r = "\\(" ^ id_reg ^ "\\)\\(\\(\\." ^ id_reg ^ "\\)" in
+  if Str.string_match (Str.regexp (r ^ "+\\)$")) name 0 then
     let dir =  Str.matched_group 1 name in
+    let name = Str.matched_group 2 name in
+    let name = String.sub name 1 (String.length name - 1) in
     if Sys.file_exists dir && Sys.is_directory dir then
-      let name = Str.matched_group 2 name in
-      let name = String.sub name 1 (String.length name - 1) in
-      Sys.chdir dir;
-      let infos = get_imported_files_infos name ~prefix: (prefix ^ dir ^ ".") in
-      Sys.chdir "..";
-      infos
+      begin
+        Sys.chdir dir;
+        let infos = get_imported_files_infos name ~prefix: (prefix ^ dir ^ ".")  ~is_wild_card in
+        Sys.chdir "..";
+        infos
+      end
     else
       raise_import_error ("Unknown package '" ^ dir ^ "'")
+  else if Str.string_match (Str.regexp (r ^ "*\\)\\.\\*$")) name 0 then
+    let name = matched_group 1 name ^ (matched_group 2 name) in
+    get_imported_files_infos ~is_wild_card: true name
   else if Sys.file_exists (name ^ ".ntl") && not (Sys.is_directory (name ^ ".ntl")) then
     let content = read_file (name ^ ".ntl") in
     let cwdir = Sys.getcwd () in
-    let namespace = prefix ^ name in
+    let namespace = if is_wild_card then "" else prefix ^ name in
     [content, cwdir, namespace, name]
   else if Sys.file_exists name && Sys.is_directory name then
-    let naturl_package = name ^ "/naturl-package" in
+    let naturl_package = Filename.concat name "naturl-package" in
     if Sys.file_exists naturl_package && not (Sys.is_directory naturl_package) then
       let dir = name in
-      let namespace = prefix ^ dir in
+      let namespace = if is_wild_card then "" else prefix ^ dir in
       Sys.chdir dir;
       let infos = read_lines "naturl-package"
                   |> List.map (fun name ->
-                      get_imported_files_infos name ~prefix: (prefix ^ dir ^ ".")
+                      get_imported_files_infos name ~prefix: (prefix ^ dir ^ ".") ~is_wild_card
                       |> List.map (function content, cwdir, _, name -> content, cwdir, namespace, name))
                 |> List.concat in
       Sys.chdir "..";

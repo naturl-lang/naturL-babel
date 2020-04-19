@@ -1,4 +1,4 @@
-(*#load "str.cma";;*)
+open Utils
 open Errors
 
 type token =
@@ -59,7 +59,7 @@ let tokenize input =
         let token = Str.matched_group 0 input in
         if List.mem token Syntax.keywords then
           raise_syntax_error ("Invalid token in expression: '" ^ token ^ "' is a reserved keyword")
-        else if not (List.mem dependency !Global.imports) then
+        else if not (StringSet.mem dependency !Global.imports) then
           raise_name_error ("Unknown module '" ^ dependency ^ "'")
         else
           (Identifier token) :: _tokenize input (index + (String.length token))

@@ -1,2 +1,4 @@
+open Utils
+
 let debug = ref false
-let imports: string list ref = ref []
+let imports = ref StringSet.empty
