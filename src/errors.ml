@@ -1,7 +1,10 @@
 open Internationalisation.Translation
 
 let _error name message line oc =
-  Printf.fprintf oc "%s at line %d: %s\n" name line message;
+  if !lang = French then
+    Printf.fprintf oc "%s à la ligne %d: %s\n" name line message
+  else
+    Printf.fprintf oc "%s at line %d: %s\n" name line message;
   exit 2
 
 let syntax_error message line oc = _error (get_string SyntaxError)  message line oc
@@ -22,12 +25,12 @@ let raise_name_error ?(line) message =
 let raise_type_error ?(line) message =
   raise (TypeError (message, line))
 let raise_unexpected_type_error ?(line) expected found =
-  let message = "Expected an expression of type '" ^ expected ^ "' but got '" ^ found ^ "'" in
+  let message = (get_string NameTypeMessage) ^ expected ^ (get_string ButGotMessage) ^ found ^ "'" in
   match line with
   | Some line -> raise_type_error message ~line
   | None -> raise_type_error message
 let raise_unexpected_type_error_with_name ?(line) name expected found =
-  let message = "'" ^ name ^ "' has type '" ^ expected ^ "' but got '" ^ found ^ "'" in
+  let message = "'" ^ name ^ (get_string HasTypeMessage) ^ expected ^ (get_string ButGotMessage) ^ found ^ "'" in
   match line with
   | Some line -> raise_type_error message ~line
   | None -> raise_type_error message

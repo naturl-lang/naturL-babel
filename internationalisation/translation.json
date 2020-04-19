@@ -1,14 +1,26 @@
 {
     "SyntaxError": {
-        "fr": "Erreur de Syntaxe:",
-        "en": "Syntax Error:"
+        "fr": "Erreur de Syntaxe",
+        "en": "Syntax Error"
     },
     "TypeError": {
-        "fr": "Erreur de Type:",
-        "en": "Type Error:"
+        "fr": "Erreur de Type",
+        "en": "Type Error"
     },
     "NameError": {
-        "fr": "Erreur de nommage:",
-        "en": "Name error:"
-   }
+        "fr": "Erreur de nommage",
+        "en": "Name error"
+    },
+    "NameTypeMessage": {
+        "fr": "Cette est expression est du type '",
+        "en": "Expected an expression of type '"
+    },
+    "HasTypeMessage":{
+        "fr":"' à la type '",
+        "en":"' has type '"
+    },
+    "ButGotMessage": {
+        "fr": "' mais le type attendu était '",
+        "en": "' but got '"
+    }
 }
