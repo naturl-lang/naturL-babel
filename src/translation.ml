@@ -81,7 +81,7 @@ let rec eval_code context =
       if word <> "debut" && word <> "variables" && is_def then
         raise_syntax_error ~line: (get_line_no code (start_index + 2)) "Expected 'debut' after function definition"
       else match word with
-        | "utilise" -> _eval_code (eval_utilise context)
+        | "utiliser" -> _eval_code (eval_utiliser context)
         | "variables" -> _eval_code (eval_variables context)
         | "debut" -> if is_def then
             eval_code {context with scopes = (Function (name,false)):: List.tl context.scopes}
@@ -127,7 +127,7 @@ let rec eval_code context =
 
 
 (* Eval the files corresponding to the modules and import them in the python code *)
-and eval_utilise context =
+and eval_utiliser context =
   let line_no = get_line_no context.code context.index in
   let line, index = get_line context.code context.index in
   let dependencies = String.split_on_char ',' line in
