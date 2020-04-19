@@ -59,9 +59,8 @@ let tokenize input =
         let token = Str.matched_group 0 input in
         if List.mem token Syntax.keywords then
           raise_syntax_error ("Invalid token in expression: '" ^ token ^ "' is a reserved keyword")
-        else if not (List.mem dependency !Global.imports) then begin
-          List.iter (fun d -> print_endline d) !Global.imports;
-          raise_name_error ("Unknown module '" ^ dependency ^ "'") end
+        else if not (List.mem dependency !Global.imports) then
+          raise_name_error ("Unknown module '" ^ dependency ^ "'")
         else
           (Identifier token) :: _tokenize input (index + (String.length token))
       else if Str.string_match reg_identifier input index then

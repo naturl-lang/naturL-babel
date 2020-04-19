@@ -12,6 +12,16 @@ let read_file name =
    with End_of_file -> close_in chan);
   !content
 
+let read_lines name =
+  let chan = open_in name in
+  let lines = ref [] in
+  (try
+     while true do
+       lines := input_line chan :: !lines
+     done
+   with End_of_file -> close_in chan);
+  !lines
+
 let get_indentation depth =
   let rec _get_indentation depth =
     if depth = 0 then

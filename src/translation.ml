@@ -131,12 +131,13 @@ and eval_utilise context =
   let line_no = get_line_no context.code context.index in
   let line, index = get_line context.code context.index in
   let dependencies = String.split_on_char ',' line in
-  let contents = try_update_err line_no (fun () -> dependencies |> List.map (fun m -> get_imported_content m)) in
-  let vars = contents
-             |> List.map (function prefix, code ->
-                 StringMap.empty
-                 |> ((get_code_context code).vars
-                     |> StringMap.fold (fun key -> fun v -> fun m -> StringMap.add (prefix ^ "." ^ key) v m)))
+  let vars = List.flatten (try_update_err line_no (fun () -> dependencies |> List.map get_imported_files_infos))
+             |> List.map (function content, cwdir, namespace, _ ->
+                 if namespace <> "" then Global.imports := namespace :: !Global.imports; Sys.chdir cwdir;
+                 let new_context = get_code_context content in Sys.chdir "..";
+                 let prefix = if namespace <> "" then namespace ^ "." else "" in
+                 context.vars
+                 |> StringMap.fold (fun key -> fun value -> fun map -> StringMap.add (prefix ^ key) value map) new_context.vars)
              |> List.fold_left (StringMap.union (fun _ -> fun _ -> fun t -> Some t)) context.vars
   in { context with index; vars }
 

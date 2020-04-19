@@ -101,31 +101,43 @@ let get_var name vars =
   try StringMap.find name vars
   with Not_found -> raise_name_error ("Unknown variable " ^ name)
 
-(* Search from the root directory *)
-let get_imported_content name =
-  let rec __get_imported_content ?(is_first = true) name =
-    let id_reg = "[a-zA-Z_][a-zA-Z0-9_]*" in
-    let r = regexp ("\\(" ^ id_reg ^ "\\)\\(\\(\\." ^ id_reg ^ "\\)+\\)") in
-    if Str.string_match r name 0 then
-      let dir = Str.matched_group 1 name in
-      if Sys.file_exists dir && Sys.is_directory dir then
-        let name = Str.matched_group 2 name in
-        Sys.chdir dir;
-        let content, dependency = __get_imported_content ~is_first: false (String.sub name 1 (String.length name - 1))
-        in Sys.chdir "..";
-        let dependency = dir ^ "." ^ dependency
-        in if is_first then Global.imports := dependency :: !Global.imports;
-        dependency, content
-      else
-        raise_import_error ("Unknown package '" ^ dir ^ "'")
-    else if Sys.file_exists (name ^ ".ntl") then
-      if not (Sys.is_directory (name ^ ".ntl")) then
-        begin
-          if is_first then Global.imports := name :: !Global.imports;
-          name, read_file (name ^ ".ntl")
-        end
-      else
-        raise_import_error ("Can not import package '" ^ name ^ "'")
+
+(* Returns information about the files that need to be imported : *)
+(* A list of tuples (file_content, cwdir, namespace, infos) *)
+(* where cwdir is the absolute path of the file's parent directory *)
+let rec get_imported_files_infos ?(prefix = "") name =
+  let id_reg = "[a-zA-Z_][a-zA-Z0-9_]*" in
+  let r = regexp ("\\(" ^ id_reg ^ "\\)\\(\\(\\." ^ id_reg ^ "\\)+\\)") in
+  if Str.string_match r name 0 then
+    let dir =  Str.matched_group 1 name in
+    if Sys.file_exists dir && Sys.is_directory dir then
+      let name = Str.matched_group 2 name in
+      let name = String.sub name 1 (String.length name - 1) in
+      Sys.chdir dir;
+      let infos = get_imported_files_infos name ~prefix: (prefix ^ dir ^ ".") in
+      Sys.chdir "..";
+      infos
     else
-      raise_import_error ("Unknown module or package '" ^ name ^ "'")
-  in __get_imported_content name
+      raise_import_error ("Unknown package '" ^ dir ^ "'")
+  else if Sys.file_exists (name ^ ".ntl") && not (Sys.is_directory (name ^ ".ntl")) then
+    let content = read_file (name ^ ".ntl") in
+    let cwdir = Sys.getcwd () in
+    let namespace = prefix ^ name in
+    [content, cwdir, namespace, name]
+  else if Sys.file_exists name && Sys.is_directory name then
+    let naturl_package = name ^ "/naturl-package" in
+    if Sys.file_exists naturl_package && not (Sys.is_directory naturl_package) then
+      let dir = name in
+      let namespace = prefix ^ dir in
+      Sys.chdir dir;
+      let infos = read_lines "naturl-package"
+                  |> List.map (fun name ->
+                      get_imported_files_infos name ~prefix: (prefix ^ dir ^ ".")
+                      |> List.map (function content, cwdir, _, name -> content, cwdir, namespace, name))
+                |> List.concat in
+      Sys.chdir "..";
+      infos
+    else
+      raise_import_error ("Can not import package '" ^ prefix ^ name ^ "' (missing naturl-package file)")
+  else
+    raise_import_error ("Unknown module or package '" ^ prefix ^ name ^ "'")
