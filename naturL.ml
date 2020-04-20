@@ -31,7 +31,9 @@ let speclist = [
   "--input", Arg.Set_string input_name, "The file that should be read. Default is stdin";
   "--output", Arg.Set_string output_name, "The file where the output should be printed. Default is stdout";
   "--warning", Arg.Set_int warning_severity, "The minimum severity of the warnings. Default is 0 (all warnings)";
-  "--debug", Arg.Set Src.Global.debug, "Display debug infos"
+  "--debug", Arg.Set Src.Global.debug, "Display debug infos";
+  "--import-mode", Arg.Symbol (["write-nothing"; "moderated"; "overwrite"], Src.Global.set_import_mode),
+  " Specify when imported .py files need to be generated.";
 ]
 
 

@@ -1,5 +1,6 @@
 open Str
 open Utils
+open Global
 open Structures
 open Errors
 
@@ -103,10 +104,21 @@ let get_var name vars =
 
 
 (* Returns information about the files that need to be imported : *)
-(* A list of tuples (file_content, cwdir, namespace, infos, element) *)
+(* A list of tuples (file_content, cwdir, namespace, name, element) *)
 (* where cwdir is the absolute path of the file's parent directory *)
 (* and element is an option indicating the imported element *)
 let rec get_imported_files_infos ?(prefix = "") ?(element = None) name =
+  (* Generate an __init__.py file corresponding to the given path *)
+  let generate__init__py () =
+    if !import_mode = Overwrite || !import_mode = Moderated && not (Sys.file_exists "__init__.py") then
+      let content = ref "" in
+      Sys.readdir "." |> Array.iter (function file ->
+          if Sys.is_directory file then
+            content := !content ^ "from ." ^ file ^ " import *\n"
+          else if Filename.extension file = ".ntl" then
+            content := !content ^ "from ." ^ (Filename.remove_extension file) ^ " import *\n");
+      write_file "__init__.py" !content
+  in
   let id_reg = "[a-zA-Z_][a-zA-Z0-9_]*" in
   let r = "\\(" ^ id_reg ^ "\\)\\(\\(\\." ^ id_reg ^ "\\)" in
   if Str.string_match (Str.regexp (r ^ "+\\)$")) name 0 then
@@ -126,20 +138,24 @@ let rec get_imported_files_infos ?(prefix = "") ?(element = None) name =
     let name = matched_group 1 name ^ (matched_group 2 name) in
     get_imported_files_infos ~element: (Some "*") name
   else if Sys.file_exists (name ^ ".ntl") && not (Sys.is_directory (name ^ ".ntl")) then
-    let content = read_file (name ^ ".ntl") in
-    let cwdir = Sys.getcwd () in
-    let namespace = prefix ^ name in
-    [content, cwdir, namespace, name, element]
+    let content = read_file (name ^ ".ntl")
+    and cwdir = Sys.getcwd ()
+    and namespace = prefix ^ name
+    and filename = Filename.concat (Sys.getcwd ()) name in
+    [content, cwdir, namespace, filename, element]
   else if Sys.file_exists name && Sys.is_directory name then
     let naturl_package = Filename.concat name "naturl-package" in
     if Sys.file_exists naturl_package && not (Sys.is_directory naturl_package) then
       let dir = name in
       let namespace = prefix ^ dir in
       Sys.chdir dir;
+      generate__init__py ();
+      let imports = ref [] in
       let infos = read_lines "naturl-package"
                   |> List.map (fun name ->
                       get_imported_files_infos name ~prefix: (prefix ^ dir ^ ".") ~element
-                      |> List.map (function content, cwdir, _, name, element -> content, cwdir, namespace, name, element))
+                      |> List.map (function content, cwdir, _, filename, element ->
+                          imports := namespace :: !imports;content, cwdir, namespace, filename, element))
                 |> List.concat in
       Sys.chdir "..";
       infos

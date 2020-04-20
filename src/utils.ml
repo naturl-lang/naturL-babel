@@ -22,6 +22,18 @@ let read_lines name =
    with End_of_file -> close_in chan);
   !lines
 
+let write_file name content =
+  let chan = open_out name in
+  Printf.fprintf chan "%s\n" content;
+  close_out chan
+
+let write_lines name lines =
+  let chan = open_out name in
+  let rec __write_lines = function
+    | [] -> ()
+    | line :: t -> Printf.fprintf chan "%s\n" line; __write_lines t
+  in __write_lines lines; close_out chan
+
 let get_indentation depth =
   let rec _get_indentation depth =
     if depth = 0 then

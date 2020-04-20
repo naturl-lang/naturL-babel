@@ -1,5 +1,6 @@
 open Str
 open Utils
+open Global
 open Errors
 open Warnings
 open Imports
@@ -129,12 +130,18 @@ let rec eval_code context =
 
 (* Eval the files corresponding to the modules and import them in the python code *)
 and eval_utiliser context =
+  let write_pyfile filename =
+    let naturl_name = filename ^ ".ntl" and py_name = filename ^ ".py" in
+    if !import_mode = Overwrite || !import_mode = Moderated && not (Sys.file_exists py_name) then
+      let code = translate_code (read_file naturl_name) in
+      write_file py_name code
+  in
   let line_no = get_line_no context.code context.index in
   let line, index = get_line context.code context.index in
   let dependencies = String.split_on_char ',' line in
   let vars = List.flatten (try_update_err line_no (fun () -> dependencies |> List.map get_imported_files_infos))
-             |> List.map (function content, cwdir, namespace, _, element ->
-                 add_import namespace element;
+             |> List.map (function content, cwdir, namespace, filename, element ->
+                 add_import namespace element; write_pyfile filename;
                  Sys.chdir cwdir;
                  let new_context = get_code_context content in Sys.chdir "..";
                  let prefix = if element = None then namespace ^ "." else "" in
@@ -347,7 +354,7 @@ and get_code_context code =
   let _, context = try_catch stderr (fun () -> eval_code {code; index; vars; scopes})
   in context
 
-let translate_code code =
+and translate_code code =
   let code = String.trim code and index = 0 and vars = StringMap.empty and scopes = [] in
   let translation, _ = try_catch stderr (fun () -> eval_code {code; index; vars; scopes}) in
   let translation = String.trim translation in
