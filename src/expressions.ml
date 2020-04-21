@@ -101,6 +101,7 @@ open (struct
   let rec is_list_uniform vars = function
     | h1 :: h2 :: t -> Type.is_compatible h1 h2 && is_list_uniform vars (h2 :: t)
     | _ -> true
+
 end)
 
 
@@ -261,8 +262,8 @@ let string_of_expr expr =
       | Lt_eq (e1, e2) as op -> _string_of_expr ~parent: op e1 ^ " <= " ^ (_string_of_expr ~parent: op e2), op
       | And (e1, e2) as op -> _string_of_expr ~parent: op e1 ^ " and " ^ (_string_of_expr ~parent: op e2), op
       | Or (e1, e2) as op ->  _string_of_expr ~parent: op e1 ^ " or " ^ (_string_of_expr ~parent: op e2), op
-      | Not e as op -> "not "  ^ (_string_of_expr ~parent: op e), op
-      | Neg e as op-> "-" ^ _string_of_expr ~parent: op e ^ ")", op
+      | Not e as op -> "not "  ^ _string_of_expr ~parent: op e, op
+      | Neg e as op-> "-" ^ _string_of_expr ~parent: op e, op
       | List l as op -> "[" ^ (String.concat ", " (List.map _string_of_expr l)) ^ "]", op
       | Call (name, args) as op ->
         let translated_args = List.map _string_of_expr args in
