@@ -11,6 +11,10 @@
 		"fr": "Erreur de nommage",
 		"en": "Name error"
 	},
+  "ImportError":{
+      "fr": "Erreur d'importation",
+      "en": "Import Error"
+  },
 	"NameTypeMessage": {
 		"fr": "Une expression de type '",
 		"en": "Expected an expression of type '"
@@ -174,9 +178,5 @@
 	"ListIndicesIntegers": {
 	   "fr": "Les indices d'accès aux listes doivent êtres entiers",
      "en": "List indices must be integers"
-  },
-  "ImportError":{
-      "fr": "Erreur lors de l'importation du module '",
-      "en": "Error while importing module '"
   }
 }

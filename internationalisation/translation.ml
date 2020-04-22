@@ -18,6 +18,7 @@ type key =
   | SyntaxError
   | TypeError
   | NameError
+  | ImportError
   | NameTypeMessage
   | NameButGotMessage
   | HasTypeMessage
@@ -75,6 +76,7 @@ let get_string key  = match key with
   | SyntaxError -> get_member_from_JSON "SyntaxError"
   | TypeError -> get_member_from_JSON "TypeError"
   | NameError -> get_member_from_JSON "NameError"
+  | ImportError -> get_member_from_JSON "ImportError"
   | NameTypeMessage -> get_member_from_JSON "NameTypeMessage"
   | NameButGotMessage -> get_member_from_JSON "NameButGotMessage"
   | HasTypeMessage -> get_member_from_JSON "HasTypeMessage"

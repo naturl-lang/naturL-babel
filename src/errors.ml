@@ -13,7 +13,7 @@ let type_error message line oc = _error (get_string TypeError) message line oc
 
 let name_error message line oc = _error (get_string NameError) message line oc
 
-let import_error = _error (get_string ImportError) message line oc
+let import_error message line oc = _error (get_string ImportError) message line oc
 
 exception SyntaxError of string * int option
 exception TypeError of string * int option
