@@ -138,8 +138,12 @@ let expr_of_string str : Expr.t =
     | "<=", Value (Float x1), Value (Float x2) -> Value (Bool (x1 <= x2))
     | "and", Value (Bool x1), Value (Bool x2) -> Value (Bool (x1 && x2))
     | "and", Value (Bool false), _ | "and", _, Value (Bool false) -> Value (Bool false)
+    | "and", Value(Bool true), x -> x
+    | "and", x, Value(Bool true) -> x
     | "or", Value (Bool x1), Value (Bool x2) -> Value (Bool (x1 || x2))
     | "or", Value (Bool true), _ | "or", _ , Value (Bool true) -> Value (Bool true)
+    | "or", Value (Bool false), x -> x
+    | "or", x, Value (Bool false) -> x
     | "not", Value (Bool x), _ -> Value (Bool (not x))
     | "neg", Value (Int x), _ -> Value (Int (-x))
     | "neg", Value (Float x), _ -> Value (Float (-1.*. x))
