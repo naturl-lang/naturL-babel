@@ -1,4 +1,5 @@
 open Errors
+open Internationalisation.Translation
 
 type token =
   | Litteral of string
@@ -57,7 +58,7 @@ let tokenize input =
         let namespace = Str.matched_group 1 input in
         let token = Str.matched_group 0 input in
         if List.mem token Syntax.keywords then
-          raise_syntax_error ("Invalid token in expression: '" ^ token ^ "' is a reserved keyword")
+          raise_syntax_error ((get_string InvalidTokenExpression) ^ token ^ (get_string ReservedKeyword))
         else if not (Imports.is_namespace_imported namespace) then
           raise_name_error ("Unknown module '" ^ namespace ^ "'")
         else
@@ -65,7 +66,7 @@ let tokenize input =
       else if Str.string_match reg_identifier input index then
         let token = Str.matched_string input in
         if List.mem token Syntax.keywords then
-          raise_syntax_error ("Invalid token in expression: '" ^ token ^ "' is a reserved keyword")
+          raise_syntax_error ((get_string InvalidTokenExpression) ^ token ^ (get_string ReservedKeyword))
         else
           (Identifier token) :: _tokenize input (index + (String.length token))
       else if Str.string_match reg_openp input index then
@@ -79,21 +80,21 @@ let tokenize input =
       else if Str.string_match reg_closehook input index then
         CloseHook :: _tokenize input (index+1)
       else
-        raise_syntax_error "Could not capture the unknown token"
+        raise_syntax_error (get_string TokenCapture)
     in _tokenize input 0
   in
   let improve_tokens tokens =
     let rec _improve_tokens ?previous ?(par_count = 0) ?(hook_count = 0) = function
-      | [] -> if par_count > 0 then raise_syntax_error "Missing closing parenthesis ')'"
-        else if hook_count > 0 then raise_syntax_error "Missing closing bracket ']'"
+      | [] -> if par_count > 0 then raise_syntax_error (get_string MissingClosingParenthesis)
+        else if hook_count > 0 then raise_syntax_error (get_string MissingClosingBracket)
         else []
       | OpenP :: t -> OpenP :: _improve_tokens t ~previous: OpenP ~par_count: (par_count + 1) ~hook_count
-      | CloseP :: t -> if par_count = 0 then raise_syntax_error "Unexpected token: ')'"
+      | CloseP :: t -> if par_count = 0 then raise_syntax_error (get_string UnexpectedParenthesis)
           else CloseP :: _improve_tokens t ~previous: CloseP ~par_count: (par_count - 1) ~hook_count
       | OpenHook :: t -> (match previous with
           | None | Some (Operator _ | OpenP | OpenHook | Coma) -> Operator "[" :: OpenHook :: _improve_tokens t ~previous: OpenHook ~par_count ~hook_count: (hook_count + 1)
           | _ -> Operator "get[" :: OpenHook :: _improve_tokens t ~previous: OpenHook ~par_count ~hook_count: (hook_count + 1))
-      | CloseHook :: t -> if hook_count = 0 then raise_syntax_error "Unexpected token: ']'"
+      | CloseHook :: t -> if hook_count = 0 then raise_syntax_error (get_string UnexpectedBracket)
           else CloseHook :: _improve_tokens t ~previous: CloseHook ~par_count ~hook_count: (hook_count - 1)
       | Identifier name :: OpenP :: t -> Operator name :: _improve_tokens (OpenP :: t) ~previous: (Operator name) ~par_count ~hook_count
       | Operator "-" :: t -> let op = match previous with

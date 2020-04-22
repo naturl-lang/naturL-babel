@@ -48,7 +48,7 @@
 		"end": "Unexpected end of file"
 	},
 	"ExpectedDebut": {
-		"fr": "Mot clé 'debut' attendu après la définie de la fonction",
+		"fr": "Mot clé 'debut' attendu après la définition de la fonction",
 		"end": "Expected 'debut' after function definition"
 	},
 	"UnexpectedDebut": {
@@ -112,8 +112,8 @@
 		"en": "Invalid expression"
 	},
 	"InvalidTokenExpresion": {
-		"fr": "Indentificateur invalide dans l'expression, '",
-		"en": "Invalid token in expression, '"
+		"fr": "Indentificateur invalide dans l'expression: '",
+		"en": "Invalid token in expression: '"
 	},
 	"ReservedKeyword": {
 		"fr": "' est un mot clé réservé",
@@ -164,16 +164,16 @@
 		"en": " are not callable"
 	},
 	"UnknownFunction": {
-		"fr": "Fonction ou procédure inconnue: ",
-		"en": "Unknown function or procedure: "
+		"fr": "Fonction ou procédure inconnue: '",
+		"en": "Unknown function or procedure: '"
 	},
 	"TheType": {
-		"fr": "Le type",
-		"en": "The type"
+		"fr": "Le type '",
+		"en": "The type '"
 	},
 	"NotSubscriptable": {
-		"fr": " n'est pas énumérable",
-		"en": " is not subscriptable"
+		"fr": "' n'est pas énumérable",
+		"en": "' is not subscriptable"
 	},
 	"ListIndicesIntegers": {
 	   "fr": "Les indices d'accès aux listes doivent êtres entiers",
