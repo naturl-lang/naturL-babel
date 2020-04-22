@@ -13,9 +13,12 @@ let type_error message line oc = _error (get_string TypeError) message line oc
 
 let name_error message line oc = _error (get_string NameError) message line oc
 
+let import_error = _error (get_string ImportError) message line oc
+
 exception SyntaxError of string * int option
 exception TypeError of string * int option
 exception NameError of string * int option
+exception ImportError of string * int option
 
 
 let raise_syntax_error ?(line) message =
@@ -24,6 +27,9 @@ let raise_name_error ?(line) message =
   raise (NameError (message, line))
 let raise_type_error ?(line) message =
   raise (TypeError (message, line))
+let raise_import_error ?(line) message =
+  raise (ImportError (message, line))
+
 let raise_unexpected_type_error ?(line) expected found =
   let message = (get_string NameTypeMessage) ^ expected ^ (get_string NameButGotMessage) ^ found ^ "'" in
   match line with
@@ -42,10 +48,12 @@ let try_update_err line func =
   | SyntaxError (msg, None) -> raise (SyntaxError (msg, Some line))
   | TypeError (msg, None) -> raise (TypeError (msg, Some line))
   | NameError (msg, None) -> raise (NameError (msg, Some line))
-  | SyntaxError _ | TypeError _ | NameError _ as error -> raise error
+  | ImportError (msg, None) -> raise (ImportError (msg, Some line))
+  | SyntaxError _ | TypeError _ | NameError _ | ImportError _ as error -> raise error
 
 let try_catch oc func =
   try func () with
   | SyntaxError (msg, Some line) -> syntax_error msg line oc
   | TypeError (msg, Some line) -> type_error msg line oc
   | NameError (msg, Some line) -> name_error msg line oc
+  | ImportError (msg, Some line) -> import_error msg line oc

@@ -2,6 +2,38 @@ module StringMap = Map.Make(String)
 module StringSet = Set.Make(String)
 
 
+let read_file name =
+  let chan = open_in name in
+  let content = ref "" in
+  (try
+     while true do
+       content := !content ^ "\n" ^ input_line chan;
+     done
+   with End_of_file -> close_in chan);
+  !content
+
+let read_lines name =
+  let chan = open_in name in
+  let lines = ref [] in
+  (try
+     while true do
+       lines := input_line chan :: !lines
+     done
+   with End_of_file -> close_in chan);
+  !lines
+
+let write_file name content =
+  let chan = open_out name in
+  Printf.fprintf chan "%s\n" content;
+  close_out chan
+
+let write_lines name lines =
+  let chan = open_out name in
+  let rec __write_lines = function
+    | [] -> ()
+    | line :: t -> Printf.fprintf chan "%s\n" line; __write_lines t
+  in __write_lines lines; close_out chan
+
 let get_indentation depth =
   let rec _get_indentation depth =
     if depth = 0 then
