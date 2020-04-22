@@ -96,8 +96,8 @@
 		"en": "Invalid function defintion"
 	},
 	"UnknownVariable": {
-		"fr": "Variable inconnue ",
-		"en": "Unknwown variable "
+		"fr": "Variable inconnue '",
+		"en": "Unknwown variable '"
 	},
 	"UnknownType": {
 		"fr": "Type inconnu '",
