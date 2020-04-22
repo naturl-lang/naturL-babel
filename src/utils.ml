@@ -87,4 +87,11 @@ let rec string_map_of_list = function
   | [] -> StringMap.empty
   | (key, value) :: t -> StringMap.add key value (string_map_of_list t)
 
-let ( let* ) = Option.bind
+
+let fstring format =
+  let f = format_of_string format in
+  Printf.sprintf f
+
+let fprint ?(oc=stdout) format =
+  let f = format_of_string format in
+  Printf.fprintf oc f

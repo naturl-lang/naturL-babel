@@ -7,7 +7,7 @@ open Imports
 open Structures
 open Getters
 open Expressions
-
+open Internationalisation.Translation
 
 let eval_expression_with_type str vars =
   let expr = expr_of_string str in
@@ -20,13 +20,13 @@ let eval_expression str vars =
 let _verify_type ret_expr var context =
   match var with
     | `Function(_, t) when t = type_of_expr context.vars ret_expr -> ()
-    | _ -> raise_type_error "The return type does not match the function type " ~line: (get_line_no context.code context.index)
+    | _ -> raise_type_error (get_string ReturnTypeMatchMessage) ~line: (get_line_no context.code context.index)
 
 let rec _check_retcall ?(is_first = true) ret_expr context =
   match context.scopes with
-    | [] -> raise_syntax_error "Unexpected instruction 'retourner' " ~line: (get_line_no context.code context.index)
+    | [] -> raise_syntax_error (get_string UnexpectedReturn) ~line: (get_line_no context.code context.index)
     | Function (name,_) :: _ -> _verify_type ret_expr (StringMap.find name context.vars) context
-    | (For | While) :: t -> if is_first then add_warning "Return inside of a loop" 0;
+    | (For | While) :: t -> if is_first then add_warning (get_string BreakingReturn) 0;
       _check_retcall ret_expr {context with scopes = t} ~is_first: false
     | _ :: t -> _check_retcall ret_expr {context with scopes = t} ~is_first
 
@@ -65,7 +65,7 @@ let rec eval_code context =
           if context.scopes <> [] && List.hd context.scopes = If then
             scope :: List.tl context.scopes
           else
-            raise_syntax_error ("Unexpected token '" ^ word ^ "'") ~line: (get_line_no code context.index)
+            raise_syntax_error ((get_string UnexpectedToken) ^ word ^ "'") ~line: (get_line_no code context.index)
         else
           scope :: context.scopes in
       let translation, context =
@@ -73,7 +73,7 @@ let rec eval_code context =
            func {context with index = (context.index - String.length word - 1); scopes}
          with Invalid_argument m as e ->
            if m = "index out of bounds" then
-             raise_syntax_error ~line: (get_last_line context.code) "Unexpected EOF"
+             raise_syntax_error ~line: (get_last_line context.code) (get_string UnexpectedEOF)
            else
              raise e) in
       let next_translation, context = _eval_code context
@@ -81,14 +81,14 @@ let rec eval_code context =
     | None ->
       let is_def, name = get_fname_def_status context.scopes in
       if word <> "debut" && word <> "variables" && is_def then
-        raise_syntax_error ~line: (get_line_no code (start_index + 2)) "Expected 'debut' after function definition"
+        raise_syntax_error ~line: (get_line_no code (start_index + 2)) (get_string ExpectedDebut)
       else match word with
         | "utiliser" -> _eval_code (eval_utiliser context)
         | "variables" -> _eval_code (eval_variables context)
         | "debut" -> if is_def then
             eval_code {context with scopes = (Function (name,false)):: List.tl context.scopes}
           else
-            raise_syntax_error ~line: (get_line_no code start_index) "Unexpected token token 'debut'"
+            raise_syntax_error ~line: (get_line_no code start_index) (get_string UnexpectedDebut)
         | "retourner" -> let expr, i = get_line code context.index in
           let py_expr = try_update_err (get_line_no code context.index) (fun () -> eval_expression expr context.vars) in
           _check_retcall (expr_of_string expr) context;
@@ -99,12 +99,12 @@ let rec eval_code context =
         | "fin" -> if (has_returned context.scopes name) then
             "", {context with scopes = List.tl context.scopes}
           else if context.scopes = [] then
-            raise_syntax_error "Unexpected token 'fin'" ~line: (get_line_no code context.index)
+            raise_syntax_error (get_string UnexpectedFin) ~line: (get_line_no code context.index)
           else if (_valid_pos context ) then
             "", {context with scopes = List.tl context.scopes}
           else
-            raise_syntax_error "Function is excepted to return " ~line: (get_line_no code context.index)
-        | "" -> if List.length context.scopes = 0 then "", context else raise_syntax_error "Unclosed scope: expected 'fin'" ~line: (get_line_no code context.index)
+            raise_syntax_error (get_string ExpectedReturn) ~line: (get_line_no code context.index)
+        | "" -> if List.length context.scopes = 0 then "", context else raise_syntax_error (get_string ExpectedFin) ~line: (get_line_no code context.index)
         | _ -> (* Expression or affectation *)
           let line_no = get_line_no code context.index in
           let r = regexp ("^[\n\t ]*\\([A-Za-z_][A-Za-z_0-9]*\\) *<- *\\(.*\\)\n") in
@@ -165,7 +165,7 @@ and eval_variables context =
        else if word = "variables" then
          _eval_variables vars code index
        else if word = "fin" then
-         raise_syntax_error "Unexpected token 'fin'" ~line: line_no
+         raise_syntax_error (get_string UnexpectedFin) ~line: line_no
        else
          let line, index = get_line code index in
          let type_struct = try_update_err line_no (fun () -> Type.of_string word) in
@@ -183,9 +183,9 @@ and eval_fonction context =
   let check_return_type i =
     let i = ignore_spaces context.code i in
     if context.code.[i] <> '-' then
-      raise_syntax_error ("Unexpected character '" ^ (Char.escaped context.code.[i]) ^ "' in function definition") ~line: (get_line_no context.code i)
+      raise_syntax_error ((get_string UnexpectedChar) ^ (Char.escaped context.code.[i]) ^ (get_string InFunctionDefinition)) ~line: (get_line_no context.code i)
     else if context.code.[i + 1] <> '>' then
-      raise_syntax_error ("Unexpected character '" ^ (Char.escaped context.code.[i + 1]) ^ "' in function definition") ~line: (get_line_no context.code (i + 1))
+      raise_syntax_error ((get_string UnexpectedChar) ^ (Char.escaped context.code.[i + 1]) ^ (get_string InFunctionDefinition)) ~line: (get_line_no context.code (i + 1))
     else
       get_type context.code (i + 2)
   in
@@ -233,12 +233,12 @@ and eval_si context =
     if Type.is_compatible type_struct `Bool then
       if expr = "False" then
         let _, context = eval_code {context with index} in
-        add_warning ~line "Condition is always false" 3;
+        add_warning ~line (get_string AlwaysFalse) 3;
         "", context
       else
         begin
           if expr = "True" then
-            add_warning ~line "Condition is always true" 3;
+            add_warning ~line (get_string AlwaysTrue) 3;
           let next, context = eval_code {context with index}
           in let next = if next = "" then get_indentation (depth + 1) ^ "pass\n" else next
           in get_indentation depth ^ "if " ^ expr ^ ":\n" ^ next, context
@@ -259,12 +259,12 @@ and eval_sinon_si context =
     if Type.is_compatible type_struct `Bool then
       if expr = "False" then
         let _, context = eval_code {context with index} in
-        add_warning ~line "Condition is always false" 3;
+        add_warning ~line (get_string AlwaysFalse) 3;
         "", context
       else
         begin
           if expr = "True" then
-            add_warning ~line "Condition is always true" 3;
+            add_warning ~line (get_string AlwaysTrue) 3;
           let next, context = eval_code {context with index}  in
           let next = if next = "" then get_indentation (depth + 1) ^ "pass\n" else next in
           get_indentation depth ^ "elif " ^ expr ^ ":\n" ^ next, context
@@ -308,16 +308,16 @@ and eval_pour_chaque context =
   (* A pour_chaque instruction has the form "pour_chaque <var> dans <iterable> faire"*)
   (* This function translates it to "for <var> in <iterable>)" *)
   let _, index = get_word code context.index in
-  let var, index = get_expression code index "dans"        in let var_type = try_update_err line (fun () -> get_var var context.vars) in
+  let var, index = get_expression code index "dans" in let var_type = try_update_err line (fun () -> get_var var context.vars) in
   let iterable, index = get_expression code index "faire"  in let iterable_expr, iterable_type = try_update_err line (fun () -> eval_expression_with_type iterable context.vars) in
   (match Type.get_iterable_type iterable_type with
    | Some t -> if not (Type.is_compatible t var_type) then raise_unexpected_type_error (Type.to_string t) (Type.to_string var_type) ~line
-   | None -> raise_type_error ("Type '" ^ (Type.to_string iterable_type) ^ "' is not iterable") ~line);
+   | None -> raise_type_error ((get_string TheType) ^ (Type.to_string iterable_type) ^ "' is not iterable") ~line);
   try_update_warnings ~line;
   let next, context = eval_code {context with index} in
   let next = if next = "" then get_indentation (depth + 1) ^ "pass\n" else next in
   get_indentation depth ^ "for " ^ (String.trim var) ^ " in " ^ iterable_expr  ^ ":\n" ^ next, context
-
+(*TODO Add translation for not iterable*)
 and eval_pour context =
   let code = context.code in
   let line = get_line_no code context.index in

@@ -3,6 +3,7 @@ open Utils
 open Tokenizer
 open Structures
 open Builtins
+open Internationalisation.Translation
 
 open (struct
   let binary_ops = [
@@ -70,13 +71,13 @@ open (struct
     | "et" -> And (e1, e2)
     | "ou" -> Or (e1, e2)
     | "get[" -> Subscript (e1, e2)
-    | op -> raise_syntax_error ("Unknown operator '" ^ op ^ "'")
+    | op -> raise_syntax_error ((get_string UnknownOperator) ^ op ^ "'")
 
   let make_unary_op op arg : Expr.t =
     match op with
     | "neg" -> Neg arg
     | "non" -> Not arg
-    | op -> raise_syntax_error ("Unknown operator '" ^ op ^ "'")
+    | op -> raise_syntax_error ((get_string UnknownOperator) ^ op ^ "'")
 
   let string_of_token = function
     | Operator str | Identifier str | Litteral str -> str ^ " "
@@ -205,7 +206,7 @@ let expr_of_string str : Expr.t =
            List (List.map expr_of_tokens right) end
          else (* Function call *)
            ((if not (Queue.is_empty left) then
-               raise_syntax_error "Invalid expression");
+               raise_syntax_error (get_string InvalidExpression));
             let right = split_params (list_of_queue right) in
             Call (op, List.map expr_of_tokens right))
   in _simplify (expr_of_tokens (tokenize str))
@@ -219,17 +220,17 @@ let rec type_of_expr vars : Expr.t -> Type.t = function
     else if l_type = `Any && is_type_accepted r_type e then r_type
     else if r_type = `Any && is_type_accepted l_type e then l_type
     else
-      raise_type_error ("Invalid operation for expressions of type " ^ (Type.to_string l_type) ^ " and type " ^ (Type.to_string r_type))
+      raise_type_error ((get_string InvalidOperation) ^ (Type.to_string l_type) ^ (get_string AndType) ^ (Type.to_string r_type))
   | Not arg | Neg arg as e -> let arg_type = type_of_expr vars arg in if is_type_accepted arg_type e then arg_type else
-      raise_type_error ("Invalid operation for expression of type " ^ (Type.to_string arg_type))
+      raise_type_error ((get_string InvalidOperation) ^ (Type.to_string arg_type))
   | Eq (l, r) | Gt (l, r) | Gt_eq (l, r) | Lt (l, r) | Lt_eq (l, r) -> let l_type = type_of_expr vars l and r_type = type_of_expr vars r in
     if l_type = r_type then `Bool
     else if l_type = `Any || r_type = `Any then `Bool
     else
-      raise_type_error ("Can't compare expressions of type " ^ (Type.to_string l_type) ^ " and type " ^ (Type.to_string r_type))
+      raise_type_error ((get_string CannotCompare) ^ (Type.to_string l_type) ^ (get_string AndType) ^ (Type.to_string r_type))
   | List [] -> `List `Any
   | List (h :: t) -> if is_list_uniform vars (List.map (type_of_expr vars) (h :: t)) then `List (type_of_expr vars h)
-    else raise_type_error ("All elements of a list must have the same type")
+    else raise_type_error ("All elements of a list must have the same type") (*TODO Fix translation*)
   | Call (name, params) -> let params_types = List.map (type_of_expr vars) params in
     (try (match StringMap.find name vars with
          | `Function (p, return) as f ->
@@ -237,15 +238,15 @@ let rec type_of_expr vars : Expr.t -> Type.t = function
              return
            else
              raise_unexpected_type_error_with_name name (Type.to_string f) (Type.to_string (`Function (params_types, `Any)))
-         | _ as t -> raise_type_error ("Variables of type " ^ (Type.to_string t) ^ " are not callable"))
+         | _ as t -> raise_type_error ((get_string VariablesOfType) ^ (Type.to_string t) ^ (get_string NotCallable)))
      with Not_found -> (
          try let builtin = StringMap.find name Builtins.functions in
            let return = builtin.typer params_types in return
-         with Not_found -> raise_name_error ("Unknown function: '" ^ name ^ "'")))
+         with Not_found -> raise_name_error ((get_string UnknownFunction) ^ name ^ "'")))
   | Subscript (l, i) -> if type_of_expr vars i = `Int then match type_of_expr vars l with
       | `List t -> t
-      | t -> raise_type_error ("Type '" ^ (Type.to_string t) ^ "' is not subscriptable")
-    else raise_type_error ("List indices must be integers")
+      | t -> raise_type_error ((get_string TheType) ^ (Type.to_string t) ^ (get_string NotSubscriptable))
+    else raise_type_error (get_string ListIndicesIntegers)
   | Value v -> Value.get_type vars v
 
 

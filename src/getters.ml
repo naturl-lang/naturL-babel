@@ -3,6 +3,7 @@ open Utils
 open Global
 open Structures
 open Errors
+open Internationalisation.Translation
 
 (* Returns the line number corresponding to the current index in the code *)
 let rec get_line_no code index =
@@ -20,7 +21,7 @@ let rec ignore_chrs code i =
       ' ' | '\n' | '\t' | '\r' | '(' | ')' | ',' -> ignore_chrs code (i + 1)
     | _-> i
   else
-    raise_syntax_error ~line: (get_last_line code) "Unexpected EOF while parsing"
+    raise_syntax_error ~line: (get_last_line code) (get_string UnexpectedEOF)
 
 let rec ignore_spaces code i =
   if i < (String.length code) then
@@ -29,7 +30,7 @@ let rec ignore_spaces code i =
     else
       i
   else
-    raise_syntax_error ~line: (get_last_line code) "Unexpected EOF while parsing"
+    raise_syntax_error ~line: (get_last_line code) (get_string UnexpectedEOF)
 
 let get_word code i =
   let len = String.length code in
@@ -63,7 +64,7 @@ let get_expression code index terminator =
   if string_match (regexp ("\\([^\n]*[) ]\\)\\(" ^ terminator ^ "\\)")) code index then
     matched_group 1 code, group_end 2 + 1
   else
-    raise_syntax_error ~line: (get_line_no code index) ("Missing token '" ^ terminator ^ "'")
+    raise_syntax_error ~line: (get_line_no code index) ((get_string MissingKeyword) ^ terminator ^ "'")
 
 let get_line code i =
   let len = String.length code in
@@ -95,12 +96,12 @@ let get_param vars code index =
   else if string_match (regexp {|\( *)\)|}) code index then
     "", match_end(), vars, []
   else
-    raise_syntax_error ~line: (get_line_no code index) "Invalid function definition"
+    raise_syntax_error ~line: (get_line_no code index) (get_string InvalidFunctionDefinition)
 
 let get_var name vars =
   let name = String.trim name in
   try StringMap.find name vars
-  with Not_found -> raise_name_error ("Unknown variable " ^ name)
+  with Not_found -> raise_name_error ((get_string UnknownVariable) ^ name)
 
 
 (* Returns information about the files that need to be imported : *)

@@ -1,11 +1,19 @@
+open Internationalisation.Translation
+
 let _error name message line oc =
-  Printf.fprintf oc "%s at line %d: %s\n" name line message;
+  if !lang = French then
+    Printf.fprintf oc "%s à la ligne %d: %s\n" name line message
+  else
+    Printf.fprintf oc "%s at line %d: %s\n" name line message;
   exit 2
 
-let syntax_error = _error "Syntax error"
-let type_error = _error "Type error"
-let name_error = _error "Name error"
-let import_error = _error "Import error"
+let syntax_error message line oc = _error (get_string SyntaxError)  message line oc
+
+let type_error message line oc = _error (get_string TypeError) message line oc
+
+let name_error message line oc = _error (get_string NameError) message line oc
+
+let import_error message line oc = _error (get_string ImportError) message line oc
 
 exception SyntaxError of string * int option
 exception TypeError of string * int option
@@ -23,12 +31,12 @@ let raise_import_error ?(line) message =
   raise (ImportError (message, line))
 
 let raise_unexpected_type_error ?(line) expected found =
-  let message = "Expected an expression of type '" ^ expected ^ "' but got '" ^ found ^ "'" in
+  let message = (get_string NameTypeMessage) ^ expected ^ (get_string NameButGotMessage) ^ found ^ "'" in
   match line with
   | Some line -> raise_type_error message ~line
   | None -> raise_type_error message
 let raise_unexpected_type_error_with_name ?(line) name expected found =
-  let message = "'" ^ name ^ "' has type '" ^ expected ^ "' but got '" ^ found ^ "'" in
+  let message = "'" ^ name ^ (get_string HasTypeMessage) ^ expected ^ (get_string ButGotMessage) ^ found ^ "'" in
   match line with
   | Some line -> raise_type_error message ~line
   | None -> raise_type_error message

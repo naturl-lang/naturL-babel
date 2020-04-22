@@ -1,5 +1,6 @@
 open Utils
 open Errors
+open Internationalisation.Translation
 
 module Type = struct
 
@@ -43,10 +44,10 @@ module Type = struct
     | "procedure" :: params  :: [] -> `Function (List.map of_string (String.split_on_char 'x' params), `None)
     | "fonction:" :: tail -> (match Str.split (Str.regexp " -> ") (String.concat " " tail) with
           params :: return :: [] -> `Function (List.map of_string (String.split_on_char 'x' params), of_string return)
-        | _ -> raise_name_error ("Unknown type '" ^ str ^ "'"))
+        | _ -> raise_name_error ((get_string UnknownType) ^ str ^ "'"))
     | ("Ø" | "rien") :: [] -> `None
     | "?" :: [] -> `Any
-    | _ -> raise_name_error ("Unknown type '" ^ str ^ "'")
+    | _ -> raise_name_error ((get_string UnknownType) ^ str ^ "'")
 
   let get_iterable_type : t -> t option = function
       `String -> Some `Char
@@ -106,10 +107,10 @@ module Value = struct
     else if Str.string_match (Str.regexp ("^" ^ name_re ^ "$")) str 0 then
       Variable str
     else if str = "" then
-      raise_syntax_error "Expected operand"
+      raise_syntax_error (get_string ExpectedOperand)
     else begin
       print_endline str;
-      raise_syntax_error "Invalid expression" end
+      raise_syntax_error (get_string InvalidExpression) end
 
   let get_type vars = function
     | Int _ -> `Int
@@ -117,7 +118,7 @@ module Value = struct
     | Char _ -> `Char
     | String _ -> `String
     | Variable name -> (try StringMap.find name vars
-                        with Not_found -> raise_name_error ("Unknown variable: '" ^ name ^ "'"))
+                        with Not_found -> raise_name_error ((get_string UnknownVariable) ^ name ^ "'"))
     | Bool _ -> `Bool
     | None -> `None
 end
