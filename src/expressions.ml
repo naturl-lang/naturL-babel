@@ -239,10 +239,11 @@ let rec type_of_expr vars : Expr.t -> Type.t = function
            else
              raise_unexpected_type_error_with_name name (Type.to_string f) (Type.to_string (`Function (params_types, `Any)))
          | _ as t -> raise_type_error ("Variables of type " ^ (Type.to_string t) ^ " are not callable"))
-     with Not_found -> (
-         try let builtin = StringMap.find name Builtins.functions in
-           let return = builtin.typer params_types in return
-         with Not_found -> raise_name_error ("Unknown function: '" ^ name ^ "'")))
+     with Not_found -> (try
+                          let builtin = StringMap.find name Builtins.functions in
+                          builtin.import ();
+                          let return = builtin.typer params_types in return
+                        with Not_found -> raise_name_error ("Unknown function: '" ^ name ^ "'")))
   | Subscript (l, i) -> if type_of_expr vars i = `Int then match type_of_expr vars l with
       | `List t -> t
       | t -> raise_type_error ("Type '" ^ (Type.to_string t) ^ "' is not subscriptable")

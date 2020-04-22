@@ -5,15 +5,9 @@ type import = {
 
 module ImportSet = Set.Make(struct type t = import let compare = compare end)
 
-
-let imports_bakup = ref ImportSet.empty
 let imports = ref ImportSet.empty
 
-
-let save_imports () = imports_bakup := !imports
 let clear_imports () = imports := ImportSet.empty
-let restore_imports () = imports := !imports_bakup
-
 
 let add_import namespace element =
   imports := ImportSet.add { namespace; element } !imports

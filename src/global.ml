@@ -13,3 +13,5 @@ let set_import_mode mode =
     | "moderated" -> Moderated
     | "overwrite" -> Overwrite
     | _ -> assert false
+
+let naturL_path = Sys.getenv_opt "NATURLPATH"

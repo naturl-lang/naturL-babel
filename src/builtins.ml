@@ -1,4 +1,5 @@
 open Utils
+open Imports
 open Errors
 open Structures
 
@@ -6,7 +7,7 @@ type builtin =
   {
     typer: Type.t list -> Type.t;
     translator: string list -> string;
-    imports: string list
+    import: unit -> unit
   }
 
 let functions =
@@ -15,7 +16,7 @@ let functions =
     "afficher", {
       typer = (fun _ -> `None);
       translator = (fun s -> "print(" ^ (String.concat ", " s) ^ ")");
-      imports = []
+      import = (fun () -> ())
     };
     (* List functions *)
     "taille", {
@@ -27,7 +28,7 @@ let functions =
       translator = (function
             l :: [] -> "len(" ^ l ^ ")"
           | _ -> assert false);
-      imports = []
+      import = (fun () -> ())
     };
     "ajouter", {
       typer = (function
@@ -38,7 +39,7 @@ let functions =
       translator = (function
           | l :: x :: [] -> l ^ ".append(" ^ x ^ ")"
           | _ -> assert false);
-      imports = []
+      import = (fun () -> ())
     };
     (* Cast functions *)
     "reel", {
@@ -48,7 +49,7 @@ let functions =
                    (Type.to_string (`Function ([`Int], `Float)))
                    (Type.to_string (`Function (t, `Float))));
       translator = (fun s -> "float(" ^ (List.hd s) ^ ")");
-      imports = []
+      import = (fun () -> ())
     };
     "entier", {
       typer = (function
@@ -57,8 +58,18 @@ let functions =
                    (Type.to_string (`Function ([`Float], `Int)))
                    (Type.to_string (`Function (t, `Int))));
       translator = (fun s -> "int(" ^ (List.hd s) ^ ")");
-      imports = []
-    }
+      import = (fun () -> ())
+    };
+    "decimal", {
+      typer = (function
+            `Int :: [] -> `Float
+          | `Float :: [] -> `Float
+          | t -> raise_unexpected_type_error_with_name "decimal"
+                   (Type.to_string (`Function ([`Any], `Float)))
+                   (Type.to_string (`Function (t, `Float))));
+      translator = (fun s -> "Decimal(" ^ (List.hd s) ^ ")");
+      import = (fun () -> add_import "decimal" (Some "Decimal"))
+    };
   ]
   in string_map_of_list assoc
 

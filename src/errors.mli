@@ -1,7 +1,3 @@
-val syntax_error : string -> int -> out_channel -> 'a
-val type_error : string -> int -> out_channel -> 'a
-val name_error : string -> int -> out_channel -> 'a
-
 val raise_syntax_error: ?line: int -> string -> 'a
 val raise_name_error: ?line: int -> string -> 'a
 val raise_type_error: ?line: int -> string -> 'a

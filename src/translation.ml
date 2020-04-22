@@ -161,21 +161,20 @@ and eval_utiliser context =
   let write_pyfile filename =
     let naturl_name = filename ^ ".ntl" and py_name = filename ^ ".py" in
     if !import_mode = Overwrite || !import_mode = Moderated && not (Sys.file_exists py_name) then
-      begin
-        save_imports (); clear_imports ();
-        let code = translate_code (read_file naturl_name) in
-        restore_imports ();
-        write_file py_name code
-      end
+      let code = translate_code (read_file naturl_name) in
+      write_file py_name code
   in
   let line_no = get_line_no context.code context.index in
   let line, index = get_line context.code context.index in
   let dependencies = String.split_on_char ',' line in
   let vars = List.flatten (try_update_err line_no (fun () -> dependencies |> List.map get_imported_files_infos))
              |> List.map (function content, cwdir, namespace, filename, element ->
-                 add_import namespace element; write_pyfile filename;
+                 add_import namespace element;
                  Sys.chdir cwdir;
+                 let imports_back = !Imports.imports in
                  let new_context = get_code_context content in Sys.chdir "..";
+                 Imports.imports := imports_back;
+                 write_pyfile filename;
                  let prefix = if element = None then namespace ^ "." else "" in
                  context.vars
                  |> StringMap.fold (fun key -> fun value -> fun map -> StringMap.add (prefix ^ key) value map) new_context.vars)
