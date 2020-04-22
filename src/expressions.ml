@@ -11,6 +11,8 @@ open (struct
     "*";
     "fois";
     "div";
+    "mod";
+    "^";
     "/";
     ">";
     ">=";
@@ -31,6 +33,7 @@ open (struct
     | Div _ -> "/"
     | Div_int _ -> "div"
     | Modulus _ -> "mod"
+    | Pow _ -> "^"
     | Eq _ -> "="
     | Gt _ -> ">"
     | Gt_eq _ -> ">="
@@ -50,9 +53,10 @@ open (struct
     | "et" -> 2
     | ">" | ">=" | "<" | "<=" | "=" -> 3
     | "+" | "-" -> 4
-    | "*" | "fois" | "/" | "div" | "get[" -> 5
-    | "non" | "neg" | "[" -> 6
-    | _ -> 6 (* Function call *)
+    | "*" | "fois" | "/" | "div" -> 5
+    | "non" | "neg" | "get[" -> 6
+    | "^" | "[" -> 7
+    | _ -> 7 (* Function call *)
 
   let make_binary_op op e1 e2 : Expr.t =
     match op with
@@ -62,6 +66,7 @@ open (struct
     | "/" -> Div (e1, e2)
     | "div" -> Div_int (e1, e2)
     | "mod" -> Modulus (e1, e2)
+    | "^" -> Pow (e1, e2)
     | "=" -> Eq (e1, e2)
     | ">" -> Gt (e1, e2)
     | ">=" -> Gt_eq (e1, e2)
@@ -91,7 +96,7 @@ open (struct
   let is_type_accepted t (op: Expr.t) =
     match op with
       Plus _ -> List.exists (fun type_ -> Type.is_compatible t type_) [`Int; `Float; `String]
-    | Minus _ | Times _ | Neg _ -> List.exists (fun type_ -> Type.is_compatible t type_) [`Int; `String]
+    | Minus _ | Times _ | Neg _ | Pow _ -> List.exists (fun type_ -> Type.is_compatible t type_) [`Int; `Float]
     | Div_int _ | Modulus _ -> Type.is_compatible `Int t
     | Div _ -> Type.is_compatible `Float t
     | Eq _ | Gt _ | Gt_eq _ | Lt _ | Lt_eq _ -> true
@@ -209,15 +214,15 @@ let expr_of_string str : Expr.t =
 
 (* Returns the type of an expression *)
 let rec type_of_expr vars : Expr.t -> Type.t = function
-  | Plus (l, r) | Minus (l, r) | Times (l, r) | Div (l, r) | Div_int (l, r) | Modulus (l, r) | And (l, r) | Or (l, r) as e ->
+  | Plus (l, r) | Minus (l, r) | Times (l, r) | Div (l, r) | Div_int (l, r) | Modulus (l, r) | Pow (l, r) | And (l, r) | Or (l, r) as e ->
     let l_type = type_of_expr vars l and r_type = type_of_expr vars r in
     if l_type = r_type && is_type_accepted l_type e then l_type
     else if l_type = `Any && is_type_accepted r_type e then r_type
     else if r_type = `Any && is_type_accepted l_type e then l_type
     else
-      raise_type_error ("Invalid operation for expressions of type " ^ (Type.to_string l_type) ^ " and type " ^ (Type.to_string r_type))
+      raise_type_error ("Invalid operation '" ^ (expr_to_op e) ^ "' for expressions of type " ^ (Type.to_string l_type) ^ " and type " ^ (Type.to_string r_type))
   | Not arg | Neg arg as e -> let arg_type = type_of_expr vars arg in if is_type_accepted arg_type e then arg_type else
-      raise_type_error ("Invalid operation for expression of type " ^ (Type.to_string arg_type))
+      raise_type_error ("Invalid operation '" ^ (expr_to_op e) ^ "' for expression of type " ^ (Type.to_string arg_type))
   | Eq (l, r) | Gt (l, r) | Gt_eq (l, r) | Lt (l, r) | Lt_eq (l, r) -> let l_type = type_of_expr vars l and r_type = type_of_expr vars r in
     if l_type = r_type then `Bool
     else if l_type = `Any || r_type = `Any then `Bool
@@ -255,6 +260,7 @@ let string_of_expr expr =
       | Div (e1, e2) as op-> _string_of_expr ~parent: op e1 ^ " / "^ (_string_of_expr ~parent: op e2), op
       | Div_int (e1, e2) as op-> _string_of_expr ~parent: op e1 ^ " // " ^ (_string_of_expr ~parent: op e2), op
       | Modulus (e1, e2) as op-> _string_of_expr ~parent: op e1 ^ " % " ^ (_string_of_expr ~parent: op e2), op
+      | Pow (e1, e2) as op-> _string_of_expr ~parent: op e1 ^ " ** " ^ (_string_of_expr ~parent: op e2), op
       | Eq (e1, e2) as op-> _string_of_expr ~parent: op e1 ^ " == " ^ (_string_of_expr ~parent: op e2), op
       | Gt (e1, e2) as op -> _string_of_expr ~parent: op e1 ^ " > " ^ (_string_of_expr ~parent: op e2), op
       | Gt_eq (e1, e2) as op-> _string_of_expr ~parent: op e1 ^ " >= " ^ (_string_of_expr ~parent: op e2), op

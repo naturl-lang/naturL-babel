@@ -17,6 +17,23 @@ let eval_expression str vars =
   let expr, _ = eval_expression_with_type str vars in expr
 
 (*AUX for eval_code*)
+
+let _is_if_scope = function
+  | If _ -> true
+  | _ -> false
+
+let _increment_if = function
+  | If i -> If (i + 1)
+  | _ -> assert false
+
+let _decrement_if = function
+  | If i -> If (i - 1)
+  | _ -> assert false
+
+let _is_last_if = function
+  | If 0 -> true
+  | _ -> false
+
 let _verify_type ret_expr var context =
   match var with
     | `Function(_, t) when t = type_of_expr context.vars ret_expr -> ()
@@ -62,8 +79,8 @@ let rec eval_code context =
     | Some (scope, func) ->
       let scopes =
         if word = "sinon" || word = "sinon_si" then
-          if context.scopes <> [] && List.hd context.scopes = If then
-            scope :: List.tl context.scopes
+          if context.scopes <> [] && _is_if_scope (List.hd context.scopes) then
+            _increment_if (List.hd context.scopes) :: List.tl context.scopes
           else
             raise_syntax_error ("Unexpected token '" ^ word ^ "'") ~line: (get_line_no code context.index)
         else
@@ -83,8 +100,8 @@ let rec eval_code context =
       if word <> "debut" && word <> "variables" && is_def then
         raise_syntax_error ~line: (get_line_no code (start_index + 2)) "Expected 'debut' after function definition"
       else match word with
-        | "utiliser" -> _eval_code (eval_utiliser context)
-        | "variables" -> _eval_code (eval_variables context)
+        | "utiliser" -> eval_code (eval_utiliser context)
+        | "variables" -> eval_code (eval_variables context)
         | "debut" -> if is_def then
             eval_code {context with scopes = (Function (name,false)):: List.tl context.scopes}
           else
@@ -96,15 +113,26 @@ let rec eval_code context =
           let new_scopes = ret context.scopes name in
           let next, context = _eval_code {context with index = i; scopes = new_scopes} in
           get_indentation depth ^ "return " ^ py_expr ^ "\n" ^ next, context
-        | "fin" -> if (has_returned context.scopes name) then
-            "", {context with scopes = List.tl context.scopes}
-          else if context.scopes = [] then
+        | "fin" ->
+          if context.scopes = [] then
             raise_syntax_error "Unexpected token 'fin'" ~line: (get_line_no code context.index)
-          else if (_valid_pos context ) then
-            "", {context with scopes = List.tl context.scopes}
           else
-            raise_syntax_error "Function is excepted to return " ~line: (get_line_no code context.index)
-        | "" -> if List.length context.scopes = 0 then "", context else raise_syntax_error "Unclosed scope: expected 'fin'" ~line: (get_line_no code context.index)
+            let last_scope = List.hd context.scopes in
+            let index, scopes = if _is_if_scope last_scope && not (_is_last_if last_scope) then
+                start_index, _decrement_if last_scope :: List.tl context.scopes
+              else
+                index, List.tl context.scopes
+            in
+            if (has_returned context.scopes name) then
+              "", { context with index; scopes }
+            else if (_valid_pos context ) then
+              "", { context with index; scopes }
+            else
+              raise_syntax_error "Function is excepted to return " ~line: (get_line_no code context.index)
+        | "" -> if List.length context.scopes = 0 then
+            "", context
+          else
+            raise_syntax_error "Unclosed scope: expected 'fin'" ~line: (get_line_no code context.index)
         | _ -> (* Expression or affectation *)
           let line_no = get_line_no code context.index in
           let r = regexp ("^[\n\t ]*\\([A-Za-z_][A-Za-z_0-9]*\\) *<- *\\(.*\\)\n") in
@@ -133,8 +161,12 @@ and eval_utiliser context =
   let write_pyfile filename =
     let naturl_name = filename ^ ".ntl" and py_name = filename ^ ".py" in
     if !import_mode = Overwrite || !import_mode = Moderated && not (Sys.file_exists py_name) then
-      let code = translate_code (read_file naturl_name) in
-      write_file py_name code
+      begin
+        save_imports (); clear_imports ();
+        let code = translate_code (read_file naturl_name) in
+        restore_imports ();
+        write_file py_name code
+      end
   in
   let line_no = get_line_no context.code context.index in
   let line, index = get_line context.code context.index in
@@ -173,7 +205,7 @@ and eval_variables context =
          try_update_warnings ~line: line_no;
          _eval_variables vars code index
   in let vars, index = _eval_variables vars code index
-  in {code; index; vars; scopes}
+  in { code; index; vars; scopes }
 
 and eval_fonction context =
   let depth = List.length context.scopes - 1 in
@@ -198,7 +230,7 @@ and eval_fonction context =
   let vars = StringMap.add name fx vars in
   let cscopes = context.scopes in (*cscopes = current scopes*)
   try_update_warnings ~line;
-  let next, context = eval_code {context with index = index; vars = vars; scopes = set_fscope_name cscopes name} in
+  let next, context = eval_code {context with index; vars; scopes = set_fscope_name cscopes name} in
   let offset = if context.index >= String.length context.code - 1 then "" else "\n\n" in
   let next = if next = "" then get_indentation (depth + 1) ^ "pass\n" else next in
   get_indentation depth ^ "def " ^ name ^ "(" ^ names ^ "):\n" ^ next ^ offset, {context with vars = prev_vars}
@@ -340,9 +372,9 @@ and control_keywords =
   [
     "fonction", (Function_definition "", eval_fonction);
     "procedure", (Function_definition "", eval_procedure);
-    "si", (If, eval_si);
-    "sinon", (Else, eval_sinon);
-    "sinon_si", (If, eval_sinon_si);
+    "si", (If 0, eval_si);
+    "sinon", (If 0, eval_sinon);
+    "sinon_si", (If 0, eval_sinon_si);
     "pour", (For, eval_pour);
     "pour_chaque", (For, eval_pour_chaque);
     "tant_que", (While, eval_tant_que)
@@ -351,8 +383,8 @@ and control_keywords =
 
 and get_code_context code =
   let code = String.trim code and index = 0 and vars = StringMap.empty and scopes = [] in
-  let _, context = try_catch stderr (fun () -> eval_code {code; index; vars; scopes})
-  in context
+  let _, context = try_catch stderr (fun () -> eval_code {code; index; vars; scopes}) in
+  context
 
 and translate_code code =
   let code = String.trim code and index = 0 and vars = StringMap.empty and scopes = [] in

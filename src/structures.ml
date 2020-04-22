@@ -107,9 +107,8 @@ module Value = struct
       Variable str
     else if str = "" then
       raise_syntax_error "Expected operand"
-    else begin
-      print_endline str;
-      raise_syntax_error "Invalid expression" end
+    else
+      raise_syntax_error "Invalid expression"
 
   let get_type vars = function
     | Int _ -> `Int
@@ -133,6 +132,7 @@ module Expr = struct
     | Div of t * t            (* x / y *)
     | Div_int of t * t        (* x div y *)
     | Modulus of t * t        (* x mod y *)
+    | Pow of t * t            (* x ^ y *)
     | Eq of t * t             (* x = y *)
     | Gt of t * t             (* x > y *)
     | Gt_eq of t * t          (* x >= y *)
@@ -149,8 +149,7 @@ end
 
 
 type scope =
-  | If
-  | Else
+  | If of int
   | While
   | For
   | Function of string * bool
@@ -177,8 +176,7 @@ let rec ret scopes name =
 let rec str_of_scopes scopes =
   match scopes with
     | [] -> "]"
-    | If :: r -> "if, " ^ str_of_scopes r
-    | Else :: r -> "else, " ^ str_of_scopes r
+    | If i :: r -> "if " ^ (string_of_int i) ^ ", " ^ str_of_scopes r
     | While :: r -> "while, " ^ str_of_scopes r
     | For :: r -> "for, " ^ str_of_scopes r
     | Function (name, rflag) :: r -> "fun " ^ name ^ " " ^ (string_of_bool rflag) ^ ", " ^ str_of_scopes r

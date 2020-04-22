@@ -34,10 +34,29 @@ let functions =
             `List t1 :: t2 :: [] when Type.is_compatible t1 t2 -> `None
           | t -> raise_unexpected_type_error_with_name "ajouter"
                    (Type.to_string (`Function ([`List `Any; `Any], `None)))
-                   (Type.to_string (`Function (t, `Any))));
+                   (Type.to_string (`Function (t, `None))));
       translator = (function
           | l :: x :: [] -> l ^ ".append(" ^ x ^ ")"
           | _ -> assert false);
+      imports = []
+    };
+    (* Cast functions *)
+    "reel", {
+      typer = (function
+            `Int :: [] -> `Float
+          | t -> raise_unexpected_type_error_with_name "reel"
+                   (Type.to_string (`Function ([`Int], `Float)))
+                   (Type.to_string (`Function (t, `Float))));
+      translator = (fun s -> "float(" ^ (List.hd s) ^ ")");
+      imports = []
+    };
+    "entier", {
+      typer = (function
+            `Float :: [] -> `Int
+          | t -> raise_unexpected_type_error_with_name "reel"
+                   (Type.to_string (`Function ([`Float], `Int)))
+                   (Type.to_string (`Function (t, `Int))));
+      translator = (fun s -> "int(" ^ (List.hd s) ^ ")");
       imports = []
     }
   ]
