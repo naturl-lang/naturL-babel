@@ -1,0 +1,6 @@
+(lang dune 2.5)
+
+(context
+  (default
+    (paths (NATURLPATH "")))
+)

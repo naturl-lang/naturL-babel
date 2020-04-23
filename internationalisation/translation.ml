@@ -61,22 +61,22 @@ type key =
   | NotSubscriptable
   | ListIndicesIntegers
 
-let to_int = function 
+let to_int = function
   | SyntaxError -> 1
   | TypeError -> 2
   | NameError -> 3
-  | ImportError -> 4 
+  | ImportError -> 4
   | NameTypeMessage -> 5
   | NameButGotMessage -> 6
   | HasTypeMessage -> 7
   | ButGotMessage -> 8
-  | ReturnTypeMatchMessage -> 9 
+  | ReturnTypeMatchMessage -> 9
   | UnexpectedReturn -> 10
-  | UnexpectedToken -> 11 
+  | UnexpectedToken -> 11
   | UnexpectedEOF -> 12
   | ExpectedDebut -> 13
   | UnexpectedDebut -> 14
-  | UnexpectedFin -> 15 
+  | UnexpectedFin -> 15
   | ExpectedReturn-> 16
   | ExpectedFin -> 17
   | UnexpectedChar -> 18
@@ -93,22 +93,24 @@ let to_int = function
   | InvalidTokenExpression -> 29
   | ReservedKeyword -> 30
   | TokenCapture -> 31
-  | MissingClosingParenthesis -> 32 
-  | MissingClosingBracket -> 33 
-  | UnexpectedParenthesis -> 34 
-  | UnexpectedBracket -> 35 
-  | UnknownOperator -> 36 
-  | InvalidOperation -> 37 
-  | AndType -> 38 
+  | MissingClosingParenthesis -> 32
+  | MissingClosingBracket -> 33
+  | UnexpectedParenthesis -> 34
+  | UnexpectedBracket -> 35
+  | UnknownOperator -> 36
+  | InvalidOperation -> 37
+  | AndType -> 38
   | CannotCompare -> 39
-  | VariablesOfType -> 40 
+  | VariablesOfType -> 40
   | NotCallable -> 41
   | UnknownFunction -> 42
   | TheType -> 43
   | NotSubscriptable -> 44
   | ListIndicesIntegers -> 45
 
-let json = ref (Basic.from_file "internationalisation/translation.json")
+let json = let path = [Sys.getenv "NATURLPATH"; "internationalisation"; "translation.json"]
+                      |> List.fold_left (fun s -> fun elt -> Filename.concat s elt) "" in
+  ref (Basic.from_file path)
 
 
 let getLangID = function
@@ -119,7 +121,7 @@ let get_member_from_JSON value =
   let high_member = Yojson.Basic.Util.member value !json in
   Yojson.Basic.Util.to_string (Yojson.Basic.Util.member (getLangID !lang) high_member)
 
-let get_string key  = 
+let get_string key  =
      (*   print_int(to_int key) ; *)
    match key with
   | SyntaxError -> get_member_from_JSON "SyntaxError"

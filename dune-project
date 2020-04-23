@@ -1,7 +1,7 @@
-(lang dune 1.11)
+(lang dune 2.5)
 (name naturL)
 (source (github TheNaturLFoundation/naturL))
-(version 1.0.0)
+(version 8d6d07c-dirty)
 (authors
   "Simon Scatton <simon.scatton@epita.fr"
   "Rostan Tabet <rostan.tabet@epita.fr"
@@ -23,7 +23,7 @@
     (description "A transpiler from french pseudocode to Python.
 Analyzes syntax and semantic, and generates error messages when necessary")
     (depends
-        (ocaml (and (>= 4.6.0) (<= 4.10.0)))
+        (ocaml (and (>= 4.8.0) (<= 4.10.0)))
         (dune (>= 1.11))
         yojson
         ppx_inline_test
