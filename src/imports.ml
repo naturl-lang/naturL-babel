@@ -7,6 +7,8 @@ module ImportSet = Set.Make(struct type t = import let compare = compare end)
 
 let imports = ref ImportSet.empty
 
+let clear_imports () = imports := ImportSet.empty
+
 let add_import namespace element =
   imports := ImportSet.add { namespace; element } !imports
 

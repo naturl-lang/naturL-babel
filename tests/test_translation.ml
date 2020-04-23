@@ -20,7 +20,7 @@ let%expect_test "procedure" = let context = {code = "procedure test()\ndebut\nfi
     def test():
         pass |}] ;;
 
-let%expect_test "si" = let context = {code = "si 2 < 3 alors\nfin"; index = 0; vars; scopes = [If]} in
+let%expect_test "si" = let context = {code = "si 2 < 3 alors\nfin"; index = 0; vars; scopes = [If 0]} in
   let translation, _ = eval_si context in
   print_string translation;
   [%expect {|
@@ -28,20 +28,20 @@ let%expect_test "si" = let context = {code = "si 2 < 3 alors\nfin"; index = 0; v
         pass |}]
 ;;
 
-let%expect_test "si vide" = let context = {code = "si 2 > 3 alors\nfin"; index = 0; vars; scopes = [If]} in
+let%expect_test "si vide" = let context = {code = "si 2 > 3 alors\nfin"; index = 0; vars; scopes = [If 0]} in
   let translation, _ = eval_si context in
   print_string translation;
   [%expect {| |}]
 ;;
 
-let%expect_test "sinon_si" = let context = {code = "sinon_si vrai alors\nfin"; index = 0; vars; scopes = [If]} in
+let%expect_test "sinon_si" = let context = {code = "sinon_si vrai alors\nfin"; index = 0; vars; scopes = [If 0]} in
   let translation, _ = eval_sinon_si context in
   print_string translation;
   [%expect {|
     elif True:
         pass |}] ;;
 
-let%expect_test "sinon" = let context = {code = "sinon\nfin"; index = 0; vars; scopes = [Else]} in
+let%expect_test "sinon" = let context = {code = "sinon\nfin"; index = 0; vars; scopes = [If 0]} in
   let translation, _ = eval_sinon context in
   print_string translation;
   [%expect {|

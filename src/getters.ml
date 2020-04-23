@@ -128,7 +128,10 @@ let rec get_imported_files_infos ?(prefix = "") ?(element = None) name =
     let name = String.sub name 1 (String.length name - 1) in
     if Sys.file_exists dir && Sys.is_directory dir then
       begin
-        Sys.chdir dir;
+        if dir = "std" && naturL_path <> None then
+          Sys.chdir (Filename.concat (Option.get naturL_path) "std")
+        else
+          Sys.chdir dir;
         let infos = get_imported_files_infos name ~prefix: (prefix ^ dir ^ ".")  ~element  in
         Sys.chdir "..";
         infos
@@ -144,8 +147,9 @@ let rec get_imported_files_infos ?(prefix = "") ?(element = None) name =
     and namespace = prefix ^ name
     and filename = Filename.concat (Sys.getcwd ()) name in
     [content, cwdir, namespace, filename, element]
-  else if Sys.file_exists name && Sys.is_directory name then
+  else if Sys.file_exists name && Sys.is_directory name || (name = "std" && naturL_path <> None) then
     let naturl_package = Filename.concat name "naturl-package" in
+    if name = "std" && naturL_path <> None then Sys.chdir (Option.get naturL_path);
     if Sys.file_exists naturl_package && not (Sys.is_directory naturl_package) then
       let dir = name in
       let namespace = prefix ^ dir in
@@ -162,5 +166,5 @@ let rec get_imported_files_infos ?(prefix = "") ?(element = None) name =
       infos
     else
       raise_import_error ("Can not import package '" ^ prefix ^ name ^ "' (missing naturl-package file)")
-  else
-    raise_import_error ("Unknown module or package '" ^ prefix ^ name ^ "'")
+  else begin print_endline (Option.get (Sys.getenv_opt "NATURLPATH"));
+    raise_import_error ("Unknown module or package '" ^ prefix ^ name ^ "'") end

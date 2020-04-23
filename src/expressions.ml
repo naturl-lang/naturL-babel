@@ -12,6 +12,8 @@ open (struct
     "*";
     "fois";
     "div";
+    "mod";
+    "^";
     "/";
     ">";
     ">=";
@@ -32,6 +34,7 @@ open (struct
     | Div _ -> "/"
     | Div_int _ -> "div"
     | Modulus _ -> "mod"
+    | Pow _ -> "^"
     | Eq _ -> "="
     | Gt _ -> ">"
     | Gt_eq _ -> ">="
@@ -51,9 +54,10 @@ open (struct
     | "et" -> 2
     | ">" | ">=" | "<" | "<=" | "=" -> 3
     | "+" | "-" -> 4
-    | "*" | "fois" | "/" | "div" | "get[" -> 5
-    | "non" | "neg" | "[" -> 6
-    | _ -> 6 (* Function call *)
+    | "*" | "fois" | "/" | "div" -> 5
+    | "non" | "neg" | "get[" -> 6
+    | "^" | "[" -> 7
+    | _ -> 7 (* Function call *)
 
   let make_binary_op op e1 e2 : Expr.t =
     match op with
@@ -63,6 +67,7 @@ open (struct
     | "/" -> Div (e1, e2)
     | "div" -> Div_int (e1, e2)
     | "mod" -> Modulus (e1, e2)
+    | "^" -> Pow (e1, e2)
     | "=" -> Eq (e1, e2)
     | ">" -> Gt (e1, e2)
     | ">=" -> Gt_eq (e1, e2)
@@ -77,7 +82,7 @@ open (struct
     match op with
     | "neg" -> Neg arg
     | "non" -> Not arg
-    | op -> raise_syntax_error ((get_string UnknownOperator) ^ op ^ "'")
+    | op -> raise_syntax_error ("Unknown operator '" ^ op ^ "'")
 
   let string_of_token = function
     | Operator str | Identifier str | Litteral str -> str ^ " "
@@ -92,7 +97,7 @@ open (struct
   let is_type_accepted t (op: Expr.t) =
     match op with
       Plus _ -> List.exists (fun type_ -> Type.is_compatible t type_) [`Int; `Float; `String]
-    | Minus _ | Times _ | Neg _ -> List.exists (fun type_ -> Type.is_compatible t type_) [`Int; `String]
+    | Minus _ | Times _ | Neg _ | Pow _ -> List.exists (fun type_ -> Type.is_compatible t type_) [`Int; `Float]
     | Div_int _ | Modulus _ -> Type.is_compatible `Int t
     | Div _ -> Type.is_compatible `Float t
     | Eq _ | Gt _ | Gt_eq _ | Lt _ | Lt_eq _ -> true
@@ -168,7 +173,7 @@ let expr_of_string str : Expr.t =
     | Or(e1,e2) -> let e1,e2 = (_simplify e1, _simplify e2) in perform_op e1 e2 "or" (Or (e1, e2))
     | Not e -> let e = _simplify e in perform_op e e "not" (Not e)
     | Neg e -> let e = _simplify e in perform_op e e "neg" (Neg e)
-    |_-> expr
+    | _-> expr
   in
   (*Core functions: *)
   let split_params list =
@@ -214,7 +219,7 @@ let expr_of_string str : Expr.t =
 
 (* Returns the type of an expression *)
 let rec type_of_expr vars : Expr.t -> Type.t = function
-  | Plus (l, r) | Minus (l, r) | Times (l, r) | Div (l, r) | Div_int (l, r) | Modulus (l, r) | And (l, r) | Or (l, r) as e ->
+  | Plus (l, r) | Minus (l, r) | Times (l, r) | Div (l, r) | Div_int (l, r) | Modulus (l, r) | Pow (l, r) | And (l, r) | Or (l, r) as e ->
     let l_type = type_of_expr vars l and r_type = type_of_expr vars r in
     if l_type = r_type && is_type_accepted l_type e then l_type
     else if l_type = `Any && is_type_accepted r_type e then r_type
@@ -239,8 +244,9 @@ let rec type_of_expr vars : Expr.t -> Type.t = function
            else
              raise_unexpected_type_error_with_name name (Type.to_string f) (Type.to_string (`Function (params_types, `Any)))
          | _ as t -> raise_type_error ((get_string VariablesOfType) ^ (Type.to_string t) ^ (get_string NotCallable)))
-     with Not_found -> (
-         try let builtin = StringMap.find name Builtins.functions in
+     with Not_found -> (try
+           let builtin = StringMap.find name Builtins.functions in
+           builtin.import ();
            let return = builtin.typer params_types in return
          with Not_found -> raise_name_error ((get_string UnknownFunction) ^ name ^ "'")))
   | Subscript (l, i) -> if type_of_expr vars i = `Int then match type_of_expr vars l with
@@ -260,6 +266,7 @@ let string_of_expr expr =
       | Div (e1, e2) as op-> _string_of_expr ~parent: op e1 ^ " / "^ (_string_of_expr ~parent: op e2), op
       | Div_int (e1, e2) as op-> _string_of_expr ~parent: op e1 ^ " // " ^ (_string_of_expr ~parent: op e2), op
       | Modulus (e1, e2) as op-> _string_of_expr ~parent: op e1 ^ " % " ^ (_string_of_expr ~parent: op e2), op
+      | Pow (e1, e2) as op-> _string_of_expr ~parent: op e1 ^ " ** " ^ (_string_of_expr ~parent: op e2), op
       | Eq (e1, e2) as op-> _string_of_expr ~parent: op e1 ^ " == " ^ (_string_of_expr ~parent: op e2), op
       | Gt (e1, e2) as op -> _string_of_expr ~parent: op e1 ^ " > " ^ (_string_of_expr ~parent: op e2), op
       | Gt_eq (e1, e2) as op-> _string_of_expr ~parent: op e1 ^ " >= " ^ (_string_of_expr ~parent: op e2), op
