@@ -8,6 +8,7 @@ open Structures
 open Getters
 open Expressions
 open Internationalisation.Translation
+open Abstract_type_translation
 
 let eval_expression_with_type str vars =
   let expr = expr_of_string str in
@@ -102,6 +103,7 @@ let rec eval_code context =
       else match word with
         | "utiliser" -> eval_code (eval_utiliser context)
         | "variables" -> eval_code (eval_variables context)
+        | "attributs" -> eval_code (eval_attributes ({context with scopes = (Attributes ""):: context.scopes}))
         | "debut" -> if is_def then
             eval_code {context with scopes = (Function (name,false)):: List.tl context.scopes}
           else
@@ -366,6 +368,14 @@ and eval_pour context =
     get_indentation depth ^ "for " ^ var_expr ^ " in range(" ^ start_expr ^ ", " ^ end_expr ^ "):\n" ^ next, context
   else
     raise_unexpected_type_error (Type.to_string `Int) (Type.to_string (find_bad_elt `None `Int [var_type; start_type; end_type])) ~line
+and eval_type_definition context = 
+  let depth = List.length context.scopes -1 in 
+  let name, i = get_word context.code (ignore_spaces context.code (context.index + 13)) in 
+  let new_vars = StringMap.add name (`Custom (name, StringMap.empty, StringMap.empty)) context.vars in 
+  let scopes = List.tl context.scopes in 
+  let next, context = eval_code {context with index = i; vars = new_vars ; scopes = Class_def name :: scopes} in
+  let next = if next = "" then get_indentation (depth+1)^"pass" else next in 
+  get_indentation depth ^"class "^name^":\n"^next^"\n", context 
 
 and control_keywords =
   [
@@ -376,7 +386,8 @@ and control_keywords =
     "sinon_si", (If 0, eval_sinon_si);
     "pour", (For, eval_pour);
     "pour_chaque", (For, eval_pour_chaque);
-    "tant_que", (While, eval_tant_que)
+    "tant_que", (While, eval_tant_que) ;
+    "type_abstrait", (Class_def "", eval_type_definition)
   ]
 
 

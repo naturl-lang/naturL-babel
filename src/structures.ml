@@ -2,8 +2,9 @@ open Utils
 open Errors
 open Internationalisation.Translation
 
-module Type = struct
 
+module Type = struct
+ 
   type t = [
     | `Int
     | `Float
@@ -14,7 +15,9 @@ module Type = struct
     | `Function of t list * t
     | `None
     | `Any
+    | `Custom of string * t StringMap.t * bool StringMap.t  (*name, attributes and methodes*)
   ]
+  
 
   let rec to_string : t -> string = function
     | `Int -> "entier"
@@ -29,6 +32,8 @@ module Type = struct
         | _ -> "fonction: " ^ String.concat " x " (List.map to_string params) ^ " -> " ^ to_string return)
     | `None -> "Ø"
     | `Any -> "?"
+    | `Custom (name,_,_) -> name 
+
 
   let rec of_string str : t =
     let splitted = List.map (fun s -> String.split_on_char '_' s)
@@ -64,7 +69,7 @@ module Type = struct
     | `Function (params1, return1) -> (match type2 with
         | `Function (params2, return2) -> List.for_all2 is_compatible params1 params2 && is_compatible return1 return2
         | _ -> false)
-
+    | `Custom (name,_,_) -> name = (to_string type2)  
 end
 
 let print_vars = StringMap.iter (function name -> function t ->
@@ -155,6 +160,9 @@ type scope =
   | For
   | Function of string * bool
   | Function_definition of string
+  | Class_def of string 
+  | Attributes of string
+  | Methodes of string
 
 let set_fscope_name scopes name =
   match scopes with
@@ -182,6 +190,9 @@ let rec str_of_scopes scopes =
     | For :: r -> "for, " ^ str_of_scopes r
     | Function (name, rflag) :: r -> "fun " ^ name ^ " " ^ (string_of_bool rflag) ^ ", " ^ str_of_scopes r
     | Function_definition name :: r -> "fun_def " ^ name ^ ", " ^ str_of_scopes r
+    | Class_def name :: r -> "Class_def "^name^", " ^str_of_scopes r 
+    | Attributes _ :: r -> "Attributes declaration, "^str_of_scopes r 
+    | Methodes _ :: r -> "Methodes declaration, "^str_of_scopes r
 
 (* The current context of the code *)
 type context = {
@@ -190,3 +201,5 @@ type context = {
   vars: Type.t StringMap.t;        (* The set of known variables *)
   scopes: scope list;              (* The stack of scopes *)
 }
+
+
