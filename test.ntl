@@ -1,0 +1,45 @@
+procedure hello_world()
+variables
+	entier i, taille
+	liste_de_chaine vitesses
+debut
+	taille <- 200
+	vitesses <- ["slowest", "slow", "normal", "fast"]
+
+  masquer_crayon()
+	taille_crayon(50)
+	
+	couleur_fond("red")
+	
+	lever_crayon()
+	crayon_a(0, -1.5 * reel(taille))
+	abaisser_crayon()
+	couleur_crayon("white")
+	commencer_remplissage()
+	dessiner_cercle(1.5 * reel(taille))
+	finir_remplissage()
+	couleur_crayon("black")
+	lever_crayon()
+	crayon_a(0, 0)
+	tourner_crayon(-45)
+	
+	
+	pour i de 1 jusqu_a 4 faire
+	  vitesse_crayon(vitesses[i])
+		tourner_crayon(-90)
+		abaisser_crayon()
+		avancer_crayon(taille)
+		tourner_crayon(-90)
+		avancer_crayon(taille)
+		lever_crayon()
+		reculer_crayon(taille)
+		tourner_crayon(90)
+		reculer_crayon(taille)
+		couleur_crayon("black")
+	fin
+fin
+
+vitesse_crayon("fastest")
+hello_world()
+lancer_boucle() 
+

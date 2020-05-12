@@ -65,10 +65,174 @@ let functions =
             `Int :: [] -> `Float
           | `Float :: [] -> `Float
           | t -> raise_unexpected_type_error_with_name "decimal"
-                   (Type.to_string (`Function ([`Any], `Float)))
+                   (Type.to_string (`Function ([`Int], `Float)))
                    (Type.to_string (`Function (t, `Float))));
       translator = (fun s -> "Decimal(" ^ (List.hd s) ^ ")");
       import = (fun () -> add_import "decimal" (Some "Decimal"))
+    };
+
+    (* Graphical functions *)
+    "avancer_crayon", {
+      typer = (function
+            (`Int | `Float) :: [] -> `None
+          | t -> raise_unexpected_type_error_with_name "avancer"
+                   (Type.to_string (`Function ([`Int], `None)))
+                   (Type.to_string (`Function (t, `None))));
+      translator = (fun s -> "turtle.forward(" ^ List.hd s ^ ")");
+      import = (fun () -> add_import "turtle" None)
+    };
+    "reculer_crayon", {
+      typer = (function
+            (`Int | `Float) :: [] -> `None
+          | t -> raise_unexpected_type_error_with_name "reculer_crayon"
+                   (Type.to_string (`Function ([`Int], `None)))
+                   (Type.to_string (`Function (t, `None))));
+      translator = (fun s -> "turtle.backward(" ^ List.hd s ^ ")");
+      import = (fun () -> add_import "turtle" None)
+    };
+    "tourner_crayon", {
+      typer = (function
+            (`Int | `Float) :: [] -> `None
+          | t -> raise_unexpected_type_error_with_name "tourner_crayon"
+                   (Type.to_string (`Function ([`Int], `None)))
+                   (Type.to_string (`Function (t, `None))));
+      translator = (fun s -> "turtle.left(" ^ List.hd s ^ ")");
+      import = (fun () -> add_import "turtle" None)
+    };
+    "abaisser_crayon", {
+      typer = (function
+            [] -> `None
+          | t -> raise_unexpected_type_error_with_name "abaisser_crayon"
+                   (Type.to_string (`Function ([], `None)))
+                   (Type.to_string (`Function (t, `None))));
+      translator = (fun _ -> "turtle.down()");
+      import = (fun () -> add_import "turtle" None)
+    };
+    "lever_crayon", {
+      typer = (function
+            [] -> `None
+          | t -> raise_unexpected_type_error_with_name "lever_crayon"
+                   (Type.to_string (`Function ([], `None)))
+                   (Type.to_string (`Function (t, `None))));
+      translator = (fun _ -> "turtle.up()");
+      import = (fun () -> add_import "turtle" None)
+    };
+    "crayon_a", {
+      typer = (function
+            (`Int | `Float) :: (`Int | `Float) :: [] -> `None
+          | t -> raise_unexpected_type_error_with_name "crayon_a"
+                   (Type.to_string (`Function ([`Int; `Int], `None)))
+                   (Type.to_string (`Function (t, `None))));
+      translator = (fun s -> "turtle.goto(" ^ (List.hd s) ^ ", " ^ (List.hd (List.tl s)) ^ ")");
+      import = (fun () -> add_import "turtle" None)
+    };
+    "masquer_crayon", {
+      typer = (function
+            [] -> `None
+          | t -> raise_unexpected_type_error_with_name "masquer_crayon"
+                   (Type.to_string (`Function ([], `None)))
+                   (Type.to_string (`Function (t, `None))));
+      translator = (fun _ -> "turtle.ht()");
+      import = (fun () -> add_import "turtle" None)
+    };
+    "afficher_crayon", {
+      typer = (function
+            [] -> `None
+          | t -> raise_unexpected_type_error_with_name "afficher_crayon"
+                   (Type.to_string (`Function ([], `None)))
+                   (Type.to_string (`Function (t, `None))));
+      translator = (fun _ -> "turtle.st()");
+      import = (fun () -> add_import "turtle" None)
+    };
+    "couleur_crayon", {
+      typer = (function
+            `String :: [] -> `None
+          | t -> raise_unexpected_type_error_with_name "couleur_crayon"
+                   (Type.to_string (`Function ([`String], `None)))
+                   (Type.to_string (`Function (t, `None))));
+      translator = (fun s -> "turtle.color(" ^ (List.hd s) ^ ")");
+      import = (fun () -> add_import "turtle" None)
+    };
+    "couleur_fond", {
+      typer = (function
+            `String :: [] -> `None
+          | t -> raise_unexpected_type_error_with_name "couleur_fond"
+                   (Type.to_string (`Function ([`String], `None)))
+                   (Type.to_string (`Function (t, `None))));
+      translator = (fun s -> "turtle.bgcolor(" ^ (List.hd s) ^ ")");
+      import = (fun () -> add_import "turtle" None)
+    };
+    "taille_crayon", {
+      typer = (function
+            (`Int | `Float) :: [] -> `None
+          | t -> raise_unexpected_type_error_with_name "taille_crayon"
+                   (Type.to_string (`Function ([`Int], `None)))
+                   (Type.to_string (`Function (t, `None))));
+      translator = (fun s -> "turtle.width(" ^ (List.hd s) ^ ")");
+      import = (fun () -> add_import "turtle" None)
+    };
+    "vitesse_crayon", {
+      typer = (function
+            `String :: [] -> `None
+          | t -> raise_unexpected_type_error_with_name "vitesse_crayon"
+                   (Type.to_string (`Function ([`String], `None)))
+                   (Type.to_string (`Function (t, `None))));
+      translator = (fun s -> "turtle.speed(" ^ (List.hd s) ^ ")");
+      import = (fun () -> add_import "turtle" None)
+    };
+    "dessiner_cercle", {
+      typer = (function
+            (`Int | `Float) :: [] -> `None
+          | t -> raise_unexpected_type_error_with_name "dessiner_cercle"
+                   (Type.to_string (`Function ([`Int], `None)))
+                   (Type.to_string (`Function (t, `None))));
+      translator = (fun s -> "turtle.circle(" ^ (List.hd s) ^ ")");
+      import = (fun () -> add_import "turtle" None)
+    };
+    "dessiner_texte", {
+      typer = (function
+            `String :: [] -> `None
+          | t -> raise_unexpected_type_error_with_name "dessiner_texte"
+                   (Type.to_string (`Function ([`String], `None)))
+                   (Type.to_string (`Function (t, `None))));
+      translator = (fun s -> "turtle.write(" ^ (List.hd s) ^ ")");
+      import = (fun () -> add_import "turtle" None)
+    };
+    "definir_titre", {
+      typer = (function
+            `String :: [] -> `None
+          | t -> raise_unexpected_type_error_with_name "definir_titre"
+                   (Type.to_string (`Function ([`String], `None)))
+                   (Type.to_string (`Function (t, `None))));
+      translator = (fun s -> "turtle.title(" ^ (List.hd s) ^ ")");
+      import = (fun () -> add_import "turtle" None)
+    };
+    "commencer_remplissage", {
+      typer = (function
+            [] -> `None
+          | t -> raise_unexpected_type_error_with_name "commencer_remplissage"
+                   (Type.to_string (`Function ([], `None)))
+                   (Type.to_string (`Function (t, `None))));
+      translator = (fun _ -> "turtle.begin_fill()");
+      import = (fun () -> add_import "turtle" None)
+    };
+    "finir_remplissage", {
+      typer = (function
+            [] -> `None
+          | t -> raise_unexpected_type_error_with_name "commencer_remplissage"
+                   (Type.to_string (`Function ([], `None)))
+                   (Type.to_string (`Function (t, `None))));
+      translator = (fun _ -> "turtle.end_fill()");
+      import = (fun () -> add_import "turtle" None)
+    };
+    "lancer_boucle", {
+      typer = (function
+            [] -> `None
+          | t -> raise_unexpected_type_error_with_name "lancer_boucle"
+                   (Type.to_string (`Function ([], `None)))
+                   (Type.to_string (`Function (t, `None))));
+      translator = (fun _ -> "turtle.mainloop()");
+      import = (fun () -> add_import "turtle" None)
     };
   ]
   in string_map_of_list assoc
