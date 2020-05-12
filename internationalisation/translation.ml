@@ -122,7 +122,7 @@ let get_member_from_JSON value =
   Yojson.Basic.Util.to_string (Yojson.Basic.Util.member (getLangID !lang) high_member)
 
 let get_string key  =
-   print_int(to_int key) ;
+   (*print_int(to_int key)  ;*)
    match key with
   | SyntaxError -> get_member_from_JSON "SyntaxError"
   | TypeError -> get_member_from_JSON "TypeError"
