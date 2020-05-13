@@ -160,21 +160,27 @@ let rec eval_code context =
 and eval_utiliser context =
   let write_pyfile filename =
     let naturl_name = filename ^ ".ntl" and py_name = filename ^ ".py" in
-    if !import_mode = Overwrite || !import_mode = Moderated && not (Sys.file_exists py_name) then
+    if !import_mode = Overwrite || !import_mode = Moderated && not (Sys.file_exists py_name) then begin
       let code = translate_code (read_file naturl_name) in
       write_file py_name code
+    end
   in
   let line_no = get_line_no context.code context.index in
   let line, index = get_line context.code context.index in
   let dependencies = String.split_on_char ',' line in
+  let is_imported = !Imports.is_imported in
   let vars = List.flatten (try_update_err line_no (fun () -> dependencies |> List.map get_imported_files_infos))
              |> List.map (function content, cwdir, namespace, filename, element ->
-                 add_import namespace element;
+                 let path = Sys.getcwd () and imports = !Imports.imports in
                  Sys.chdir cwdir;
-                 let imports_back = !Imports.imports in
-                 let new_context = get_code_context content in Sys.chdir "..";
-                 Imports.imports := imports_back;
+                 Imports.imports := ImportSet.empty;
+                 Imports.is_imported := true;
                  write_pyfile filename;
+                 let new_context = get_code_context content in
+                 Imports.is_imported := is_imported;
+                 Sys.chdir path;
+                 Imports.imports := imports;
+                 add_import ~userdefined:true namespace element;
                  let prefix = if element = None then namespace ^ "." else "" in
                  context.vars
                  |> StringMap.fold (fun key -> fun value -> fun map -> StringMap.add (prefix ^ key) value map) new_context.vars)

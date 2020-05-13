@@ -81,6 +81,15 @@ let functions =
       translator = (fun _ -> "turtle.reset()");
       import = (fun () -> add_import "turtle" None)
     };
+    "reinitialiser_geometrie", {
+      typer = (function
+            [] -> `None
+          | t -> raise_unexpected_type_error_with_name "reinitialiser_geometrie"
+                   (Type.to_string (`Function ([], `None)))
+                   (Type.to_string (`Function (t, `None))));
+      translator = (fun _ -> "turtle.home()");
+      import = (fun () -> add_import "turtle" None)
+    };
     "avancer_crayon", {
       typer = (function
             (`Int | `Float) :: [] -> `None

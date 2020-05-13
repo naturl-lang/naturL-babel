@@ -1,0 +1,10 @@
+utiliser setup
+
+procedure ligne(reel x1, reel y1, reel x2, reel y2)
+debut
+  setup.setup()
+  crayon_a(x1, y1)
+  abaisser_crayon()
+  crayon_a(x2, y2)
+fin
+

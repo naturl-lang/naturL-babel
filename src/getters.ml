@@ -122,7 +122,7 @@ let rec get_imported_files_infos ?(prefix = "") ?(element = None) name =
   in
   let id_reg = "[a-zA-Z_][a-zA-Z0-9_]*" in
   let r = "\\(" ^ id_reg ^ "\\)\\(\\(\\." ^ id_reg ^ "\\)" in
-  if Str.string_match (Str.regexp (r ^ "+\\)$")) name 0 then
+  if Str.string_match (Str.regexp (r ^ "+\\)$")) name 0 then  (* pack.mod *)
     let dir =  Str.matched_group 1 name in
     let name = Str.matched_group 2 name in
     let name = String.sub name 1 (String.length name - 1) in
@@ -136,12 +136,19 @@ let rec get_imported_files_infos ?(prefix = "") ?(element = None) name =
         Sys.chdir "..";
         infos
       end
+    else if dir = "std" && naturL_path <> None then
+      begin
+        Sys.chdir (Filename.concat (Option.get naturL_path) "std");
+        let infos = get_imported_files_infos name ~prefix: (prefix ^ dir ^ ".")  ~element  in
+        Sys.chdir "..";
+        infos
+      end
     else
       raise_import_error ("Unknown package '" ^ dir ^ "'")
-  else if Str.string_match (Str.regexp (r ^ "*\\)\\.\\*$")) name 0 then
+  else if Str.string_match (Str.regexp (r ^ "*\\)\\.\\*$")) name 0 then (* pack.* *)
     let name = matched_group 1 name ^ (matched_group 2 name) in
     get_imported_files_infos ~element: (Some "*") name
-  else if Sys.file_exists (name ^ ".ntl") && not (Sys.is_directory (name ^ ".ntl")) then
+  else if Sys.file_exists (name ^ ".ntl") && not (Sys.is_directory (name ^ ".ntl")) then (* mod *)
     let content = read_file (name ^ ".ntl")
     and cwdir = Sys.getcwd ()
     and namespace = prefix ^ name
@@ -157,14 +164,15 @@ let rec get_imported_files_infos ?(prefix = "") ?(element = None) name =
       generate__init__py ();
       let imports = ref [] in
       let infos = read_lines "naturl-package"
+                  |> List.filter (fun name -> String.trim name <> "")
                   |> List.map (fun name ->
                       get_imported_files_infos name ~prefix: (prefix ^ dir ^ ".") ~element
                       |> List.map (function content, cwdir, _, filename, element ->
                           imports := namespace :: !imports;content, cwdir, namespace, filename, element))
-                |> List.concat in
+                  |> List.concat in
       Sys.chdir "..";
       infos
     else
       raise_import_error ("Can not import package '" ^ prefix ^ name ^ "' (missing naturl-package file)")
-  else begin print_endline (Option.get (Sys.getenv_opt "NATURLPATH"));
-    raise_import_error ("Unknown module or package '" ^ prefix ^ name ^ "'") end
+  else
+    raise_import_error ("Unknown module or package '" ^ prefix ^ name ^ "'")
