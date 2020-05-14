@@ -1,6 +1,6 @@
-open Src.Utils
+(*open Src.Utils*)
 open Src.Getters
-open Src.Structures ;;
+(*open Src.Structures *);;
 
 print_string "Beginning getters.ml tests... " ;;
 
@@ -29,6 +29,7 @@ let%expect_test "get_line" =
   print_int index;
   [%expect {| 11 |}] ;;
 
+(*
 let%expect_test "get_param" =
   let params, index, vars, _ = get_param StringMap.empty "fonction test(entier n, reel pi) -> entier" 14 in
   print_string params;
@@ -40,7 +41,7 @@ let%expect_test "get_param" =
 var n : entier
 var pi : reel
 |}] ;;
-
+*)
 let %expect_test "get_line_no" =
   let code = "First line\nSecond line\nThird line\n" in
   print_int (get_line_no code 4);

@@ -10,7 +10,12 @@ let rec get_line_no code index =
   if index < 0 then
     1
   else
-    (if index < String.length code && code.[index] = '\n' then 1 else 0) + get_line_no code (index - 1)
+    (if index < String.length code && code.[index] = '\n' then 1 else 0) + get_line_no code (index - 1
+    )
+let  get_attr_content scopes = 
+    match List.hd scopes with
+      | Attributes content -> content
+      | _ -> failwith "Internal invalid use of get_attr_content"
 
 let get_last_line code =
   get_line_no code (String.length code - 1)
@@ -83,20 +88,26 @@ let get_type code index =
   i, try_update_err (get_line_no code index) (fun () -> Type.of_string t)
 
 (*Gets the parameters of the function or the procedure*)
-let get_param vars code index =
+let get_param context index =
+  let set_names names = 
+          match context.scopes with 
+      | Function_definition _ :: Methods _ ::_ when names = "" -> "self"
+      | Function_definition _ :: Methods _::_ -> "self, "^names
+      | _ -> names
+  in
   let rec _get_params ?(is_first = false) vars names index ?(types = []) = function
-    | [] -> names, index, vars, List.rev types
+    | [] -> set_names names, index, vars, List.rev types
     | h :: t -> let i, type_ = get_type h 0 in
       let name, i = get_word h i in
       let sep = if is_first then "" else ", " in
       _get_params (StringMap.add (String.trim name) type_ vars) (names ^ sep ^ name) (index + i + 1) ~types: (type_ :: types) t in
   let r = regexp {|\(\([a-z_]+\|\?\) [A-Za-z_][A-Za-z0-9_]*\(, ?\([a-z_]\|\?\)+ [A-Za-z_][A-Za-z0-9_]*\)*\))|} in
-  if string_match r code index then
-    _get_params vars "" (index + 1) (split (regexp ",") (matched_group 1 code)) ~is_first: true
-  else if string_match (regexp {|\( *)\)|}) code index then
-    "", match_end(), vars, []
+  if string_match r context.code index then
+    _get_params context.vars "" (index + 1) (split (regexp ",") (matched_group 1 context.code)) ~is_first: true
+  else if string_match (regexp {|\( *)\)|}) context.code index then
+    set_names "", match_end(), context.vars, []
   else
-    raise_syntax_error ~line: (get_line_no code index) (get_string InvalidFunctionDefinition)
+      raise_syntax_error ~line: (get_line_no context.code index) (get_string InvalidFunctionDefinition)
 
 let get_var name vars =
   let name = String.trim name in
