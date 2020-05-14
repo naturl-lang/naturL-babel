@@ -1,0 +1,40 @@
+variables
+  booleen __est_clavier_ecoute
+fin
+
+__est_clavier_ecoute <- faux
+
+
+procedure detecter_clic_gauche(procedure: (reel) x (reel) action)
+debut
+  _detecter_clic(action, 1)
+fin
+
+
+procedure detecter_clic_droit(procedure: (reel) x (reel) action)
+debut
+  _detecter_clic(action, 3)
+fin
+
+
+procedure detecter_clic_molette(procedure: (reel) x (reel) action)
+debut
+  _detecter_clic(action, 2)
+fin
+
+
+procedure executer_apres(procedure action, entier temps)
+debut
+  _executer_apres(action, temps)
+fin
+
+
+procedure detecter_touche(procedure action, chaine touche)
+debut
+  si non __est_clavier_ecoute alors
+    _ecouter_clavier()
+    __est_clavier_ecoute = vrai
+  fin
+  _detecter_touche(action, touche)
+fin
+

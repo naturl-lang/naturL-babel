@@ -1,0 +1,82 @@
+utiliser geometrie
+utiliser style
+
+
+procedure point(reel x, reel y)
+debut
+  geometrie.reinitialiser()
+  crayon_a(x, y)
+  dessiner_point()
+fin
+
+
+procedure ligne(reel x1, reel y1, reel x2, reel y2)
+debut
+  geometrie.reinitialiser()
+  crayon_a(x1, y1)
+  abaisser_crayon()
+  crayon_a(x2, y2)
+fin
+
+
+procedure rectangle(reel x, reel y, reel largeur, reel hauteur)
+variables
+  entier i
+  reel cote
+debut
+  geometrie.reinitialiser()
+  crayon_a(x, y)
+  abaisser_crayon()
+  pour i de 1 jusqu_a 4 faire
+    si i mod 2 = 0 alors
+      cote <- hauteur
+    sinon
+      cote <- largeur
+    fin
+    avancer_crayon(cote)
+    tourner_crayon(90)
+  fin
+fin
+
+
+procedure rectangle_plein(reel x, reel y, reel largeur, reel hauteur)
+variables
+  entier i
+  reel cote
+debut
+  geometrie.reinitialiser()
+  crayon_a(x, y)
+  abaisser_crayon()
+  style.commencer_a_remplir()
+  pour i de 1 jusqu_a 4 faire
+    si i mod 2 = 0 alors
+      cote <- hauteur
+    sinon
+      cote <- largeur
+    fin
+    avancer_crayon(cote)
+    tourner_crayon(90)
+  fin
+  style.finir_de_remplir()
+fin
+
+
+procedure cercle(reel x, reel y, reel rayon)
+debut
+  geometrie.reinitialiser()
+  crayon_a(x, y - rayon)
+  abaisser_crayon()
+  dessiner_cercle(rayon)
+fin
+
+
+procedure cercle_plein(reel x, reel y, reel rayon)
+debut
+  geometrie.reinitialiser()
+  crayon_a(x, y - rayon)
+  abaisser_crayon()
+  style.commencer_a_remplir()
+  dessiner_cercle(rayon)
+  style.finir_de_remplir()
+fin
+

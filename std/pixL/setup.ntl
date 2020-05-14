@@ -1,6 +1,0 @@
-procedure setup()
-debut
-  reinitialiser_geometrie()
-  masquer_crayon()
-fin
-

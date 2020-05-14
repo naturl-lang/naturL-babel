@@ -261,10 +261,10 @@ let functions =
       translator = (fun _ -> "turtle.update()");
       import = (fun () -> add_import "turtle" None)
     };
-    "definir_delai", {
+    "delai_ecran", {
       typer = (function
             (`Int | `Float) :: [] -> `None
-          | t -> raise_unexpected_type_error_with_name "definir_delai"
+          | t -> raise_unexpected_type_error_with_name "delai_ecran"
                    (Type.to_string (`Function ([`Int], `None)))
                    (Type.to_string (`Function (t, `None))));
       translator = (fun s -> "turtle.delay(" ^ (List.hd s) ^ ")");
@@ -280,40 +280,59 @@ let functions =
       import = (fun () -> add_import "turtle" None)
     };
     (* Dealing with events *)
-    "detecter_clic", {
+    "_detecter_clic", {
       typer = (function
-            (`Function ([`Int; `Int], `None) | `Function ([`Float; `Float], `None)) :: `Int :: [] -> `None
-          | t -> raise_unexpected_type_error_with_name "detecter_clic"
-                   (Type.to_string (`Function ([`Function ([`Int; `Int], `None); `Int], `None)))
+            `Function ([`Float; `Float], `None) :: `Int :: [] -> `None
+          | t -> raise_unexpected_type_error_with_name "_detecter_clic"
+                   (Type.to_string (`Function ([`Function ([`Float; `Float], `None); `Int], `None)))
                    (Type.to_string (`Function (t, `None))));
       translator = (fun s -> "turtle.onscreenclick(" ^ (List.hd s) ^ ", " ^ (List.hd (List.tl s)) ^ ")");
       import = (fun () -> add_import "turtle" None)
     };
-    "detecter_touche", {
+    "_detecter_touche", {
       typer = (function
             `Function ([], `None) :: (`Char | `String) :: [] -> `None
-          | t -> raise_unexpected_type_error_with_name "detecter_touche"
+          | t -> raise_unexpected_type_error_with_name "_detecter_touche"
                    (Type.to_string (`Function ([`Function ([], `None); `String], `None)))
                    (Type.to_string (`Function (t, `None))));
-      translator = (fun s -> "turtle.onkey(" ^ (List.hd s) ^ ", " ^ (List.hd (List.tl s)) ^ ")");
+      translator = (function s -> "turtle.onkey(" ^ (List.hd s) ^ ", " ^ (List.hd (List.tl s)) ^ ")");
       import = (fun () -> add_import "turtle" None)
     };
-    "ecouter_clavier", {
+    "_ecouter_clavier", {
       typer = (function
             [] -> `None
-          | t -> raise_unexpected_type_error_with_name "ecouter_clavier"
+          | t -> raise_unexpected_type_error_with_name "_ecouter_clavier"
                    (Type.to_string (`Function ([], `None)))
                    (Type.to_string (`Function (t, `None))));
       translator = (fun _ -> "turtle.listen()");
       import = (fun () -> add_import "turtle" None)
     };
-    "executer_apres", {
+    "_executer_apres", {
       typer = (function
-            `Function ([], `None) :: (`Int | `Float) :: [] -> `None
-          | t -> raise_unexpected_type_error_with_name "executer_apres"
+            `Function ([], `None) :: `Int :: [] -> `None
+          | t -> raise_unexpected_type_error_with_name "_executer_apres"
                    (Type.to_string (`Function ([`Function ([], `None); `Int], `None)))
                    (Type.to_string (`Function (t, `None))));
       translator = (fun s -> "turtle.ontimer(" ^ (List.hd s) ^ ", " ^ (List.hd (List.tl s)) ^ ")");
+      import = (fun () -> add_import "turtle" None)
+    };
+    (* Geometry functions *)
+    "taille_ecran", {
+      typer = (function
+             [] -> `List `Int
+          | t -> raise_unexpected_type_error_with_name "taille_ecran"
+                   (Type.to_string (`Function ([], `None)))
+                   (Type.to_string (`Function (t, `None))));
+      translator = (fun _ -> "turtle.screensize()");
+      import = (fun () -> add_import "turtle" None)
+    };
+    "definir_taille_ecran", {
+      typer = (function
+            (`Int | `Float) :: (`Int | `Float) :: [] -> `None
+          | t -> raise_unexpected_type_error_with_name "definir_taille_ecran"
+                   (Type.to_string (`Function ([`Int; `Int], `None)))
+                   (Type.to_string (`Function (t, `None))));
+      translator = (fun s -> "turtle.screensize(" ^ (List.hd s) ^ ", " ^ (List.hd (List.tl s)) ^ ")");
       import = (fun () -> add_import "turtle" None)
     };
   ]

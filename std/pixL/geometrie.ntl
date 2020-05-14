@@ -1,0 +1,27 @@
+procedure reinitialiser()
+debut  
+  lever_crayon()
+  reinitialiser_geometrie()
+  vitesse_crayon("fastest")
+  delai_ecran(0)
+  masquer_crayon()
+fin
+
+
+fonction largeur_fenetre() -> entier
+debut
+  retourner taille_ecran()[0]
+fin
+
+
+fonction hauteur_fenetre() -> entier
+debut
+  retourner taille_ecran()[1]
+fin
+
+
+procedure redimensionner_fenetre(entier largeur, entier hauteur)
+debut
+  definir_taille_ecran(largeur, hauteur)
+fin
+

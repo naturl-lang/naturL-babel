@@ -25,7 +25,8 @@ module Type = struct
     | `List `Any -> "liste"
     | `List t -> "liste de " ^ to_string t
     | `Function (params, return) -> (match return with
-          `None -> "procedure: " ^ String.concat " x " (List.map to_string params)
+          `None -> if params = [] then "procedure"
+          else"procedure: " ^ String.concat " x " (List.map (fun t -> "(" ^ (to_string t) ^ ")" ) params)
         | _ -> "fonction: " ^ String.concat " x " (List.map to_string params) ^ " -> " ^ to_string return)
     | `None -> "Ø"
     | `Any -> "?"
@@ -41,9 +42,16 @@ module Type = struct
     | "booleen" :: [] -> `Bool
     | "liste" :: [] -> `List `Any
     | "liste" :: "de" :: t -> `List (of_string (String.concat " " t))
-    | "procedure" :: params  :: [] -> `Function (List.map of_string (String.split_on_char 'x' params), `None)
+    | "procedure" :: [] -> `Function ([], `None)
+    | "procedure:" :: tail -> `Function (String.split_on_char 'x' (String.concat " " tail)
+                                         |> List.map (fun s -> let s = String.trim s in
+                                                       of_string (String.sub s 1 (String.length s - 2))),
+                                         `None)
     | "fonction:" :: tail -> (match Str.split (Str.regexp " -> ") (String.concat " " tail) with
-          params :: return :: [] -> `Function (List.map of_string (String.split_on_char 'x' params), of_string return)
+          params :: return :: [] -> `Function ((String.split_on_char 'x' params)
+                                               |> List.map (fun s -> let s = String.trim s in
+                                                             of_string (String.sub s 1 (String.length s - 2))),
+                                               of_string return)
         | _ -> raise_name_error ((get_string UnknownType) ^ str ^ "'"))
     | ("Ø" | "rien") :: [] -> `None
     | "?" :: [] -> `Any

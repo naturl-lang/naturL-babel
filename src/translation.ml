@@ -202,7 +202,7 @@ and eval_variables context =
        else if word = "variables" then
          _eval_variables vars code index
        else if word = "fin" then
-         raise_syntax_error (get_string UnexpectedFin) ~line: line_no
+         vars, index
        else
          let line, index = get_line code index in
          let type_struct = try_update_err line_no (fun () -> Type.of_string word) in
@@ -228,7 +228,7 @@ and eval_fonction context =
   in
   let name, index = get_word context.code (context.index + 9) in (* 9 = 8 + 1 *)
   let prev_vars = context.vars in
-  let names, index, vars, types = get_param context.vars context.code index in
+  let names, index, vars, types = try_update_err line (fun () -> get_param context.vars context.code index) in
   let index, type_ = check_return_type index in
   let fx = `Function (types, type_) in
   let prev_vars = StringMap.add name fx prev_vars in
@@ -246,7 +246,7 @@ and eval_procedure context =
   (*Same logic as functions except that there is no need to check a return type*)
   let name, index = get_word context.code (context.index + 10) (*10 = 9 + 1*) in
   let prev_vars = context.vars in
-  let names, index, vars, types = get_param context.vars context.code index in
+  let names, index, vars, types = try_update_err line (fun () -> get_param context.vars context.code index) in
   let fx = `Function (types, `None) in
   let prev_vars = StringMap.add name fx prev_vars in
   let vars = StringMap.add name fx vars in

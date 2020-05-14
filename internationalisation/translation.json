@@ -45,11 +45,11 @@
 	},
 	"UnexpectedEOF": {
 		"fr": "Fin de fichier non attendue",
-		"end": "Unexpected end of file"
+		"en": "Unexpected end of file"
 	},
 	"ExpectedDebut": {
 		"fr": "Mot clé 'debut' attendu après la définition de la fonction",
-		"end": "Expected 'debut' after function definition"
+		"en": "Expected 'debut' after function definition"
 	},
 	"UnexpectedDebut": {
 		"fr": "Mot clé 'debut' non attendu",
@@ -91,7 +91,7 @@
 		"fr": "Mot clé manquant '",
 		"en": "Missing keyword '"
 	},
-	"InvalidFunctionDefiniton": {
+	"InvalidFunctionDefinition": {
 		"fr": "Définition de fonction invalide",
 		"en": "Invalid function defintion"
 	},

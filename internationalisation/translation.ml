@@ -118,8 +118,10 @@ let getLangID = function
   | English -> "en"
 
 let get_member_from_JSON value =
-  let high_member = Yojson.Basic.Util.member value !json in
-  Yojson.Basic.Util.to_string (Yojson.Basic.Util.member (getLangID !lang) high_member)
+  try
+    let high_member = Yojson.Basic.Util.member value !json in
+    Yojson.Basic.Util.to_string (Yojson.Basic.Util.member (getLangID !lang) high_member)
+  with Yojson.Basic.Util.Type_error _ -> failwith ("JSON error with key " ^ value)
 
 let get_string key  =
      (*   print_int(to_int key) ; *)

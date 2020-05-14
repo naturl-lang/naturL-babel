@@ -86,13 +86,16 @@ let get_type code index =
 let get_param vars code index =
   let rec _get_params ?(is_first = false) vars names index ?(types = []) = function
     | [] -> names, index, vars, List.rev types
-    | h :: t -> let i, type_ = get_type h 0 in
-      let name, i = get_word h i in
-      let sep = if is_first then "" else ", " in
+    | h :: t -> let r = regexp {|^\(.*\)\ +\([a-zA-Z_][a-zA-Z_0-9]*\)$|} in
+      let _ = string_match r h 0 in
+      let type_ = Type.of_string (matched_group 1 h)
+      and name = matched_group 2 h
+      and i = match_end ()
+      and sep = if is_first then "" else ", " in
       _get_params (StringMap.add (String.trim name) type_ vars) (names ^ sep ^ name) (index + i + 1) ~types: (type_ :: types) t in
-  let r = regexp {|\(\([a-z_]+\|\?\) [A-Za-z_][A-Za-z0-9_]*\(, ?\([a-z_]\|\?\)+ [A-Za-z_][A-Za-z0-9_]*\)*\))|} in
-  if string_match r code index then
-    _get_params vars "" (index + 1) (split (regexp ",") (matched_group 1 code)) ~is_first: true
+  let r = regexp {| *\(.+ [A-Za-z_][A-Za-z0-9_]*\(, ?[^ ]+ [A-Za-z_][A-Za-z0-9_]*\)*\))|} in
+  if string_match r code index then begin
+    _get_params vars "" (index + 1) (split (regexp ",") (matched_group 1 code)) ~is_first: true end
   else if string_match (regexp {|\( *)\)|}) code index then
     "", match_end(), vars, []
   else
