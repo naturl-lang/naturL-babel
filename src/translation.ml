@@ -106,7 +106,7 @@ let rec eval_code context =
         | "methodes" -> 
                if is_attr_declaration context.scopes then
                  let new_scopes = (Function_definition "") :: (Methods (get_attr_content context.scopes)) :: List.tl context.scopes in 
-                 let translated, context = eval_constructor {context with scopes = new_scopes} in
+                 let translated, context = eval_constructor {context with index = index ; scopes = new_scopes} in
                  let next, context = eval_code context in 
                  translated^next, context
                else 
@@ -117,7 +117,7 @@ let rec eval_code context =
             raise_syntax_error ~line: (get_line_no code start_index) (get_string UnexpectedDebut)
         | "retourner" -> let expr, i = get_line code context.index in
           let return_expression = 
-            if string_match (regexp "instance[ \t]*$") expr 0 then
+            if string_match (regexp "^[ \t]*instance[ \t]*$") expr 0 then
                ""
             else (
               let py_expr = try_update_err (get_line_no code context.index) (fun () -> eval_expression expr context) in
@@ -424,6 +424,7 @@ and eval_constructor context =
   let depth = List.length context.scopes - 2 in
   let line = get_line_no context.code context.index in
   let class_name = get_current_class_name context in
+  let context = {context with index = (ignore_chrs context.code context.index)} in 
   (* A function is divided in a header (the name), parameters and a return type.
      This functions combine those parts *)
   let check_return_type i =
@@ -439,7 +440,7 @@ and eval_constructor context =
       else 
         raise_syntax_error "The constructor does not return the right type." ~line: line
   in
-  let name, index = get_word context.code (context.index + 10) in (* 10 = 8 + 1+1 *)
+  let name, index = get_word context.code (context.index + 9) in (* 9 = 8 + 1 *)
   let name = if name <> "nouveau" then raise_syntax_error ("The first method needs to be a constructor but got: "^name) else "__init__" in
   let prev_vars = context.vars in
   let names, index, vars, types = get_param context index in
