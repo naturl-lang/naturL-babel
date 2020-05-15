@@ -149,7 +149,8 @@ let rec eval_code context =
             "", context
           else
             raise_syntax_error "Unclosed scope: expected 'fin'" ~line: (get_line_no code context.index)
-        | _ -> (* Expression or affectation *)
+        | _ -> 
+          (* Expression or affectation *)
           let line_no = get_line_no code context.index in
           let r = regexp ("^[\n\t ]*\\([A-Za-z_][A-Za-z_0-9]*\\) *<- *\\(.*\\)\n") in
           if string_match r code start_index then   (* Affectation *)
@@ -416,10 +417,12 @@ and eval_type_definition context =
   let depth = List.length context.scopes -1 in
   let name, i = get_word context.code (ignore_spaces context.code (context.index + 13)) in
   let new_vars = StringMap.add name (`Custom (name, StringMap.empty, StringMap.empty)) context.vars in
+  let new_vars = StringMap.add "instance" (`Custom (name, StringMap.empty, StringMap.empty)) new_vars in
   let scopes = List.tl context.scopes in
   let next, context = eval_code {context with index = i; vars = new_vars ; scopes = Class_def name :: scopes} in
   let next = if next = "" then get_indentation (depth+1)^"pass" else next in
-  get_indentation depth ^"class "^name^":\n"^next^"\n", context
+  let new_vars = StringMap.remove "instance" new_vars in
+  get_indentation depth ^"class "^name^":\n"^next^"\n", {context with vars = new_vars}  
 
 and eval_constructor context =
   let depth = List.length context.scopes - 2 in
