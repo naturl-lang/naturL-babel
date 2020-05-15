@@ -25,18 +25,18 @@ let eval_attributes context =
                    let expr = string_of_expr expr in
                    let result = get_indentation depth ^ result ^ " = " ^ expr^"\n" in
                    let are_set = StringMap.add name true are_set in
-                   (StringMap.add class_name (`Custom (class_name, attr_meths, are_set)) vars, result)
+                   (StringMap.add class_name (`Class (attr_meths, are_set)) vars, result)
                else
                   raise_type_error "Given expression does not match the declared type" ~line: (get_line_no context.code context.index)
            else
-               let type_ = Type.of_string word in
+               let type_ = Type.of_string vars word in
                (*getting var name*)
                let name, i = get_word line (ignore_chrs line i) in
                let attr_meths, are_set = Type.get_attr_meths class_name vars in
                let attr_meths = StringMap.add name type_ attr_meths in
                let are_set = StringMap.add name false are_set in
                let result = "self."^name in
-               manage_line length line i (StringMap.add class_name (`Custom (class_name, attr_meths, are_set)) vars) class_name result
+               manage_line length line i (StringMap.add class_name (`Class (attr_meths, are_set)) vars) class_name result
     in
     let rec _main_process context result code_len =
         let whitespace = "[ \t]*" in

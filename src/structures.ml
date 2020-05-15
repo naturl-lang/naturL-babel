@@ -4,7 +4,7 @@ open Internationalisation.Translation
 
 
 module Type = struct
- 
+
   type t = [
     | `Int
     | `Float
@@ -15,9 +15,10 @@ module Type = struct
     | `Function of t list * t
     | `None
     | `Any
-    | `Custom of string * t StringMap.t * bool StringMap.t  (*name, attributes and methodes*)
+    | `Class of t StringMap.t * bool StringMap.t  (* attributes and methodes *)
+    | `Custom of string (* name of the class *)
   ]
-  
+
 
   let rec to_string : t -> string = function
     | `Int -> "entier"
@@ -32,10 +33,12 @@ module Type = struct
         | _ -> "fonction: " ^ String.concat " x " (List.map to_string params) ^ " -> " ^ to_string return)
     | `None -> "Ø"
     | `Any -> "?"
-    | `Custom (name,_,_) -> name 
+    | `Class _ -> "type"
+    | `Custom name -> name
+  let print_vars = StringMap.iter (function name -> function t ->
+      print_endline ("var " ^ name ^ " : " ^ to_string t))
 
-
-  let rec of_string str : t =
+  let rec of_string (vars: t StringMap.t) str : t =
     let splitted = List.map (fun s -> String.split_on_char '_' s)
         (String.split_on_char ' ' (String.trim str)) in
     match List.flatten splitted with
@@ -45,13 +48,16 @@ module Type = struct
     | "chaine" :: [] -> `String
     | "booleen" :: [] -> `Bool
     | "liste" :: [] -> `List `Any
-    | "liste" :: "de" :: t -> `List (of_string (String.concat " " t))
-    | "procedure" :: params  :: [] -> `Function (List.map of_string (String.split_on_char 'x' params), `None)
+    | "liste" :: "de" :: t -> `List (of_string vars (String.concat " " t))
+    | "procedure" :: params  :: [] -> `Function (List.map (of_string vars) (String.split_on_char 'x' params), `None)
     | "fonction:" :: tail -> (match Str.split (Str.regexp " -> ") (String.concat " " tail) with
-          params :: return :: [] -> `Function (List.map of_string (String.split_on_char 'x' params), of_string return)
+          params :: return :: [] -> `Function (List.map (of_string vars) (String.split_on_char 'x' params), of_string vars return)
         | _ -> raise_name_error ((get_string UnknownType) ^ str ^ "'"))
     | ("Ø" | "rien") :: [] -> `None
     | "?" :: [] -> `Any
+    | t :: [] -> (match StringMap.find_opt t vars with
+        | Some (`Class _) as s -> Option.get s
+        | _ -> print_vars vars; raise_name_error ((get_string UnknownType) ^ str ^ "'"))
     | _ -> raise_name_error ((get_string UnknownType) ^ str ^ "'")
 
   let get_iterable_type : t -> t option = function
@@ -69,11 +75,12 @@ module Type = struct
     | `Function (params1, return1) -> (match type2 with
         | `Function (params2, return2) -> List.for_all2 is_compatible params1 params2 && is_compatible return1 return2
         | _ -> false)
-    | `Custom (name,_,_) -> name = (to_string type2) 
+    | `Class _ -> type1 = type2
+    | `Custom _ -> to_string type1 = to_string type2
 
-  let get_attr_meths name vars = 
-    match (StringMap.find name vars) with 
-        |`Custom (_ , attr_meths, are_set) -> attr_meths, are_set
+  let get_attr_meths name (vars:t StringMap.t) =
+    match (StringMap.find name vars) with
+        |`Class (attr_meths, are_set) -> attr_meths, are_set
         | _ -> failwith "Internal missuse of get_attr_meth, No class in context.vars"
 end
 
@@ -83,7 +90,7 @@ type scope =
   | For
   | Function of string * bool
   | Function_definition of string
-  | Class_def of string 
+  | Class_def of string
   | Attributes of string
   | Methods of string
 
@@ -113,8 +120,8 @@ let rec str_of_scopes scopes =
     | For :: r -> "for, " ^ str_of_scopes r
     | Function (name, rflag) :: r -> "fun " ^ name ^ " " ^ (string_of_bool rflag) ^ ", " ^ str_of_scopes r
     | Function_definition name :: r -> "fun_def " ^ name ^ ", " ^ str_of_scopes r
-    | Class_def name :: r -> "Class_def "^name^", " ^str_of_scopes r 
-    | Attributes some_shit :: r -> "Attributes declaration, "^some_shit^str_of_scopes r 
+    | Class_def name :: r -> "Class_def "^name^", " ^str_of_scopes r
+    | Attributes some_shit :: r -> "Attributes declaration, "^some_shit^str_of_scopes r
     | Methods some_shit:: r -> "Methodes declaration, "^some_shit^str_of_scopes r
 (* The current context of the code *)
 
@@ -125,12 +132,12 @@ type context = {
   scopes: scope list;              (* The stack of scopes *)
 }
 
-let rec get_current_class_name context = 
-    match context.scopes with 
-        |[] -> (print_int context.index; print_string "\n"; 
+let rec get_current_class_name context =
+    match context.scopes with
+        | [] -> (print_int context.index; print_string "\n";
           failwith "Internal error: get_current_class_name is not used with a class context")
-        |(Class_def name)::_ -> name 
-        |_::r -> get_current_class_name {context with scopes = r} 
+        | Class_def name :: _ -> name
+        | _ :: r -> get_current_class_name {context with scopes = r}
 
 let print_vars = StringMap.iter (function name -> function t ->
     print_endline ("var " ^ name ^ " : " ^ Type.to_string t))
@@ -145,7 +152,7 @@ module Value = struct
     | String of string
     | Bool of bool
     | Variable of string
-    | Instance of string *  string
+    | Instance of string * string
     | None
 
   let to_string = function
@@ -155,7 +162,7 @@ module Value = struct
     | String s -> {|"|} ^ s ^ {|"|}
     | Bool b -> if b then "True" else "False"
     | Variable name -> name
-    | Instance (type_def, name) -> type_def^"."^name
+    | Instance (type_def, name) -> type_def ^ "." ^ name
     | None -> "None"
 
   let of_string = function str ->
@@ -173,7 +180,7 @@ module Value = struct
       Bool (str = "vrai")
     else if Str.string_match (Str.regexp ("^" ^ name_re ^ "$")) str 0 then
       Variable str
-    else if Str.string_match (Str.regexp ("^instance "^name_re ^ "$")) str 0 then
+    else if Str.string_match (Str.regexp ("^instance " ^ name_re ^ "$")) str 0 then
       Instance ("self", String.sub str 9 (String.length str - 9))
     else if str = "" then
       raise_syntax_error (get_string ExpectedOperand)
@@ -188,13 +195,14 @@ module Value = struct
     | Variable name -> (try StringMap.find name context.vars
                         with Not_found -> raise_name_error ((get_string UnknownVariable) ^ name ^ "'"))
     | Bool _ -> `Bool
-    | Instance (type_name, name) -> let type_name = if type_name = "self" then get_current_class_name context else type_name in 
-                                    let attr_meths, are_set = try Type.get_attr_meths type_name context.vars 
-                                    with Not_found -> raise_name_error ((get_string UnknownVariable) ^type_name ^ "'") in 
-                                    let is_set  = try StringMap.find name are_set
-                                    with Not_found -> raise_name_error ((get_string UnknownVariable) ^ name^"' in class '"^type_name^"'") in 
-                                    if is_set then StringMap.find name attr_meths 
-                                    else raise_name_error ("The variable "^name^" has no value in the current context")                                     
+    | Instance (type_name, name) ->
+      let type_name = if type_name = "self" then get_current_class_name context else type_name in
+      let attr_meths, are_set = try Type.get_attr_meths type_name context.vars
+        with Not_found -> raise_name_error ((get_string UnknownVariable) ^type_name ^ "'") in
+      let is_set  = try StringMap.find name are_set
+        with Not_found -> raise_name_error ((get_string UnknownVariable) ^ name^"' in class '"^type_name^"'") in
+      if is_set then StringMap.find name attr_meths
+      else raise_name_error ("The variable " ^ name ^ " has no value in the current context")
     | None -> `None
 end
 

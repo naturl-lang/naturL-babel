@@ -78,9 +78,9 @@ let get_line code i =
   in _get_line i ""
 
 (*Check if the specified type is a valid builtin type, if that is the case, returns the right type *)
-let get_type code index =
+let get_type vars code index =
   let t, i = get_word code index in
-  i, try_update_err (get_line_no code index) (fun () -> Type.of_string t)
+  i, try_update_err (get_line_no code index) (fun () -> Type.of_string vars t)
 
 (*Gets the parameters of the function or the procedure*)
 let get_param context index =
@@ -92,7 +92,7 @@ let get_param context index =
   in
   let rec _get_params ?(is_first = false) vars names index ?(types = []) = function
     | [] -> set_names names, index, vars, List.rev types
-    | h :: t -> let i, type_ = get_type h 0 in
+    | h :: t -> let i, type_ = get_type context.vars h 0 in
       let name, i = get_word h i in
       let sep = if is_first then "" else ", " in
       _get_params (StringMap.add (String.trim name) type_ vars) (names ^ sep ^ name) (index + i + 1) ~types: (type_ :: types) t in

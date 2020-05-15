@@ -176,7 +176,7 @@ let rec eval_code context =
                   let expr, expr_type = try_update_err line_no (fun () -> eval_expression_with_type expr context) in
                   if Type.is_compatible var_type expr_type then
                     let are_set = StringMap.add var true are_set in
-                    let vars = StringMap.add class_name (`Custom (class_name, attr_meths, are_set)) context.vars in
+                    let vars = StringMap.add class_name (`Class (attr_meths, are_set)) context.vars in
                     let context = {context with index = end_index; vars = vars} in
                     let next, context = _eval_code context in
                     get_indentation depth ^ "self." ^ var ^ " = " ^ expr ^ "\n" ^ next, context
@@ -236,7 +236,7 @@ and eval_variables context =
          raise_syntax_error (get_string UnexpectedFin) ~line: line_no
        else
          let line, index = get_line code index in
-         let type_struct = try_update_err line_no (fun () -> Type.of_string word) in
+         let type_struct = try_update_err line_no (fun () -> Type.of_string context.vars word) in
          let vars = eval_line vars type_struct (String.split_on_char ',' line) in
          try_update_warnings ~line: line_no;
          _eval_variables vars code index
@@ -256,7 +256,7 @@ and eval_fonction context =
     else if context.code.[i + 1] <> '>' then
       raise_syntax_error ((get_string UnexpectedChar) ^ (Char.escaped context.code.[i + 1]) ^ (get_string InFunctionDefinition)) ~line: (get_line_no context.code (i + 1))
     else
-      get_type context.code (i + 2)
+      get_type context.vars context.code (i + 2)
   in
   let name, index = get_word context.code (context.index + 9) in (* 9 = 8 + 1 *)
   let prev_vars = context.vars in
@@ -411,11 +411,12 @@ and eval_pour context =
     get_indentation depth ^ "for " ^ var_expr ^ " in range(" ^ start_expr ^ ", " ^ end_expr ^ "):\n" ^ next, context
   else
     raise_unexpected_type_error (Type.to_string `Int) (Type.to_string (find_bad_elt `None `Int [var_type; start_type; end_type])) ~line
-(*POO related*)
+
+(*OOP related*)
 and eval_type_definition context =
   let depth = List.length context.scopes -1 in
   let name, i = get_word context.code (ignore_spaces context.code (context.index + 13)) in
-  let new_vars = StringMap.add name (`Custom (name, StringMap.empty, StringMap.empty)) context.vars in
+  let new_vars = StringMap.add name (`Class (StringMap.empty, StringMap.empty)) context.vars in
   let scopes = List.tl context.scopes in
   let next, context = eval_code {context with index = i; vars = new_vars ; scopes = Class_def name :: scopes} in
   let next = if next = "" then get_indentation (depth+1)^"pass" else next in
@@ -447,7 +448,7 @@ and eval_constructor context =
   let names, index, vars, types = get_param context index in
   let index = check_return_type index in
   let attr_meths, are_set = Type.get_attr_meths class_name context.vars in
-  let fx = `Function (types, `Custom (class_name, attr_meths, are_set)) in
+  let fx = `Function (types, `Class (attr_meths, are_set)) in
   let prev_vars = StringMap.add name fx prev_vars in
   let vars = StringMap.add name fx vars in
   let cscopes = context.scopes in (*cscopes = current scopes*)
@@ -457,7 +458,7 @@ and eval_constructor context =
   let next = if string_match (regexp "^ *\n") next 0 then get_indentation (depth + 1) ^ "pass\n" else next in
   let next = (get_methods_content context.scopes) ^ next in
   let attr_meths, are_set = Type.get_attr_meths class_name context.vars in
-  let final_class_type = `Custom (class_name, attr_meths, are_set) in
+  let final_class_type = `Class (attr_meths, are_set) in
   let prev_vars = StringMap.add class_name final_class_type prev_vars in
   let prev_vars = StringMap.add name (`Function (types, final_class_type)) prev_vars in
   get_indentation depth ^ "def " ^ name ^ "(" ^ names ^ "):\n" ^ next ^ offset, {context with vars = prev_vars}
