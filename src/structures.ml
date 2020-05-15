@@ -35,8 +35,6 @@ module Type = struct
     | `Any -> "?"
     | `Class _ -> "type"
     | `Custom name -> name
-  let print_vars = StringMap.iter (function name -> function t ->
-      print_endline ("var " ^ name ^ " : " ^ to_string t))
 
   let rec of_string (vars: t StringMap.t) str : t =
     let splitted = List.map (fun s -> String.split_on_char '_' s)
@@ -57,7 +55,7 @@ module Type = struct
     | "?" :: [] -> `Any
     | t :: [] -> (match StringMap.find_opt t vars with
         | Some (`Class _) as s -> Option.get s
-        | _ -> print_vars vars; raise_name_error ((get_string UnknownType) ^ str ^ "'"))
+        | _ -> raise_name_error ((get_string UnknownType) ^ str ^ "'"))
     | _ -> raise_name_error ((get_string UnknownType) ^ str ^ "'")
 
   let get_iterable_type : t -> t option = function

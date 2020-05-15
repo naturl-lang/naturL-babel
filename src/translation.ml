@@ -19,6 +19,10 @@ let eval_expression str context =
 
 (*AUX for eval_code*)
 
+let _is_class_scope = function
+  | Class_def _ -> true
+  | _ -> false
+
 let _is_if_scope = function
   | If _ -> true
   | _ -> false
@@ -107,9 +111,9 @@ let rec eval_code context =
                if is_attr_declaration context.scopes then
                  let content  = try_update_err (get_line_no code context.index) (fun () -> _get_attrs_result context) in
                  let new_scopes = (Function_definition "") :: (Methods content) :: List.tl context.scopes in
-                 let translated, context = eval_constructor {context with index = index ; scopes = new_scopes} in
+                 let translated, context = eval_constructor {context with index ; scopes = new_scopes} in
                  let next, context = eval_code context in
-                 translated^next, context
+                 translated ^ next, context
                else
                  raise_syntax_error "Cannot declare methods without arguments" ~line: (get_line_no context.code context.index)
         | "debut" -> if is_def then
@@ -139,7 +143,10 @@ let rec eval_code context =
               else
                 index, List.tl context.scopes
             in
-            if (has_returned context.scopes name) then
+            if _is_class_scope last_scope then
+                let scopes = List.tl context.scopes in
+                eval_code {context with scopes}
+            else if (has_returned context.scopes name) then
               "", { context with index; scopes }
             else if (_valid_pos context ) then
               "", { context with index; scopes }
@@ -149,7 +156,7 @@ let rec eval_code context =
             "", context
           else
             raise_syntax_error "Unclosed scope: expected 'fin'" ~line: (get_line_no code context.index)
-        | _ -> 
+        | _ ->
           (* Expression or affectation *)
           let line_no = get_line_no code context.index in
           let r = regexp ("^[\n\t ]*\\([A-Za-z_][A-Za-z_0-9]*\\) *<- *\\(.*\\)\n") in
@@ -415,15 +422,16 @@ and eval_pour context =
 
 (*OOP related*)
 and eval_type_definition context =
-  let depth = List.length context.scopes -1 in
+  let depth = List.length context.scopes - 1 in
   let name, i = get_word context.code (ignore_spaces context.code (context.index + 13)) in
   let new_vars = StringMap.add name (`Class (StringMap.empty, StringMap.empty)) context.vars in
-  let new_vars = StringMap.add "instance" (`Custom (name, StringMap.empty, StringMap.empty)) new_vars in
+  let prev_vars = new_vars in
+  let new_vars = StringMap.add "instance" (`Class (StringMap.empty, StringMap.empty)) new_vars in
   let scopes = List.tl context.scopes in
   let next, context = eval_code {context with index = i; vars = new_vars ; scopes = Class_def name :: scopes} in
-  let next = if next = "" then get_indentation (depth+1)^"pass" else next in
-  let new_vars = StringMap.remove "instance" new_vars in
-  get_indentation depth ^"class "^name^":\n"^next^"\n", {context with vars = new_vars}  
+  let next = if next = "" then get_indentation (depth + 1) ^ "pass" else next in
+  let new_vars = prev_vars in
+  get_indentation depth ^ "class " ^ name ^ ":\n" ^ next ^ "\n", {context with vars = new_vars}
 
 and eval_constructor context =
   let depth = List.length context.scopes - 2 in
