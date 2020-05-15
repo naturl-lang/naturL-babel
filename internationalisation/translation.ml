@@ -124,7 +124,7 @@ let get_member_from_JSON value =
   with Yojson.Basic.Util.Type_error _ -> failwith ("JSON error with key " ^ value)
 
 let get_string key  =
-     (*   print_int(to_int key) ; *)
+   (*print_int(to_int key) ;*)
    match key with
   | SyntaxError -> get_member_from_JSON "SyntaxError"
   | TypeError -> get_member_from_JSON "TypeError"

@@ -218,26 +218,26 @@ let expr_of_string str : Expr.t =
 
 
 (* Returns the type of an expression *)
-let rec type_of_expr vars : Expr.t -> Type.t = function
+let rec type_of_expr context : Expr.t -> Type.t = function
   | Plus (l, r) | Minus (l, r) | Times (l, r) | Div (l, r) | Div_int (l, r) | Modulus (l, r) | Pow (l, r) | And (l, r) | Or (l, r) as e ->
-    let l_type = type_of_expr vars l and r_type = type_of_expr vars r in
+    let l_type = type_of_expr context l and r_type = type_of_expr context r in
     if l_type = r_type && is_type_accepted l_type e then l_type
     else if l_type = `Any && is_type_accepted r_type e then r_type
     else if r_type = `Any && is_type_accepted l_type e then l_type
     else
       raise_type_error ((get_string InvalidOperation) ^ (Type.to_string l_type) ^ (get_string AndType) ^ (Type.to_string r_type))
-  | Not arg | Neg arg as e -> let arg_type = type_of_expr vars arg in if is_type_accepted arg_type e then arg_type else
+  | Not arg | Neg arg as e -> let arg_type = type_of_expr context arg in if is_type_accepted arg_type e then arg_type else
       raise_type_error ((get_string InvalidOperation) ^ (Type.to_string arg_type))
-  | Eq (l, r) | Gt (l, r) | Gt_eq (l, r) | Lt (l, r) | Lt_eq (l, r) -> let l_type = type_of_expr vars l and r_type = type_of_expr vars r in
+  | Eq (l, r) | Gt (l, r) | Gt_eq (l, r) | Lt (l, r) | Lt_eq (l, r) -> let l_type = type_of_expr context l and r_type = type_of_expr context r in
     if l_type = r_type then `Bool
     else if l_type = `Any || r_type = `Any then `Bool
     else
       raise_type_error ((get_string CannotCompare) ^ (Type.to_string l_type) ^ (get_string AndType) ^ (Type.to_string r_type))
   | List [] -> `List `Any
-  | List (h :: t) -> if is_list_uniform vars (List.map (type_of_expr vars) (h :: t)) then `List (type_of_expr vars h)
+  | List (h :: t) -> if is_list_uniform context.vars (List.map (type_of_expr context) (h :: t)) then `List (type_of_expr context h)
     else raise_type_error ("All elements of a list must have the same type") (*TODO Fix translation*)
-  | Call (name, params) -> let params_types = List.map (type_of_expr vars) params in
-    (try (match StringMap.find name vars with
+  | Call (name, params) -> let params_types = List.map (type_of_expr context) params in
+    (try (match StringMap.find name context.vars with
          | `Function (p, return) as f ->
            if List.length p = List.length params && List.for_all2 Type.is_compatible params_types p then
              return
@@ -249,11 +249,11 @@ let rec type_of_expr vars : Expr.t -> Type.t = function
            builtin.import ();
            let return = builtin.typer params_types in return
          with Not_found -> raise_name_error ((get_string UnknownFunction) ^ name ^ "'")))
-  | Subscript (l, i) -> if type_of_expr vars i = `Int then match type_of_expr vars l with
+  | Subscript (l, i) -> if type_of_expr context i = `Int then match type_of_expr context l with
       | `List t -> t
       | t -> raise_type_error ((get_string TheType) ^ (Type.to_string t) ^ (get_string NotSubscriptable))
     else raise_type_error (get_string ListIndicesIntegers)
-  | Value v -> Value.get_type vars v
+  | Value v -> Value.get_type context v
 
 
 (* Converts an expression to a string with parenthesis placed correctly *)
