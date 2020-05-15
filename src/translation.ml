@@ -105,7 +105,8 @@ let rec eval_code context =
         | "attributs" -> eval_code (eval_attributes ({context with scopes = (Attributes ""):: context.scopes}))
         | "methodes" -> 
                if is_attr_declaration context.scopes then
-                 let new_scopes = (Function_definition "") :: (Methods (get_attr_content context.scopes)) :: List.tl context.scopes in 
+                 let content  = try_update_err (get_line_no code context.index) (fun () -> _get_attrs_result context) in 
+                 let new_scopes = (Function_definition "") :: (Methods content) :: List.tl context.scopes in 
                  let translated, context = eval_constructor {context with index = index ; scopes = new_scopes} in
                  let next, context = eval_code context in 
                  translated^next, context
@@ -453,7 +454,7 @@ and eval_constructor context =
   try_update_warnings ~line;
   let next, context = eval_code {context with index; vars; scopes = set_fscope_name cscopes name} in
   let offset = if context.index >= String.length context.code - 1 then "" else "\n\n" in
-  let next = if next = "" then get_indentation (depth + 1) ^ "pass\n" else next in
+  let next = if string_match (regexp "^ *\n") next 0 then get_indentation (depth + 1) ^ "pass\n" else next in
   let next = (get_methods_content context.scopes) ^ next in 
   let attr_meths, are_set = Type.get_attr_meths class_name context.vars in 
   let final_class_type = `Custom (class_name, attr_meths, are_set) in

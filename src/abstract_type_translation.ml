@@ -51,7 +51,8 @@ let eval_attributes context =
         else 
             raise_syntax_error "Attributes scope is never ended" ~line: (get_line_no context.code context.index)
     in
-    _main_process context "" (String.length context.code)
+    let code = context.code in
+    try_update_err (get_line_no code context.index) (fun () -> _main_process context "" (String.length code)) 
 
 and is_attr_declaration scopes = 
     match List.hd scopes with 

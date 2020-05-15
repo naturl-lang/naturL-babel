@@ -12,11 +12,7 @@ let rec get_line_no code index =
   else
     (if index < String.length code && code.[index] = '\n' then 1 else 0) + get_line_no code (index - 1
     )
-let  get_attr_content scopes = 
-    match List.hd scopes with
-      | Attributes content -> content
-      | _ -> failwith "Internal invalid use of get_attr_content"
-
+    
 let get_last_line code =
   get_line_no code (String.length code - 1)
 
