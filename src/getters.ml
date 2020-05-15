@@ -10,9 +10,8 @@ let rec get_line_no code index =
   if index < 0 then
     1
   else
-    (if index < String.length code && code.[index] = '\n' then 1 else 0) + get_line_no code (index - 1
-    )
-    
+    (if index < String.length code && code.[index] = '\n' then 1 else 0) + get_line_no code (index - 1)
+
 let get_last_line code =
   get_line_no code (String.length code - 1)
 
@@ -85,8 +84,8 @@ let get_type code index =
 
 (*Gets the parameters of the function or the procedure*)
 let get_param context index =
-  let set_names names = 
-          match context.scopes with 
+  let set_names names =
+          match context.scopes with
       | Function_definition _ :: Methods _ ::_ when names = "" -> "self"
       | Function_definition _ :: Methods _::_ -> "self, "^names
       | _ -> names

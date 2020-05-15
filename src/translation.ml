@@ -72,7 +72,7 @@ let rec eval_code context =
     (*print_string ("[+] Scopes: [" ^(str_of_scopes context.scopes)^"\n");*)
     let code = context.code and start_index = context.index in
     let depth = List.length context.scopes in
-    let depth = format_depth depth context.scopes in 
+    let depth = format_depth depth context.scopes in
     let word, index = get_word code context.index in
     let context = {context with index = index} in
     match find_assoc word control_keywords with
@@ -103,21 +103,21 @@ let rec eval_code context =
         | "utiliser" -> eval_code (eval_utiliser context)
         | "variables" -> eval_code (eval_variables context)
         | "attributs" -> eval_code (eval_attributes ({context with scopes = (Attributes ""):: context.scopes}))
-        | "methodes" -> 
+        | "methodes" ->
                if is_attr_declaration context.scopes then
-                 let content  = try_update_err (get_line_no code context.index) (fun () -> _get_attrs_result context) in 
-                 let new_scopes = (Function_definition "") :: (Methods content) :: List.tl context.scopes in 
+                 let content  = try_update_err (get_line_no code context.index) (fun () -> _get_attrs_result context) in
+                 let new_scopes = (Function_definition "") :: (Methods content) :: List.tl context.scopes in
                  let translated, context = eval_constructor {context with index = index ; scopes = new_scopes} in
-                 let next, context = eval_code context in 
+                 let next, context = eval_code context in
                  translated^next, context
-               else 
+               else
                  raise_syntax_error "Cannot declare methods without arguments" ~line: (get_line_no context.code context.index)
         | "debut" -> if is_def then
             eval_code {context with scopes = (Function (name,false)):: List.tl context.scopes}
           else
             raise_syntax_error ~line: (get_line_no code start_index) (get_string UnexpectedDebut)
         | "retourner" -> let expr, i = get_line code context.index in
-          let return_expression = 
+          let return_expression =
             if string_match (regexp "^[ \t]*instance[ \t]*$") expr 0 then
                ""
             else (
@@ -125,7 +125,7 @@ let rec eval_code context =
               _check_retcall (expr_of_string expr) context;
               try_update_warnings ~line: (get_line_no code start_index);
               "return " ^ py_expr)
-          in 
+          in
           let new_scopes = ret context.scopes name in
           let next, context = _eval_code {context with index = i; scopes = new_scopes} in
           get_indentation depth ^ return_expression ^ "\n" ^ next, context
@@ -162,27 +162,27 @@ let rec eval_code context =
               let next, context = _eval_code {context with index = end_index} in
               get_indentation depth ^ word ^ " = " ^ expr ^ "\n" ^ next, context
             else
-              raise_unexpected_type_error_with_name var (Type.to_string var_type) (Type.to_string expr_type) ~line: (get_line_no code index)            
-          else 
-            let r =  regexp ("^[\n\t ]*instance +\\([A-Za-z_][A-Za-z_0-9]*\\) *<- *\\(.*\\)\n") in 
+              raise_unexpected_type_error_with_name var (Type.to_string var_type) (Type.to_string expr_type) ~line: (get_line_no code index)
+          else
+            let r =  regexp ("^[\n\t ]*instance +\\([A-Za-z_][A-Za-z_0-9]*\\) *<- *\\(.*\\)\n") in
             if string_match r code start_index then (*USE OF INSTANCE*)
-                if is_class_context context.scopes then 
-                  let class_name = get_current_class_name context in 
+                if is_class_context context.scopes then
+                  let class_name = get_current_class_name context in
                   let end_index = match_end () in
-                  let var = matched_group 1 code 
-                  and expr = matched_group 2 code in 
+                  let var = matched_group 1 code
+                  and expr = matched_group 2 code in
                   let attr_meths, are_set = Type.get_attr_meths class_name context.vars in
                   let var_type = StringMap.find var attr_meths in
                   let expr, expr_type = try_update_err line_no (fun () -> eval_expression_with_type expr context) in
-                  if Type.is_compatible var_type expr_type then 
+                  if Type.is_compatible var_type expr_type then
                     let are_set = StringMap.add var true are_set in
-                    let vars = StringMap.add class_name (`Custom (class_name, attr_meths, are_set)) context.vars in 
+                    let vars = StringMap.add class_name (`Custom (class_name, attr_meths, are_set)) context.vars in
                     let context = {context with index = end_index; vars = vars} in
-                    let next, context = _eval_code context in 
+                    let next, context = _eval_code context in
                     get_indentation depth ^ "self." ^ var ^ " = " ^ expr ^ "\n" ^ next, context
                   else
                     raise_unexpected_type_error_with_name var (Type.to_string var_type) (Type.to_string expr_type) ~line: (get_line_no code index)
-                else 
+                else
                   raise_syntax_error "Keyword 'instance' cannot be used outside a class definition" ~line:(get_line_no code index)
             else
               let index = ignore_chrs code start_index in
@@ -245,7 +245,7 @@ and eval_variables context =
 
 and eval_fonction context =
   let depth = List.length context.scopes - 1 in
-  let depth = format_depth depth context.scopes in 
+  let depth = format_depth depth context.scopes in
   let line = get_line_no context.code context.index in
   (* A function is divided in a header (the name), parameters and a return type.
      This functions combine those parts *)
@@ -274,7 +274,7 @@ and eval_fonction context =
 
 and eval_procedure context =
   let depth = List.length context.scopes - 1 in
-  let depth = format_depth depth context.scopes in 
+  let depth = format_depth depth context.scopes in
   let line = get_line_no context.code context.index in
   (*Same logic as functions except that there is no need to check a return type*)
   let name, index = get_word context.code (context.index + 10) (*10 = 9 + 1*) in
@@ -294,7 +294,7 @@ and eval_si context =
   let code = context.code in
   let line = get_line_no code context.index in
   let depth = List.length context.scopes - 1 in
-  let depth = format_depth depth context.scopes in 
+  let depth = format_depth depth context.scopes in
   (* This function checks that the expressions between 'si' and 'alors' is a boolean expression *)
   (* and returns "if <expression>:" followed by the rest of the code *)
   match get_word code context.index with
@@ -322,7 +322,7 @@ and eval_sinon_si context =
   let code = context.code in
   let line = get_line_no code context.index in
   let depth = List.length context.scopes - 1 in
-  let depth = format_depth depth context.scopes in 
+  let depth = format_depth depth context.scopes in
   (* Same as si but sinon_si *)
   match get_word code context.index with
   | "sinon_si", i -> let expr, index = get_expression code i "alors" in
@@ -349,7 +349,7 @@ and eval_sinon context =
   let code = context.code in
   let line = get_line_no code context.index in
   let depth = List.length context.scopes - 1 in
-  let depth = format_depth depth context.scopes in 
+  let depth = format_depth depth context.scopes in
   (* Replaces "sinon" by "else:\n"*)
   match get_word code context.index with
   | "sinon", i -> let next, context = eval_code {context with index = i} in
@@ -361,7 +361,7 @@ and eval_tant_que context =
   let code = context.code in
   let line = get_line_no code context.index in
   let depth = List.length context.scopes - 1 in
-  let depth = format_depth depth context.scopes in 
+  let depth = format_depth depth context.scopes in
   (* Same as si but with 'tant_que' and 'faire' instead of 'si' and 'alors' *)
   match get_word code context.index with
   | "tant_que", i -> let expr, index = get_expression code i "faire" in
@@ -379,7 +379,7 @@ and eval_pour_chaque context =
   let code = context.code in
   let line = get_line_no code context.index in
   let depth = List.length context.scopes - 1 in
-  let depth = format_depth depth context.scopes in 
+  let depth = format_depth depth context.scopes in
   (* A pour_chaque instruction has the form "pour_chaque <var> dans <iterable> faire"*)
   (* This function translates it to "for <var> in <iterable>)" *)
   let _, index = get_word code context.index in
@@ -397,7 +397,7 @@ and eval_pour context =
   let code = context.code in
   let line = get_line_no code context.index in
   let depth = List.length context.scopes - 1 in
-  let depth = format_depth depth context.scopes in 
+  let depth = format_depth depth context.scopes in
   (* A pour instruction has the form "pour <var> de <start> a <end> faire"*)
   (* This function translates it to "for <var> in range(start, end + 1)" *)
   let _, index = get_word code context.index in
@@ -412,20 +412,20 @@ and eval_pour context =
   else
     raise_unexpected_type_error (Type.to_string `Int) (Type.to_string (find_bad_elt `None `Int [var_type; start_type; end_type])) ~line
 (*POO related*)
-and eval_type_definition context = 
-  let depth = List.length context.scopes -1 in 
-  let name, i = get_word context.code (ignore_spaces context.code (context.index + 13)) in 
-  let new_vars = StringMap.add name (`Custom (name, StringMap.empty, StringMap.empty)) context.vars in 
-  let scopes = List.tl context.scopes in 
+and eval_type_definition context =
+  let depth = List.length context.scopes -1 in
+  let name, i = get_word context.code (ignore_spaces context.code (context.index + 13)) in
+  let new_vars = StringMap.add name (`Custom (name, StringMap.empty, StringMap.empty)) context.vars in
+  let scopes = List.tl context.scopes in
   let next, context = eval_code {context with index = i; vars = new_vars ; scopes = Class_def name :: scopes} in
-  let next = if next = "" then get_indentation (depth+1)^"pass" else next in 
-  get_indentation depth ^"class "^name^":\n"^next^"\n", context 
+  let next = if next = "" then get_indentation (depth+1)^"pass" else next in
+  get_indentation depth ^"class "^name^":\n"^next^"\n", context
 
-and eval_constructor context = 
+and eval_constructor context =
   let depth = List.length context.scopes - 2 in
   let line = get_line_no context.code context.index in
   let class_name = get_current_class_name context in
-  let context = {context with index = (ignore_chrs context.code context.index)} in 
+  let context = {context with index = (ignore_chrs context.code context.index)} in
   (* A function is divided in a header (the name), parameters and a return type.
      This functions combine those parts *)
   let check_return_type i =
@@ -437,8 +437,8 @@ and eval_constructor context =
     else
       let result, i = get_word context.code (i+2) in
       if result = class_name then
-        i 
-      else 
+        i
+      else
         raise_syntax_error "The constructor does not return the right type." ~line: line
   in
   let name, index = get_word context.code (context.index + 9) in (* 9 = 8 + 1 *)
@@ -455,11 +455,11 @@ and eval_constructor context =
   let next, context = eval_code {context with index; vars; scopes = set_fscope_name cscopes name} in
   let offset = if context.index >= String.length context.code - 1 then "" else "\n\n" in
   let next = if string_match (regexp "^ *\n") next 0 then get_indentation (depth + 1) ^ "pass\n" else next in
-  let next = (get_methods_content context.scopes) ^ next in 
-  let attr_meths, are_set = Type.get_attr_meths class_name context.vars in 
+  let next = (get_methods_content context.scopes) ^ next in
+  let attr_meths, are_set = Type.get_attr_meths class_name context.vars in
   let final_class_type = `Custom (class_name, attr_meths, are_set) in
   let prev_vars = StringMap.add class_name final_class_type prev_vars in
-  let prev_vars = StringMap.add name (`Function (types, final_class_type)) prev_vars in 
+  let prev_vars = StringMap.add name (`Function (types, final_class_type)) prev_vars in
   get_indentation depth ^ "def " ^ name ^ "(" ^ names ^ "):\n" ^ next ^ offset, {context with vars = prev_vars}
 
 and control_keywords =

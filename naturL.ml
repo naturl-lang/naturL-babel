@@ -17,9 +17,7 @@ let read_input chan_name =
   with End_of_file -> close_in chan
 
 let write_translation chan_name text =
-  print_string "got here";
   let chan = map_option chan_name (fun name -> open_out name) (fun () -> stdout) in
-  print_string "generating translated code";
   Printf.fprintf chan "%s" (translate_code text)
 
 
