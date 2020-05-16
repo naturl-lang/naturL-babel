@@ -1,4 +1,6 @@
+open Utils
 open Errors
+open Structures
 open Internationalisation.Translation
 
 type token =
@@ -25,7 +27,7 @@ let print_token token =
 
 let print_tokens tokens = List.iter print_token tokens;;
 
-let tokenize input =
+let tokenize input (vars: Type.t StringMap.t) =
   let _tokenize input =
     let reg_identifier = Str.regexp "[a-zA-Z_][a-zA-Z_0-9]*"
     and reg_mod_identifier = Str.regexp {|\([a-zA-Z_][\.a-Za-z_0-9]*\)\.[a-zA-Z_0-9][a-zA-Z_0-9]*|}
@@ -55,14 +57,14 @@ let tokenize input =
         let token = Str.matched_string input in
         (Litteral token) :: _tokenize input (index + (String.length token))
       else if Str.string_match reg_mod_identifier input index then
-        let namespace = Str.matched_group 1 input in
+        let left = Str.matched_group 1 input in
         let token = Str.matched_group 0 input in
         if List.mem token Syntax.keywords then
           raise_syntax_error ((get_string InvalidTokenExpression) ^ token ^ (get_string ReservedKeyword))
-        else if not (Imports.is_namespace_imported namespace) then
-          raise_name_error ("Unknown module '" ^ namespace ^ "'")
-        else
+        else if StringMap.mem left vars || Imports.is_namespace_imported left then
           (Identifier token) :: _tokenize input (index + (String.length token))
+        else
+          raise_name_error ("Unknown module '" ^ left ^ "'")
       else if Str.string_match reg_identifier input index then
         let token = Str.matched_string input in
         if List.mem token Syntax.keywords then

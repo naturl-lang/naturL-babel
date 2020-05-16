@@ -54,7 +54,7 @@ module Type = struct
     | ("Ø" | "rien") :: [] -> `None
     | "?" :: [] -> `Any
     | t :: [] -> (match StringMap.find_opt t vars with
-        | Some (`Class _) as s -> Option.get s
+        | Some (`Class _) -> `Custom t
         | _ -> raise_name_error ((get_string UnknownType) ^ str ^ "'"))
     | _ -> raise_name_error ((get_string UnknownType) ^ str ^ "'")
 
@@ -165,7 +165,7 @@ module Value = struct
 
   let of_string = function str ->
     let str = String.trim str
-    and name_re = "[_a-zA-Z][_a-zA-Z0-9]*" in
+    and name_re = "[_a-zA-Z\\.][_a-zA-Z0-9\\.]*" in
     if Str.string_match (Str.regexp "^-?[0-9]+$") str 0 then
       Int (int_of_string str)
     else if Str.string_match (Str.regexp {|^[0-9]+.[0-9]*$|}) str 0 then
@@ -185,23 +185,41 @@ module Value = struct
     else
       raise_syntax_error (get_string InvalidExpression)
 
-  let get_type context = function
+
+  let rec get_unknown_variable context name error =
+    if Str.string_match (Str.regexp "\\([a-zA-Z_][a-zA-Z_0-9]*\\)\\.\\([a-zA-Z_][a-zA-Z_0-9]*\\)") name 0 then
+      let attribute = Str.matched_group 2 name in
+      let name = Str.matched_group 1 name in
+      let class_name = match StringMap.find name context.vars with
+          `Custom name -> name
+        | t -> raise_name_error ("Type " ^ (Type.to_string t) ^ " has no attribute " ^ attribute)
+      in match StringMap.find_opt class_name context.vars with
+      | Some `Class (attr_meths, _) -> (match StringMap.find_opt attribute attr_meths with
+          | Some t -> t
+          | _ -> raise_type_error ("Type " ^ class_name ^ " has no attribute " ^ attribute))
+      | None -> raise_type_error ("Undefined type " ^ class_name)
+      | _ -> `Int
+    else
+      error ()
+  and get_type context = function
     | Int _ -> `Int
     | Float _ -> `Float
     | Char _ -> `Char
     | String _ -> `String
     | Variable name -> (try StringMap.find name context.vars
-                        with Not_found -> raise_name_error ((get_string UnknownVariable) ^ name ^ "'"))
+                        with Not_found -> get_unknown_variable context name
+                                            (fun () ->  raise_name_error ((get_string UnknownVariable) ^ name ^ "'")))
     | Bool _ -> `Bool
     | Instance (type_name, name) ->
       let type_name = if type_name = "self" then get_current_class_name context else type_name in
       let attr_meths, are_set = try Type.get_attr_meths type_name context.vars
         with Not_found -> raise_name_error ((get_string UnknownVariable) ^type_name ^ "'") in
-      let is_set  = try StringMap.find name are_set
+      let is_set = try StringMap.find name are_set
         with Not_found -> raise_name_error ((get_string UnknownVariable) ^ name^"' in class '"^type_name^"'") in
       if is_set then StringMap.find name attr_meths
       else raise_name_error ("The variable " ^ name ^ " has no value in the current context")
     | None -> `None
+
 end
 
 
@@ -229,4 +247,3 @@ module Expr = struct
     | Subscript of t * t      (* list[x] *)
     | Value of Value.t        (* x *)
 end
-

@@ -11,14 +11,13 @@ open Internationalisation.Translation
 open Abstract_type_translation
 
 let eval_expression_with_type str context =
-  let expr = expr_of_string str in
-  string_of_expr expr, type_of_expr context expr
+  let expr = expr_of_string context str in
+  string_of_expr context expr, type_of_expr context expr
 
 let eval_expression str context =
   let expr, _ = eval_expression_with_type str context in expr
 
 (*AUX for eval_code*)
-
 let _is_class_scope = function
   | Class_def _ -> true
   | _ -> false
@@ -61,13 +60,18 @@ let rec get_fname_def_status scopes =
 
 let _valid_pos context =
   let get_return_type name =
-    match StringMap.find name context.vars with
-      | `Function(_, t) -> t = `None
-      | _ -> failwith "Illegal use"
+    match StringMap.find_opt name context.vars with
+    | Some `Function(_, t) -> t = `None
+    | None -> context.vars |> StringMap.exists (fun _ -> function
+        | `Class (attr_meths, _) -> (match StringMap.find_opt name attr_meths with
+            | Some `Function(_, t) -> t = `None
+            | _ -> false)
+        | _ -> false)
+    | _ -> assert false
   in
   match context.scopes with
-  | (Function (name,_)) :: _ when not (get_return_type name) -> false
-    | _-> true
+  | Function (name, _) :: _ when not (get_return_type name) -> false
+  | _-> true
 
 (*Core*)
 
@@ -124,11 +128,11 @@ let rec eval_code context =
           let return_expression =
             if string_match (regexp "^[ \t]*instance[ \t]*$") expr 0 then
                ""
-            else (
+            else
               let py_expr = try_update_err (get_line_no code context.index) (fun () -> eval_expression expr context) in
-              _check_retcall (expr_of_string expr) context;
+              _check_retcall (expr_of_string context expr) context;
               try_update_warnings ~line: (get_line_no code start_index);
-              "return " ^ py_expr)
+              "return " ^ py_expr
           in
           let new_scopes = ret context.scopes name in
           let next, context = _eval_code {context with index = i; scopes = new_scopes} in
@@ -144,8 +148,8 @@ let rec eval_code context =
                 index, List.tl context.scopes
             in
             if _is_class_scope last_scope then
-                let scopes = List.tl context.scopes in
-                eval_code {context with scopes}
+              let scopes = List.tl context.scopes in
+              eval_code {context with scopes}
             else if (has_returned context.scopes name) then
               "", { context with index; scopes }
             else if (_valid_pos context ) then
@@ -267,12 +271,15 @@ and eval_fonction context =
       get_type context.vars context.code (i + 2)
   in
   let name, index = get_word context.code (context.index + 9) in (* 9 = 8 + 1 *)
-  let prev_vars = context.vars in
   let names, index, vars, types = get_param context index in
   let index, type_ = check_return_type index in
   let fx = `Function (types, type_) in
-  let prev_vars = StringMap.add name fx prev_vars in
-  let vars = StringMap.add name fx vars in
+  let vars = if is_method_context context.scopes then
+      let class_name = get_current_class_name context in
+      vars |> add_class_attr class_name name fx
+    else
+      vars |> StringMap.add name fx in
+  let prev_vars = vars in
   let cscopes = context.scopes in (*cscopes = current scopes*)
   try_update_warnings ~line;
   let next, context = eval_code {context with index; vars; scopes = set_fscope_name cscopes name} in
@@ -286,11 +293,14 @@ and eval_procedure context =
   let line = get_line_no context.code context.index in
   (*Same logic as functions except that there is no need to check a return type*)
   let name, index = get_word context.code (context.index + 10) (*10 = 9 + 1*) in
-  let prev_vars = context.vars in
   let names, index, vars, types = get_param context index in
   let fx = `Function (types, `None) in
-  let prev_vars = StringMap.add name fx prev_vars in
-  let vars = StringMap.add name fx vars in
+  let vars = if is_method_context context.scopes then
+      let class_name = get_current_class_name context in
+      vars |> add_class_attr class_name name fx
+    else
+      vars |> StringMap.add name fx in
+  let prev_vars = vars in
   let cscopes = context.scopes in (*cscopes = current scopes*)
   try_update_warnings ~line;
   let next, context = eval_code {context with vars = vars; index = index; scopes = set_fscope_name cscopes name} in
@@ -425,13 +435,12 @@ and eval_type_definition context =
   let depth = List.length context.scopes - 1 in
   let name, i = get_word context.code (ignore_spaces context.code (context.index + 13)) in
   let new_vars = StringMap.add name (`Class (StringMap.empty, StringMap.empty)) context.vars in
-  let prev_vars = new_vars in
   let new_vars = StringMap.add "instance" (`Class (StringMap.empty, StringMap.empty)) new_vars in
   let scopes = List.tl context.scopes in
   let next, context = eval_code {context with index = i; vars = new_vars ; scopes = Class_def name :: scopes} in
   let next = if next = "" then get_indentation (depth + 1) ^ "pass" else next in
-  let new_vars = prev_vars in
-  get_indentation depth ^ "class " ^ name ^ ":\n" ^ next ^ "\n", {context with vars = new_vars}
+  let vars = StringMap.remove "instance" context.vars in
+  get_indentation depth ^ "class " ^ name ^ ":\n" ^ next ^ "\n", {context with vars}
 
 and eval_constructor context =
   let depth = List.length context.scopes - 2 in
@@ -453,14 +462,14 @@ and eval_constructor context =
       else
         raise_syntax_error "The constructor does not return the right type." ~line: line
   in
+  let class_name = get_current_class_name context in
   let name, index = get_word context.code (context.index + 9) in (* 9 = 8 + 1 *)
   let name = if name <> "nouveau" then raise_syntax_error ("The first method needs to be a constructor but got: "^name) else "__init__" in
-  let prev_vars = context.vars in
   let names, index, vars, types = get_param context index in
   let index = check_return_type index in
   let attr_meths, are_set = Type.get_attr_meths class_name context.vars in
   let fx = `Function (types, `Class (attr_meths, are_set)) in
-  let prev_vars = StringMap.add name fx prev_vars in
+  let prev_vars = vars in
   let vars = StringMap.add name fx vars in
   let cscopes = context.scopes in (*cscopes = current scopes*)
   try_update_warnings ~line;
@@ -470,9 +479,10 @@ and eval_constructor context =
   let next = (get_methods_content context.scopes) ^ next in
   let attr_meths, are_set = Type.get_attr_meths class_name context.vars in
   let final_class_type = `Class (attr_meths, are_set) in
-  let prev_vars = StringMap.add class_name final_class_type prev_vars in
-  let prev_vars = StringMap.add name (`Function (types, final_class_type)) prev_vars in
-  get_indentation depth ^ "def " ^ name ^ "(" ^ names ^ "):\n" ^ next ^ offset, {context with vars = prev_vars}
+  let vars = StringMap.add class_name final_class_type prev_vars
+             |> StringMap.remove "instance"
+             |> add_class_attr class_name "nouveau" (`Function (types, `Custom class_name)) in
+  get_indentation depth ^ "def " ^ name ^ "(" ^ names ^ "):\n" ^ next ^ offset, {context with vars}
 
 and control_keywords =
   [

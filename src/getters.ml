@@ -77,7 +77,7 @@ let get_line code i =
       line, len
   in _get_line i ""
 
-(*Check if the specified type is a valid builtin type, if that is the case, returns the right type *)
+(*Check if the specified type is a valid builtin or user-defined type, if that is the case, returns the right type *)
 let get_type vars code index =
   let t, i = get_word code index in
   i, try_update_err (get_line_no code index) (fun () -> Type.of_string vars t)
@@ -85,9 +85,9 @@ let get_type vars code index =
 (*Gets the parameters of the function or the procedure*)
 let get_param context index =
   let set_names names =
-          match context.scopes with
-      | Function_definition _ :: Methods _ ::_ when names = "" -> "self"
-      | Function_definition _ :: Methods _::_ -> "self, "^names
+    match context.scopes with
+      | Function_definition _ :: Methods _ :: _ when names = "" -> "self"
+      | Function_definition _ :: Methods _ :: _ -> "self, "^names
       | _ -> names
   in
   let rec _get_params ?(is_first = false) vars names index ?(types = []) = function
