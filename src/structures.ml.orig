@@ -47,17 +47,24 @@ module Type = struct
     | "chaine" :: [] -> `String
     | "booleen" :: [] -> `Bool
     | "liste" :: [] -> `List `Any
-    | "liste" :: "de" :: t -> `List ((of_string vars) (String.concat " " t))
-    | ("procedure:" | "procedure") :: [] -> `Function ([], `None)
+<<<<<<< HEAD
+    | "liste" :: "de" :: t -> `List (of_string (String.concat " " t))
+    | "procedure" :: [] -> `Function ([], `None)
     | "procedure:" :: tail -> `Function (String.split_on_char 'x' (String.concat " " tail)
                                          |> List.map (fun s -> let s = String.trim s in
-                                                       (of_string vars) (String.sub s 1 (String.length s - 2))),
+                                                       of_string (String.sub s 1 (String.length s - 2))),
                                          `None)
     | "fonction:" :: tail -> (match Str.split (Str.regexp " -> ") (String.concat " " tail) with
           params :: return :: [] -> `Function ((String.split_on_char 'x' params)
                                                |> List.map (fun s -> let s = String.trim s in
-                                                             (of_string vars) (String.sub s 1 (String.length s - 2))),
-                                               of_string vars return)
+                                                             of_string (String.sub s 1 (String.length s - 2))),
+                                               of_string return)
+=======
+    | "liste" :: "de" :: t -> `List (of_string vars (String.concat " " t))
+    | "procedure" :: params  :: [] -> `Function (List.map (of_string vars) (String.split_on_char 'x' params), `None)
+    | "fonction:" :: tail -> (match Str.split (Str.regexp " -> ") (String.concat " " tail) with
+          params :: return :: [] -> `Function (List.map (of_string vars) (String.split_on_char 'x' params), of_string vars return)
+>>>>>>> POO
         | _ -> raise_name_error ((get_string UnknownType) ^ str ^ "'"))
     | ("Ø" | "rien") :: [] -> `None
     | "?" :: [] -> `Any
@@ -256,4 +263,3 @@ module Expr = struct
     | Subscript of t * t      (* list[x] *)
     | Value of Value.t        (* x *)
 end
-

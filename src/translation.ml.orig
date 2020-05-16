@@ -38,10 +38,6 @@ let _is_last_if = function
   | If 0 -> true
   | _ -> false
 
-let _verify_type ret_expr var context =
-  match var with
-    | `Function(_, t) when t = type_of_expr context ret_expr -> ()
-    | _ -> raise_type_error (get_string ReturnTypeMatchMessage) ~line: (get_line_no context.code context.index)
 
 let rec _get_func_type ?(is_first = true) context =
   match context.scopes with
@@ -231,9 +227,10 @@ let rec eval_code context =
 and eval_utiliser context =
   let write_pyfile filename =
     let naturl_name = filename ^ ".ntl" and py_name = filename ^ ".py" in
-    if !import_mode = Overwrite || !import_mode = Moderated && not (Sys.file_exists py_name) then
+    if !import_mode = Overwrite || !import_mode = Moderated && not (Sys.file_exists py_name) then begin
       let code = translate_code (read_file naturl_name) in
       write_file py_name code
+    end
   in
   let line_no = get_line_no context.code context.index in
   let line, index = get_line context.code context.index in
@@ -298,15 +295,20 @@ and eval_fonction context =
       get_type context.vars context.code (i + 2)
   in
   let name, index = get_word context.code (context.index + 9) in (* 9 = 8 + 1 *)
+<<<<<<< HEAD
+  let prev_vars = context.vars in
+  let names, index, vars, types = try_update_err line (fun () -> get_param context index) in
+=======
   let names, index, vars, types = get_param context index in
+>>>>>>> POO
   let index, type_ = check_return_type index in
   let fx = `Function (types, type_) in
-  let vars, prev_vars = if is_method_context context.scopes then
+  let vars = if is_method_context context.scopes then
       let class_name = get_current_class_name context in
-      let f = add_class_attr class_name name fx in
-      f vars, f context.vars
+      vars |> add_class_attr class_name name fx
     else
-      vars |> StringMap.add name fx, context.vars |> StringMap.add name fx in
+      vars |> StringMap.add name fx in
+  let prev_vars = vars in
   let cscopes = context.scopes in (*cscopes = current scopes*)
   try_update_warnings ~line;
   let next, context = eval_code {context with index; vars; scopes = set_fscope_name cscopes name} in
@@ -320,14 +322,19 @@ and eval_procedure context =
   let line = get_line_no context.code context.index in
   (*Same logic as functions except that there is no need to check a return type*)
   let name, index = get_word context.code (context.index + 10) (*10 = 9 + 1*) in
+<<<<<<< HEAD
+  let prev_vars = context.vars in
   let names, index, vars, types = try_update_err line (fun () -> get_param context index) in
+=======
+  let names, index, vars, types = get_param context index in
+>>>>>>> POO
   let fx = `Function (types, `None) in
-  let vars, prev_vars = if is_method_context context.scopes then
+  let vars = if is_method_context context.scopes then
       let class_name = get_current_class_name context in
-      let f = add_class_attr class_name name fx in
-      f vars, f context.vars
+      vars |> add_class_attr class_name name fx
     else
-      vars |> StringMap.add name fx, context.vars |> StringMap.add name fx in
+      vars |> StringMap.add name fx in
+  let prev_vars = vars in
   let cscopes = context.scopes in (*cscopes = current scopes*)
   try_update_warnings ~line;
   let next, context = eval_code {context with vars = vars; index = index; scopes = set_fscope_name cscopes name} in
@@ -492,10 +499,10 @@ and eval_constructor context =
   let class_name = get_current_class_name context in
   let name, index = get_word context.code (context.index + 9) in (* 9 = 8 + 1 *)
   let name = if name <> "nouveau" then raise_syntax_error ("The first method needs to be a constructor but got: "^name) else "__init__" in
-  let prev_vars = context.vars in
   let names, index, vars, types = get_param context index in
   let index = check_return_type index in
   let fx = `Function (types, `Custom class_name) in
+  let prev_vars = vars in
   let vars = StringMap.add name fx vars in
   let cscopes = context.scopes in (*cscopes = current scopes*)
   try_update_warnings ~line;

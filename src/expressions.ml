@@ -114,7 +114,7 @@ end)
 (*********** Exported function ************)
 
 
-let expr_of_string str : Expr.t =
+let expr_of_string context str : Expr.t =
   (*Expression simplification functions: *)
   let is_var value =
     match value with
@@ -210,11 +210,14 @@ let expr_of_string str : Expr.t =
            let right = split_params (list_of_queue right) in
            List (List.map expr_of_tokens right) end
          else (* Function call *)
-           ((if not (Queue.is_empty left) then
-               raise_syntax_error (get_string InvalidExpression));
-            let right = split_params (list_of_queue right) in
-            Call (op, List.map expr_of_tokens right))
-  in _simplify (expr_of_tokens (tokenize str))
+           let right = split_params (list_of_queue right) |> List.map expr_of_tokens in
+           if Queue.is_empty left then
+             Call (op, right)
+           else if Queue.length left = 1 && Queue.peek left = Identifier "instance" then
+             Call ("instance " ^ op, right)
+           else
+             raise_syntax_error (get_string InvalidExpression)
+  in _simplify (expr_of_tokens (tokenize str context.vars))
 
 
 (* Returns the type of an expression *)
@@ -237,18 +240,31 @@ let rec type_of_expr context : Expr.t -> Type.t = function
   | List (h :: t) -> if is_list_uniform context.vars (List.map (type_of_expr context) (h :: t)) then `List (type_of_expr context h)
     else raise_type_error ("All elements of a list must have the same type") (*TODO Fix translation*)
   | Call (name, params) -> let params_types = List.map (type_of_expr context) params in
-    (try (match StringMap.find name context.vars with
-         | `Function (p, return) as f ->
+    (* If the function is a method, replace 'instance func' by 'self.func' *)
+    let name = (match String.split_on_char ' ' name with
+          "instance" :: name :: [] -> "self." ^ name
+        | name :: [] -> name
+        | _ -> assert false) in
+    (try (match StringMap.find_opt name context.vars with
+         | Some (`Function (p, return)) as s -> let f = Option.get s in
            if List.length p = List.length params && List.for_all2 Type.is_compatible params_types p then
              return
            else
              raise_unexpected_type_error_with_name name (Type.to_string f) (Type.to_string (`Function (params_types, `Any)))
-         | _ as t -> raise_type_error ((get_string VariablesOfType) ^ (Type.to_string t) ^ (get_string NotCallable)))
+         | Some _ as s -> let t = Option.get s in
+           raise_type_error ((get_string VariablesOfType) ^ (Type.to_string t) ^ (get_string NotCallable))
+         | None -> (match Value.get_unknown_variable context name (fun () -> raise Not_found) with
+             | `Function (p, return) as f ->
+               if List.length p = List.length params && List.for_all2 Type.is_compatible params_types p then
+                 return
+               else
+                 raise_unexpected_type_error_with_name name (Type.to_string f) (Type.to_string (`Function (params_types, `Any)))
+             | t -> raise_type_error ((get_string VariablesOfType) ^ (Type.to_string t) ^ (get_string NotCallable))))
      with Not_found -> (try
-           let builtin = StringMap.find name Builtins.functions in
-           builtin.import ();
-           let return = builtin.typer params_types in return
-         with Not_found -> raise_name_error ((get_string UnknownFunction) ^ name ^ "'")))
+                          let builtin = StringMap.find name Builtins.functions in
+                          builtin.import ();
+                          let return = builtin.typer params_types in return
+                        with Not_found -> raise_name_error ((get_string UnknownFunction) ^ name ^ "'")))
   | Subscript (l, i) -> if type_of_expr context i = `Int then match type_of_expr context l with
       | `List t -> t
       | t -> raise_type_error ((get_string TheType) ^ (Type.to_string t) ^ (get_string NotSubscriptable))
@@ -257,7 +273,7 @@ let rec type_of_expr context : Expr.t -> Type.t = function
 
 
 (* Converts an expression to a string with parenthesis placed correctly *)
-let string_of_expr expr =
+let string_of_expr context expr =
   let rec _string_of_expr ?parent (expr : Expr.t) =
     let str, op = match expr with
       | Plus (e1, e2) as op -> _string_of_expr ~parent: op e1 ^ " + " ^ (_string_of_expr ~parent: op e2), op
@@ -278,11 +294,25 @@ let string_of_expr expr =
       | Neg e as op-> "-" ^ _string_of_expr ~parent: op e, op
       | List l as op -> "[" ^ (String.concat ", " (List.map _string_of_expr l)) ^ "]", op
       | Call (name, args) as op ->
+        (* If the function is a method, replace 'instance func' by 'self.func' *)
+        let name = (match String.split_on_char ' ' name with
+              "instance" :: name :: [] -> "self." ^ name
+            | name :: [] -> name
+            | _ -> assert false) in
+        let name = if Str.string_match (Str.regexp "^\\([a-zA-Z_][a-zA-Z_0-9]*\\)\\.\\(.+\\)$") name 0 then
+            let var_name = Str.matched_group 1 name in
+            let meth_name = Str.matched_group 2 name in
+            if meth_name = "nouveau" then
+              Type.to_string (context.vars |> StringMap.find var_name)
+            else
+              name
+          else
+            name in
         let translated_args = List.map _string_of_expr args in
         (try let builtin = StringMap.find name Builtins.functions in
            builtin.translator translated_args, op
          with Not_found -> name ^  "(" ^ String.concat ", " translated_args ^ ")", op)
-      | Subscript (l, i) as op -> let index = expr_of_string (_string_of_expr i ^ " - 1") in
+      | Subscript (l, i) as op -> let index = (expr_of_string context) (_string_of_expr i ^ " - 1") in
         _string_of_expr ~parent: op l ^ "[" ^ (_string_of_expr index) ^ "]", op
       | Value v as op -> Value.to_string v, op
     in match parent with
