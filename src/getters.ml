@@ -105,7 +105,20 @@ let get_param context index =
       raise_syntax_error ~line: (get_line_no context.code index) (get_string InvalidFunctionDefinition)
 
 let get_var name vars =
-  let name = String.trim name in
+  let name = String.trim name
+  and r = regexp {|\([a-zA-Z_][a-zA-Z_0-9]*\)\.\([a-zA-Z_][a-zA-Z_0-9]*\)|} in
+  let name, vars = if string_match r name 0 then
+      let var_name = matched_group 1 name in
+      let attr_name = matched_group 2 name in
+      match StringMap.find_opt var_name vars with
+      | Some `Custom class_name -> (match StringMap.find class_name vars with
+          | `Class (attrs, _) -> attr_name, attrs
+          | _ -> assert false)
+      | Some t -> raise_name_error ("Type " ^ (Type.to_string t) ^ " has no attribute " ^ attr_name)
+      | None -> raise_name_error (get_string UnknownVariable ^ var_name)
+    else
+      name, vars
+  in
   try StringMap.find name vars
   with Not_found -> raise_name_error ((get_string UnknownVariable) ^ name)
 

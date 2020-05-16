@@ -190,9 +190,10 @@ module Value = struct
     if Str.string_match (Str.regexp "\\([a-zA-Z_][a-zA-Z_0-9]*\\)\\.\\([a-zA-Z_][a-zA-Z_0-9]*\\)") name 0 then
       let attribute = Str.matched_group 2 name in
       let name = Str.matched_group 1 name in
-      let class_name = match StringMap.find name context.vars with
-          `Custom name -> name
-        | t -> raise_name_error ("Type " ^ (Type.to_string t) ^ " has no attribute " ^ attribute)
+      let class_name = if name = "self" then get_current_class_name context
+        else match StringMap.find name context.vars with
+            `Custom name -> name
+          | t -> raise_name_error ("Type " ^ (Type.to_string t) ^ " has no attribute " ^ attribute)
       in match StringMap.find_opt class_name context.vars with
       | Some `Class (attr_meths, _) -> (match StringMap.find_opt attribute attr_meths with
           | Some t -> t

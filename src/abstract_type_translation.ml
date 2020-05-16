@@ -42,9 +42,9 @@ let eval_attributes context =
     let whitespace = "[ \t]*" in
     if context.index < code_len then
       let line, i = get_line context.code context.index in
-      if string_match (regexp (whitespace^"methodes"^whitespace)) line 0 then
+      if string_match (regexp (whitespace ^ "methodes" ^ whitespace)) line 0 then
         {context with scopes = (Attributes result):: List.tl context.scopes}
-      else if string_match (regexp (whitespace^"fin"^whitespace)) line 0 then
+      else if string_match (regexp (whitespace ^ "fin" ^ whitespace)) line 0 then
         {context with scopes = (Attributes result) :: List.tl context.scopes}
       else
         let vars, l_result =  manage_line (String.length line) line 0 context.vars (get_current_class_name context) "" in

@@ -38,24 +38,34 @@ let _is_last_if = function
   | If 0 -> true
   | _ -> false
 
-let _verify_type ret_expr var context =
-  match var with
-    | `Function(_, t) when t = type_of_expr context ret_expr -> ()
-    | _ -> raise_type_error (get_string ReturnTypeMatchMessage) ~line: (get_line_no context.code context.index)
 
-let rec _check_retcall ?(is_first = true) ret_expr context =
+let rec _get_func_type ?(is_first = true) context =
   match context.scopes with
     | [] -> raise_syntax_error (get_string UnexpectedReturn) ~line: (get_line_no context.code context.index)
-    | Function (name,_) :: _ -> _verify_type ret_expr (StringMap.find name context.vars) context
+    | Function (name, _) :: _ ->
+      (try
+         StringMap.find name context.vars
+       with Not_found -> match context.vars |> StringMap.find (get_current_class_name context) with
+         | `Class (attr_meths, _) -> StringMap.find name attr_meths
+         | _ -> assert false)
     | (For | While) :: t -> if is_first then add_warning (get_string BreakingReturn) 0;
-      _check_retcall ret_expr {context with scopes = t} ~is_first: false
-    | _ :: t -> _check_retcall ret_expr {context with scopes = t} ~is_first
+      _get_func_type {context with scopes = t} ~is_first: false
+    | _ :: t -> _get_func_type {context with scopes = t} ~is_first
+
+let _get_ret_type context =
+  match _get_func_type context with
+    | `Function (_, t) -> t
+    | _ -> assert false
+
+let _check_retcall expected context =
+  if not (expected = _get_ret_type context) then
+    raise_type_error (get_string ReturnTypeMatchMessage) ~line: (get_line_no context.code context.index)
 
 let rec get_fname_def_status scopes =
   match scopes with
     | [] -> false, ""
     | Function_definition name :: _ -> true, name
-    | (Function (name,_))::_ -> false, name
+    | (Function (name,_)) :: _ -> false, name
     | _ :: r -> get_fname_def_status r
 
 let _valid_pos context =
@@ -104,7 +114,7 @@ let rec eval_code context =
       let next_translation, context = _eval_code context
       in translation ^ next_translation, context
     | None ->
-      let is_def, name = get_fname_def_status context.scopes in
+      let is_def, func_name = get_fname_def_status context.scopes in
       if word <> "debut" && word <> "variables" && is_def then
         raise_syntax_error ~line: (get_line_no code (start_index + 2)) (get_string ExpectedDebut)
       else match word with
@@ -121,20 +131,28 @@ let rec eval_code context =
                else
                  raise_syntax_error "Cannot declare methods without arguments" ~line: (get_line_no context.code context.index)
         | "debut" -> if is_def then
-            eval_code {context with scopes = (Function (name,false)):: List.tl context.scopes}
+            eval_code {context with scopes = (Function (func_name, false)):: List.tl context.scopes}
           else
             raise_syntax_error ~line: (get_line_no code start_index) (get_string UnexpectedDebut)
         | "retourner" -> let expr, i = get_line code context.index in
           let return_expression =
             if string_match (regexp "^[ \t]*instance[ \t]*$") expr 0 then
-               ""
+              if is_class_context context.scopes then
+                let expected = `Custom (get_current_class_name context) in
+                _check_retcall expected context;
+                if func_name = "nouveau" then
+                  ""
+                else
+                  "return self"
+              else
+                raise_name_error ("Keyword 'instance' cannot be used outside a class definition")
             else
-              let py_expr = try_update_err (get_line_no code context.index) (fun () -> eval_expression expr context) in
-              _check_retcall (expr_of_string context expr) context;
+              let py_expr, expr_type = try_update_err (get_line_no code context.index) (fun () -> eval_expression_with_type expr context) in
+              _check_retcall expr_type context;
               try_update_warnings ~line: (get_line_no code start_index);
               "return " ^ py_expr
           in
-          let new_scopes = ret context.scopes name in
+          let new_scopes = ret context.scopes func_name in
           let next, context = _eval_code {context with index = i; scopes = new_scopes} in
           get_indentation depth ^ return_expression ^ "\n" ^ next, context
         | "fin" ->
@@ -150,7 +168,7 @@ let rec eval_code context =
             if _is_class_scope last_scope then
               let scopes = List.tl context.scopes in
               eval_code {context with scopes}
-            else if (has_returned context.scopes name) then
+            else if (has_returned context.scopes func_name) then
               "", { context with index; scopes }
             else if (_valid_pos context ) then
               "", { context with index; scopes }
@@ -163,11 +181,11 @@ let rec eval_code context =
         | _ ->
           (* Expression or affectation *)
           let line_no = get_line_no code context.index in
-          let r = regexp ("^[\n\t ]*\\([A-Za-z_][A-Za-z_0-9]*\\) *<- *\\(.*\\)\n") in
+          let r = regexp ("^[\n\t ]*\\([A-Za-z_][A-Za-z_0-9]*\\(\\.[A-Za-z_][A-Za-z_0-9]*\\)*\\) *<- *\\(.*\\)\n") in
           if string_match r code start_index then   (* Affectation *)
             let end_index = match_end() in
             let var = matched_group 1 code
-            and expr = matched_group 2 code in
+            and expr = matched_group 3 code in
             let var_type = try_update_err line_no (fun () -> get_var var context.vars)
             and expr, expr_type = try_update_err line_no (fun () -> eval_expression_with_type expr context) in
             if Type.is_compatible var_type expr_type then
@@ -435,7 +453,7 @@ and eval_type_definition context =
   let depth = List.length context.scopes - 1 in
   let name, i = get_word context.code (ignore_spaces context.code (context.index + 13)) in
   let new_vars = StringMap.add name (`Class (StringMap.empty, StringMap.empty)) context.vars in
-  let new_vars = StringMap.add "instance" (`Class (StringMap.empty, StringMap.empty)) new_vars in
+  let new_vars = StringMap.add "instance" (`Custom name) new_vars in
   let scopes = List.tl context.scopes in
   let next, context = eval_code {context with index = i; vars = new_vars ; scopes = Class_def name :: scopes} in
   let next = if next = "" then get_indentation (depth + 1) ^ "pass" else next in
@@ -467,8 +485,7 @@ and eval_constructor context =
   let name = if name <> "nouveau" then raise_syntax_error ("The first method needs to be a constructor but got: "^name) else "__init__" in
   let names, index, vars, types = get_param context index in
   let index = check_return_type index in
-  let attr_meths, are_set = Type.get_attr_meths class_name context.vars in
-  let fx = `Function (types, `Class (attr_meths, are_set)) in
+  let fx = `Function (types, `Custom class_name) in
   let prev_vars = vars in
   let vars = StringMap.add name fx vars in
   let cscopes = context.scopes in (*cscopes = current scopes*)
