@@ -10,16 +10,17 @@ rayon_oeil <- 100.
 procedure __dessiner_oeil(chaine couleur)
 variables
   reel x, y
+  Vecteur v
 debut
   x <- 4. * reel(largeur_fenetre()) / 5.
   y <- x
   
   definir_couleur(couleur)
-  cercle_plein(x, y, rayon_oeil)
-  cercle_plein(-x, y, rayon_oeil)
+  cercle_plein(Vecteur(x, y), rayon_oeil)
+  cercle_plein(Vecteur(-x, y), rayon_oeil)
   definir_couleur("noir")
-  cercle_plein(x, y, rayon_oeil / 3.)
-  cercle_plein(-x, y, rayon_oeil / 3.)
+  cercle_plein(Vecteur(x, y), rayon_oeil / 3.)
+  cercle_plein(Vecteur(-x, y), rayon_oeil / 3.)
 fin
 
 
@@ -45,7 +46,7 @@ fin
 
 couleur_de_fond("marron")
 definir_couleur("saumon")
-cercle_plein(0., -2. * reel(largeur_fenetre()) / 5., rayon_nez)
+cercle_plein(Vecteur(0., -2. * reel(largeur_fenetre()) / 5.), rayon_nez)
 dessiner_oeil_ouvert()
 cligner()
 

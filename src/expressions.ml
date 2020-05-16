@@ -241,12 +241,15 @@ let rec type_of_expr context : Expr.t -> Type.t = function
     else raise_type_error ("All elements of a list must have the same type") (*TODO Fix translation*)
   | Call (name, params) -> let params_types = List.map (type_of_expr context) params in
     (* If the function is a method, replace 'instance func' by 'self.func' *)
-    let name = (match String.split_on_char ' ' name with
-          "instance" :: name :: [] -> "self." ^ name
-        | name :: [] -> name
-        | _ -> assert false) in
-    (try (match StringMap.find_opt name context.vars with
-         | Some (`Function (p, return)) as s -> let f = Option.get s in
+    let name = match String.split_on_char ' ' name with
+        "instance" :: name :: [] -> "self." ^ name
+      | name :: [] -> name
+      | _ -> assert false in
+    let s = match StringMap.find_opt name context.vars with
+      | Some `Class (attr_meths, _) -> Some (StringMap.find "nouveau" attr_meths)   (* Constructor *)
+      | s -> s in
+    (try (match s with
+         | Some (`Function (p, return)) -> let f = Option.get s in
            if List.length p = List.length params && List.for_all2 Type.is_compatible params_types p then
              return
            else
@@ -259,6 +262,7 @@ let rec type_of_expr context : Expr.t -> Type.t = function
                  return
                else
                  raise_unexpected_type_error_with_name name (Type.to_string f) (Type.to_string (`Function (params_types, `Any)))
+             | `Class (attr_meths, _) -> StringMap.find "nouveau" attr_meths  (* Constructor *)
              | t -> raise_type_error ((get_string VariablesOfType) ^ (Type.to_string t) ^ (get_string NotCallable))))
      with Not_found -> (try
                           let builtin = StringMap.find name Builtins.functions in

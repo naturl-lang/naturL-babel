@@ -1,31 +1,31 @@
-utiliser geometrie
+utiliser geometrie.*
 utiliser style
 
 
-procedure point(reel x, reel y)
+procedure point(Vecteur position)
 debut
-  geometrie.reinitialiser()
-  crayon_a(x, y)
+  init_geometrie()
+  crayon_a(position.x, position.y)
   dessiner_point()
 fin
 
 
 procedure ligne(reel x1, reel y1, reel x2, reel y2)
 debut
-  geometrie.reinitialiser()
+  init_geometrie()
   crayon_a(x1, y1)
   abaisser_crayon()
   crayon_a(x2, y2)
 fin
 
 
-procedure rectangle(reel x, reel y, reel largeur, reel hauteur)
+procedure rectangle(Vecteur position, reel largeur, reel hauteur)
 variables
   entier i
   reel cote
 debut
-  geometrie.reinitialiser()
-  crayon_a(x, y)
+  init_geometrie()
+  crayon_a(position.x, position.y)
   abaisser_crayon()
   pour i de 1 jusqu_a 4 faire
     si i mod 2 = 0 alors
@@ -39,13 +39,13 @@ debut
 fin
 
 
-procedure rectangle_plein(reel x, reel y, reel largeur, reel hauteur)
+procedure rectangle_plein(Vecteur position, reel largeur, reel hauteur)
 variables
   entier i
   reel cote
 debut
-  geometrie.reinitialiser()
-  crayon_a(x, y)
+  init_geometrie()
+  crayon_a(position.x, position.y)
   abaisser_crayon()
   style.commencer_a_remplir()
   pour i de 1 jusqu_a 4 faire
@@ -61,19 +61,19 @@ debut
 fin
 
 
-procedure cercle(reel x, reel y, reel rayon)
+procedure cercle(Vecteur position, reel rayon)
 debut
-  geometrie.reinitialiser()
-  crayon_a(x, y - rayon)
+  init_geometrie()
+  crayon_a(position.x, position.y - rayon)
   abaisser_crayon()
   dessiner_cercle(rayon)
 fin
 
 
-procedure cercle_plein(reel x, reel y, reel rayon)
+procedure cercle_plein(Vecteur position, reel rayon)
 debut
-  geometrie.reinitialiser()
-  crayon_a(x, y - rayon)
+  init_geometrie()
+  crayon_a(position.x, position.y - rayon)
   abaisser_crayon()
   style.commencer_a_remplir()
   dessiner_cercle(rayon)

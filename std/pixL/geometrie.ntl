@@ -1,5 +1,20 @@
-procedure reinitialiser()
-debut  
+type_abstrait Vecteur
+  attributs
+    reel x
+    reel y
+  methodes
+    fonction nouveau(reel x, reel y) -> Vecteur
+    debut
+      instance x <- x
+      instance y <- y
+      retourner instance
+    fin
+  fin
+fin
+
+
+procedure init_geometrie()
+debut
   lever_crayon()
   reinitialiser_geometrie()
   vitesse_crayon("fastest")

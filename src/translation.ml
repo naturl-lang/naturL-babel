@@ -144,9 +144,10 @@ let rec eval_code context =
               if is_class_context context.scopes then
                 let expected = `Custom (get_current_class_name context) in
                 _check_retcall expected context;
-                if func_name = "nouveau" then
+                if func_name = "__init__" then
                   ""
                 else
+                  let () = print_endline func_name in
                   "return self"
               else
                 raise_name_error ("Keyword 'instance' cannot be used outside a class definition")
@@ -199,7 +200,7 @@ let rec eval_code context =
               raise_unexpected_type_error_with_name var (Type.to_string var_type) (Type.to_string expr_type) ~line: (get_line_no code index)
           else
             let r =  regexp ("^[\n\t ]*instance +\\([A-Za-z_][A-Za-z_0-9]*\\) *<- *\\(.*\\)\n") in
-            if string_match r code start_index then (*USE OF INSTANCE*)
+            if string_match r code start_index then (* USE OF INSTANCE *)
                 if is_class_context context.scopes then
                   let class_name = get_current_class_name context in
                   let end_index = match_end () in
@@ -508,7 +509,7 @@ and eval_constructor context =
   let vars = StringMap.add class_name final_class_type prev_vars
              |> StringMap.remove "instance"
              |> add_class_attr class_name "nouveau" (`Function (types, `Custom class_name)) in
-  get_indentation depth ^ "def " ^ name ^ "(" ^ names ^ "):\n" ^ next ^ offset, {context with vars}
+  get_indentation depth ^ "def " ^ name ^ "(self, " ^ names ^ "):\n" ^ next ^ offset, {context with vars}
 
 and control_keywords =
   [
