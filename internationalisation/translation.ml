@@ -15,7 +15,7 @@ let set_lang_of_string = function
   | _ -> failwith "Unknown language"
 
 type key =
-| SyntaxError
+  | SyntaxError
   | TypeError
   | NameError
   | ImportError
@@ -148,7 +148,7 @@ let get_string key  =
   | BreakingReturn -> get_member_from_JSON "BreakingReturn"
   | AlwaysTrue -> get_member_from_JSON "AlwaysTrue"
   | AlwaysFalse -> get_member_from_JSON "AlwaysFalse"
-  | MissingKeyword -> get_member_from_JSON "MissingKeyword "
+  | MissingKeyword -> get_member_from_JSON "MissingKeyword"
   | InvalidFunctionDefinition -> get_member_from_JSON "InvalidFunctionDefinition"
   | UnknownVariable -> get_member_from_JSON "UnknownVariable"
   | UnknownType -> get_member_from_JSON "UnknownType"

@@ -1,8 +1,27 @@
-variables
-  booleen __est_clavier_ecoute
+fonction __traduire_touche(chaine touche) -> chaine
+debut
+  si touche = "haut" alors
+    retourner "Up"
+  sinon_si touche = "bas" alors
+    retourner "Down"
+  sinon_si touche = "droite" alors
+    retourner "Right"
+  sinon_si touche = "gauche" alors
+    retourner "Left"
+  sinon_si touche = "effacer" alors
+    retourner "BackSpace"
+  sinon_si touche = "controle" ou touche = "ctrl" alors
+    retourner "Control_L"
+  sinon_si touche = "supprimer" alors
+    retourner "Delete"
+  sinon_si touche = "fin" alors
+    retourner "End"
+  sinon_si touche = "entrer" ou touche = "retourner" alors
+    retourner "Return"
+  sinon
+    retourner touche
+  fin
 fin
-
-__est_clavier_ecoute <- faux
 
 
 procedure detecter_clic_gauche(procedure: (reel) x (reel) action)
@@ -29,12 +48,27 @@ debut
 fin
 
 
-procedure detecter_touche(procedure action, chaine touche)
+procedure detecter_touche_pressee(procedure action, chaine touche)
 debut
-  si non __est_clavier_ecoute alors
-    _ecouter_clavier()
-    __est_clavier_ecoute = vrai
-  fin
-  _detecter_touche(action, touche)
+  _ecouter_clavier()
+  _detecter_touche_pressee(action, __traduire_touche(touche))
 fin
 
+procedure detecter_touche_levee(procedure action, chaine touche)
+debut
+  _ecouter_clavier()
+  _detecter_touche_levee(action, __traduire_touche(touche))
+fin
+
+
+procedure lancer_partie(procedure principale, entier temps)
+debut
+  procedure _principale()
+  debut
+    principale()
+    executer_apres(_principale, temps)
+  fin
+
+  executer_apres(_principale, temps)
+  lancer_boucle()
+fin

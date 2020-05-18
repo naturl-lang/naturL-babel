@@ -147,7 +147,6 @@ let rec eval_code context =
                 if func_name = "__init__" then
                   ""
                 else
-                  let () = print_endline func_name in
                   "return self"
               else
                 raise_name_error ("Keyword 'instance' cannot be used outside a class definition")
@@ -186,7 +185,7 @@ let rec eval_code context =
         | _ ->
           (* Expression or affectation *)
           let line_no = get_line_no code context.index in
-          let r = regexp ("^[\n\t ]*\\([A-Za-z_][A-Za-z_0-9]*\\(\\.[A-Za-z_][A-Za-z_0-9]*\\)*\\) *<- *\\(.*\\)\n") in
+          let r = regexp ("[\n\t ]*\\([A-Za-z_][A-Za-z_0-9]*\\(\\.[A-Za-z_][A-Za-z_0-9]*\\)*\\) *<- *\\(.*\\)\n") in
           if string_match r code start_index then   (* Affectation *)
             let end_index = match_end() in
             let var = matched_group 1 code
@@ -199,26 +198,27 @@ let rec eval_code context =
             else
               raise_unexpected_type_error_with_name var (Type.to_string var_type) (Type.to_string expr_type) ~line: (get_line_no code index)
           else
-            let r =  regexp ("^[\n\t ]*instance +\\([A-Za-z_][A-Za-z_0-9]*\\) *<- *\\(.*\\)\n") in
+            let r = regexp ("^[\n\t ]*instance +\\([A-Za-z_][A-Za-z_0-9]*\\(\\.[A-Za-z_][A-Za-z_0-9]*\\)*\\) *<- *\\(.*\\)\n") in
             if string_match r code start_index then (* USE OF INSTANCE *)
-                if is_class_context context.scopes then
-                  let class_name = get_current_class_name context in
-                  let end_index = match_end () in
-                  let var = matched_group 1 code
-                  and expr = matched_group 2 code in
-                  let attr_meths, are_set = Type.get_attr_meths class_name context.vars in
-                  let var_type = StringMap.find var attr_meths in
-                  let expr, expr_type = try_update_err line_no (fun () -> eval_expression_with_type expr context) in
-                  if Type.is_compatible var_type expr_type then
-                    let are_set = StringMap.add var true are_set in
-                    let vars = StringMap.add class_name (`Class (attr_meths, are_set)) context.vars in
-                    let context = {context with index = end_index; vars = vars} in
-                    let next, context = _eval_code context in
-                    get_indentation depth ^ "self." ^ var ^ " = " ^ expr ^ "\n" ^ next, context
-                  else
-                    raise_unexpected_type_error_with_name var (Type.to_string var_type) (Type.to_string expr_type) ~line: (get_line_no code index)
+              if is_class_context context.scopes then
+                let class_name = get_current_class_name context in
+                let end_index = match_end () in
+                let var = matched_group 1 code in
+                let expr = try matched_group 3 code
+                  with Not_found -> failwith "" in
+                let attr_meths, are_set = Type.get_attr_meths class_name context.vars in
+                let var_type = get_var var ~main_vars:context.vars attr_meths in
+                let expr, expr_type = try_update_err line_no (fun () -> eval_expression_with_type expr context) in
+                if Type.is_compatible var_type expr_type then
+                  let are_set = StringMap.add var true are_set in
+                  let vars = StringMap.add class_name (`Class (attr_meths, are_set)) context.vars in
+                  let context = {context with index = end_index; vars = vars} in
+                  let next, context = _eval_code context in
+                  get_indentation depth ^ "self." ^ var ^ " = " ^ expr ^ "\n" ^ next, context
                 else
-                  raise_syntax_error "Keyword 'instance' cannot be used outside a class definition" ~line:(get_line_no code index)
+                  raise_unexpected_type_error_with_name var (Type.to_string var_type) (Type.to_string expr_type) ~line: (get_line_no code index)
+              else
+                raise_syntax_error "Keyword 'instance' cannot be used outside a class definition" ~line:(get_line_no code index)
             else
               let index = ignore_chrs code start_index in
               let line, index = get_line code index in
@@ -304,7 +304,7 @@ and eval_fonction context =
   let fx = `Function (types, type_) in
   let vars, prev_vars = if is_method_context context.scopes then
       let class_name = get_current_class_name context in
-      let f = add_class_attr class_name name fx in
+      let f = add_class_attr class_name name fx true in
       f vars, f context.vars
     else
       vars |> StringMap.add name fx, context.vars |> StringMap.add name fx in
@@ -325,7 +325,7 @@ and eval_procedure context =
   let fx = `Function (types, `None) in
   let vars, prev_vars = if is_method_context context.scopes then
       let class_name = get_current_class_name context in
-      let f = add_class_attr class_name name fx in
+      let f = add_class_attr class_name name fx true in
       f vars, f context.vars
     else
       vars |> StringMap.add name fx, context.vars |> StringMap.add name fx in
@@ -508,8 +508,8 @@ and eval_constructor context =
   let final_class_type = `Class (attr_meths, are_set) in
   let vars = StringMap.add class_name final_class_type prev_vars
              |> StringMap.remove "instance"
-             |> add_class_attr class_name "nouveau" (`Function (types, `Custom class_name)) in
-  get_indentation depth ^ "def " ^ name ^ "(self, " ^ names ^ "):\n" ^ next ^ offset, {context with vars}
+             |> add_class_attr class_name "nouveau" (`Function (types, `Custom class_name)) false in
+  get_indentation depth ^ "def " ^ name ^ "(" ^ names ^ "):\n" ^ next ^ offset, {context with vars}
 
 and control_keywords =
   [
@@ -531,7 +531,7 @@ and get_code_context code =
   context
 
 and translate_code code =
-  let code = String.trim code and index = 0 and vars = StringMap.empty and scopes = [] in
+  let code = String.trim code ^ "\n" and index = 0 and vars = StringMap.empty and scopes = [] in
   let translation, _ = try_catch stderr (fun () -> eval_code {code; index; vars; scopes}) in
   let translation = String.trim translation in
   let translation = if not (are_imports_empty ()) && let word, _ = get_word translation 0 in word = "def"

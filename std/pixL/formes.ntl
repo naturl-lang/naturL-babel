@@ -10,12 +10,12 @@ debut
 fin
 
 
-procedure ligne(reel x1, reel y1, reel x2, reel y2)
+procedure ligne(Vecteur position1, Vecteur position2)
 debut
   init_geometrie()
-  crayon_a(x1, y1)
+  crayon_a(position1.x, position1.y)
   abaisser_crayon()
-  crayon_a(x2, y2)
+  crayon_a(position2.x, position2.y)
 fin
 
 
@@ -45,7 +45,7 @@ variables
   reel cote
 debut
   init_geometrie()
-  crayon_a(position.x, position.y)
+  crayon_a(position.x - largeur/2, position.y - hauteur/2)
   abaisser_crayon()
   style.commencer_a_remplir()
   pour i de 1 jusqu_a 4 faire
@@ -79,4 +79,3 @@ debut
   dessiner_cercle(rayon)
   style.finir_de_remplir()
 fin
-

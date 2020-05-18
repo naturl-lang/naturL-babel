@@ -87,11 +87,11 @@ let get_param context index =
   let set_names names =
     match context.scopes with
       | Function_definition _ :: Methods _ :: _ when names = "" -> "self"
-      | Function_definition _ :: Methods _ :: _ -> "self, "^names
+      | Function_definition _ :: Methods _ :: _ -> "self, " ^ names
       | _ -> names
   in
   let rec _get_params ?(is_first = false) vars names index ?(types = []) = function
-    | [] -> names, index, vars, List.rev types
+    | [] -> set_names names, index, vars, List.rev types
     | h :: t -> let r = regexp {|^\(.*\)\ +\([a-zA-Z_][a-zA-Z_0-9]*\)$|} in
       let _ = string_match r h 0 in
       let type_ = Type.of_string vars (matched_group 1 h)
@@ -107,15 +107,18 @@ let get_param context index =
   else
       raise_syntax_error ~line: (get_line_no context.code index) (get_string InvalidFunctionDefinition)
 
-let get_var name vars =
+let get_var name ?main_vars vars =
+  let main_vars = Option.value main_vars ~default: vars in
   let name = String.trim name
-  and r = regexp {|\([a-zA-Z_][a-zA-Z_0-9]*\)\.\([a-zA-Z_][a-zA-Z_0-9]*\)|} in
+  and r = regexp {|\([a-zA-Z_][a-zA-Z_0-9]*\)\(\.[a-zA-Z_][a-zA-Z_0-9]*\)+|} in
   let name, vars = if string_match r name 0 then
       let var_name = matched_group 1 name in
       let attr_name = matched_group 2 name in
+      let attr_name = String.sub attr_name 1 (String.length attr_name - 1) in
       match StringMap.find_opt var_name vars with
-      | Some `Custom class_name -> (match StringMap.find class_name vars with
-          | `Class (attrs, _) -> attr_name, attrs
+      | Some `Custom class_name -> (match StringMap.find_opt class_name main_vars with
+          | Some `Class (attrs, _) -> attr_name, attrs
+          | None -> attr_name, vars   (* We are already inside the class *)
           | _ -> assert false)
       | Some t -> raise_name_error ("Type " ^ (Type.to_string t) ^ " has no attribute " ^ attr_name)
       | None -> raise_name_error (get_string UnknownVariable ^ var_name)

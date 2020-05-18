@@ -25,13 +25,13 @@ fin
 
 fonction largeur_fenetre() -> entier
 debut
-  retourner taille_ecran()[0]
+  retourner largeur_ecran()
 fin
 
 
 fonction hauteur_fenetre() -> entier
 debut
-  retourner taille_ecran()[1]
+  retourner hauteur_ecran()
 fin
 
 
@@ -39,4 +39,3 @@ procedure redimensionner_fenetre(entier largeur, entier hauteur)
 debut
   definir_taille_ecran(largeur, hauteur)
 fin
-

@@ -90,8 +90,8 @@ let rec format_depth depth scopes =
   | _ ::r -> format_depth depth r
 
 (* Adds a field to the attributes of the given class *)
-let add_class_attr class_name attr_name attr vars =
+let add_class_attr class_name attr_name attr is_set vars =
   let attr_meths, are_set = Type.get_attr_meths class_name vars in
   let attr_meths = attr_meths |> StringMap.add attr_name attr in
-  let are_set = are_set |> StringMap.add attr_name false in
+  let are_set = are_set |> StringMap.add attr_name is_set in
   vars |> StringMap.add class_name (`Class (attr_meths, are_set))

@@ -41,7 +41,98 @@ let functions =
           | _ -> assert false);
       import = (fun () -> ())
     };
+    (* Math functions *)
+    "min", {
+      typer = (function
+            `Float :: `Float :: [] -> `Float
+          | t -> raise_unexpected_type_error_with_name "min"
+                   (Type.to_string (`Function ([`Float; `Float], `Float)))
+                   (Type.to_string (`Function (t, `Float))));
+      translator = (fun s -> "min(" ^ (List.hd s) ^ ", " ^ (List.hd (List.tl s)) ^ ")");
+      import = (fun () -> ())
+    };
+    "max", {
+      typer = (function
+            `Float :: `Float :: [] -> `Float
+          | t -> raise_unexpected_type_error_with_name "max"
+                   (Type.to_string (`Function ([`Float; `Float], `Float)))
+                   (Type.to_string (`Function (t, `Float))));
+      translator = (fun s -> "max(" ^ (List.hd s) ^ ", " ^ (List.hd (List.tl s)) ^ ")");
+      import = (fun () -> ())
+    };
+    "abs", {
+      typer = (function
+            `Float :: [] -> `Float
+          | t -> raise_unexpected_type_error_with_name "abs"
+                   (Type.to_string (`Function ([`Float], `Float)))
+                   (Type.to_string (`Function (t, `Float))));
+      translator = (fun s -> "abs(" ^ (List.hd s) ^ ")");
+      import = (fun () -> ())
+    };
+    "cos", {
+      typer = (function
+            `Float :: [] -> `Float
+          | t -> raise_unexpected_type_error_with_name "cos"
+                   (Type.to_string (`Function ([`Float], `Float)))
+                   (Type.to_string (`Function (t, `Float))));
+      translator = (fun s -> "math.cos(" ^ (List.hd s) ^ ")");
+      import = (fun () ->  Imports.add_import "math" None)
+    };
+    "sin", {
+      typer = (function
+            `Float :: [] -> `Float
+          | t -> raise_unexpected_type_error_with_name "sin"
+                   (Type.to_string (`Function ([`Float], `Float)))
+                   (Type.to_string (`Function (t, `Float))));
+      translator = (fun s -> "math.sin(" ^ (List.hd s) ^ ")");
+      import = (fun () ->  Imports.add_import "math" None)
+    };
+    "arccos", {
+      typer = (function
+            `Float :: [] -> `Float
+          | t -> raise_unexpected_type_error_with_name "arccos"
+                   (Type.to_string (`Function ([`Float], `Float)))
+                   (Type.to_string (`Function (t, `Float))));
+      translator = (fun s -> "math.acos(" ^ (List.hd s) ^ ")");
+      import = (fun () ->  Imports.add_import "math" None)
+    };
+    "arcsin", {
+      typer = (function
+            `Float :: [] -> `Float
+          | t -> raise_unexpected_type_error_with_name "arcsin"
+                   (Type.to_string (`Function ([`Float], `Float)))
+                   (Type.to_string (`Function (t, `Float))));
+      translator = (fun s -> "math.asin(" ^ (List.hd s) ^ ")");
+      import = (fun () ->  Imports.add_import "math" None)
+    };
+    "arctan", {
+      typer = (function
+            `Float :: [] -> `Float
+          | t -> raise_unexpected_type_error_with_name "arcsin"
+                   (Type.to_string (`Function ([`Float], `Float)))
+                   (Type.to_string (`Function (t, `Float))));
+      translator = (fun s -> "math.atan(" ^ (List.hd s) ^ ")");
+      import = (fun () ->  Imports.add_import "math" None)
+    };
+    "racine", {
+      typer = (function
+            `Float :: [] -> `Float
+          | t -> raise_unexpected_type_error_with_name "racine"
+                   (Type.to_string (`Function ([`Float], `Float)))
+                   (Type.to_string (`Function (t, `Float))));
+      translator = (fun s -> "math.sqrt(" ^ (List.hd s) ^ ")");
+      import = (fun () ->  Imports.add_import "math" None)
+    };
     (* Cast functions *)
+    "chaine", {
+      typer = (function
+            #Type.t :: [] -> `String
+          | t -> raise_unexpected_type_error_with_name "chaine"
+                   (Type.to_string (`Function ([`Any], `String)))
+                   (Type.to_string (`Function (t, `String))));
+      translator = (fun s -> "str(" ^ (List.hd s) ^ ")");
+      import = (fun () -> ())
+    };
     "reel", {
       typer = (function
             `Int :: [] -> `Float
@@ -218,12 +309,14 @@ let functions =
     };
     "dessiner_texte", {
       typer = (function
-            `String :: [] -> `None
+            `String :: `String :: `Int :: [] -> `None
           | t -> raise_unexpected_type_error_with_name "dessiner_texte"
-                   (Type.to_string (`Function ([`String], `None)))
+                   (Type.to_string (`Function ([`String; `String; `Int], `None)))
                    (Type.to_string (`Function (t, `None))));
-      translator = (fun s -> "turtle.write(" ^ (List.hd s) ^ ")");
-      import = (fun () -> add_import "turtle" None)
+      translator = (fun s ->
+          "Thread(target=lambda: turtle.write(" ^ (List.hd s) ^ ", align='center', font=(" ^ (List.nth s 1) ^ ", " ^ (List.nth s 2) ^ ", 'normal'))).start()" ^
+          "  # This action takes too long so it is executed in a thread");
+      import = (fun () -> add_import "turtle" None; add_import "threading" (Some "Thread"))
     };
     "definir_titre", {
       typer = (function
@@ -261,6 +354,15 @@ let functions =
       translator = (fun _ -> "turtle.update()");
       import = (fun () -> add_import "turtle" None)
     };
+    "effacer_ecran", {
+      typer = (function
+            [] -> `None
+          | t -> raise_unexpected_type_error_with_name "effacer_ecran"
+                   (Type.to_string (`Function ([], `None)))
+                   (Type.to_string (`Function (t, `None))));
+      translator = (fun _ -> "turtle.clear()");
+      import = (fun () -> add_import "turtle" None)
+    };
     "delai_ecran", {
       typer = (function
             (`Int | `Float) :: [] -> `None
@@ -289,13 +391,22 @@ let functions =
       translator = (fun s -> "turtle.onscreenclick(" ^ (List.hd s) ^ ", " ^ (List.hd (List.tl s)) ^ ")");
       import = (fun () -> add_import "turtle" None)
     };
-    "_detecter_touche", {
+    "_detecter_touche_pressee", {
       typer = (function
             `Function ([], `None) :: (`Char | `String) :: [] -> `None
-          | t -> raise_unexpected_type_error_with_name "_detecter_touche"
+          | t -> raise_unexpected_type_error_with_name "_detecter_touche_pressee"
                    (Type.to_string (`Function ([`Function ([], `None); `String], `None)))
                    (Type.to_string (`Function (t, `None))));
-      translator = (function s -> "turtle.onkey(" ^ (List.hd s) ^ ", " ^ (List.hd (List.tl s)) ^ ")");
+      translator = (function s -> "turtle.onkeypress(" ^ (List.hd s) ^ ", " ^ (List.hd (List.tl s)) ^ ")");
+      import = (fun () -> add_import "turtle" None)
+    };
+    "_detecter_touche_levee", {
+      typer = (function
+            `Function ([], `None) :: (`Char | `String) :: [] -> `None
+          | t -> raise_unexpected_type_error_with_name "_detecter_touche_levee"
+                   (Type.to_string (`Function ([`Function ([], `None); `String], `None)))
+                   (Type.to_string (`Function (t, `None))));
+      translator = (function s -> "turtle.onkeyrelease(" ^ (List.hd s) ^ ", " ^ (List.hd (List.tl s)) ^ ")");
       import = (fun () -> add_import "turtle" None)
     };
     "_ecouter_clavier", {
@@ -317,13 +428,22 @@ let functions =
       import = (fun () -> add_import "turtle" None)
     };
     (* Geometry functions *)
-    "taille_ecran", {
+    "largeur_ecran", {
       typer = (function
-             [] -> `List `Int
-          | t -> raise_unexpected_type_error_with_name "taille_ecran"
-                   (Type.to_string (`Function ([], `None)))
-                   (Type.to_string (`Function (t, `None))));
-      translator = (fun _ -> "turtle.screensize()");
+             [] -> `Int
+          | t -> raise_unexpected_type_error_with_name "largeur_ecran"
+                   (Type.to_string (`Function ([], `Int)))
+                   (Type.to_string (`Function (t, `Int))));
+      translator = (fun _ -> "turtle.window_width()");
+      import = (fun () -> add_import "turtle" None)
+    };
+    "hauteur_ecran", {
+      typer = (function
+             [] -> `Int
+          | t -> raise_unexpected_type_error_with_name "hauteur_ecran"
+                   (Type.to_string (`Function ([], `Int)))
+                   (Type.to_string (`Function (t, `Int))));
+      translator = (fun _ -> "turtle.window_height()");
       import = (fun () -> add_import "turtle" None)
     };
     "definir_taille_ecran", {
@@ -332,9 +452,19 @@ let functions =
           | t -> raise_unexpected_type_error_with_name "definir_taille_ecran"
                    (Type.to_string (`Function ([`Int; `Int], `None)))
                    (Type.to_string (`Function (t, `None))));
-      translator = (fun s -> "turtle.screensize(" ^ (List.hd s) ^ ", " ^ (List.hd (List.tl s)) ^ ")");
+      translator = (fun s -> "turtle.setup(" ^ (List.hd s) ^ ", " ^ (List.hd (List.tl s)) ^ ")");
       import = (fun () -> add_import "turtle" None)
     };
+    (* Time function *)
+    "attendre", {
+      typer = (function
+             `Int :: [] -> `None
+          | t -> raise_unexpected_type_error_with_name "hauteur_ecran"
+                   (Type.to_string (`Function ([`Int], `None)))
+                   (Type.to_string (`Function (t, `None))));
+      translator = (fun s -> "time.sleep(" ^ (string_of_float (float_of_string (List.hd s) /. 1000.)) ^ ")");  (* The time is given in ms*)
+      import = (fun () -> add_import "time" None)
+    }
   ]
   in string_map_of_list assoc
 

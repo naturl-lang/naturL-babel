@@ -39,8 +39,7 @@ fin
 procedure cligner()
 debut
   dessiner_oeil_ferme()
-  _executer_apres(dessiner_oeil_ouvert, 100)
-  _executer_apres(cligner, 2000)
+  executer_apres(dessiner_oeil_ouvert, 100)
 fin
 
 
@@ -50,5 +49,4 @@ cercle_plein(Vecteur(0., -2. * reel(largeur_fenetre()) / 5.), rayon_nez)
 dessiner_oeil_ouvert()
 cligner()
 
-lancer_boucle()
-
+lancer_partie(cligner, 2000)

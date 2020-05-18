@@ -54,8 +54,8 @@ open (struct
     | "et" -> 2
     | ">" | ">=" | "<" | "<=" | "=" -> 3
     | "+" | "-" -> 4
-    | "*" | "fois" | "/" | "div" -> 5
-    | "non" | "neg" | "get[" -> 6
+    | "*" | "fois" | "/" | "div" | "neg" -> 5
+    | "non" | "get[" -> 6
     | "^" | "[" -> 7
     | _ -> 7 (* Function call *)
 
@@ -96,12 +96,12 @@ open (struct
 
   let is_type_accepted t (op: Expr.t) =
     match op with
-      Plus _ -> List.exists (fun type_ -> Type.is_compatible t type_) [`Int; `Float; `String]
-    | Minus _ | Times _ | Neg _ | Pow _ -> List.exists (fun type_ -> Type.is_compatible t type_) [`Int; `Float]
+      Plus _ -> List.exists (fun expected -> Type.is_compatible expected t) [`Int; `Float; `String]
+    | Minus _ | Times _ | Neg _ | Pow _ -> List.exists (fun expected -> Type.is_compatible expected t) [`Int; `Float]
     | Div_int _ | Modulus _ -> Type.is_compatible `Int t
     | Div _ -> Type.is_compatible `Float t
     | Eq _ | Gt _ | Gt_eq _ | Lt _ | Lt_eq _ -> true
-    | And _ | Or _ | Not _ -> Type.is_compatible t `Bool
+    | And _ | Or _ | Not _ -> Type.is_compatible `Bool t
     | List _ | Call _ | Subscript _ | Value _ -> assert false
 
   let rec is_list_uniform vars = function
@@ -224,16 +224,15 @@ let expr_of_string context str : Expr.t =
 let rec type_of_expr context : Expr.t -> Type.t = function
   | Plus (l, r) | Minus (l, r) | Times (l, r) | Div (l, r) | Div_int (l, r) | Modulus (l, r) | Pow (l, r) | And (l, r) | Or (l, r) as e ->
     let l_type = type_of_expr context l and r_type = type_of_expr context r in
-    if l_type = r_type && is_type_accepted l_type e then l_type
-    else if l_type = `Any && is_type_accepted r_type e then r_type
-    else if r_type = `Any && is_type_accepted l_type e then l_type
+    if Type.is_compatible l_type r_type && is_type_accepted l_type e then l_type
+    else if Type.is_compatible r_type l_type && is_type_accepted r_type e then r_type
     else
       raise_type_error ((get_string InvalidOperation) ^ (Type.to_string l_type) ^ (get_string AndType) ^ (Type.to_string r_type))
   | Not arg | Neg arg as e -> let arg_type = type_of_expr context arg in if is_type_accepted arg_type e then arg_type else
       raise_type_error ((get_string InvalidOperation) ^ (Type.to_string arg_type))
   | Eq (l, r) | Gt (l, r) | Gt_eq (l, r) | Lt (l, r) | Lt_eq (l, r) -> let l_type = type_of_expr context l and r_type = type_of_expr context r in
-    if l_type = r_type then `Bool
-    else if l_type = `Any || r_type = `Any then `Bool
+    if let open Type in is_compatible l_type r_type || is_compatible r_type l_type then
+      `Bool
     else
       raise_type_error ((get_string CannotCompare) ^ (Type.to_string l_type) ^ (get_string AndType) ^ (Type.to_string r_type))
   | List [] -> `List `Any
@@ -250,10 +249,10 @@ let rec type_of_expr context : Expr.t -> Type.t = function
       | s -> s in
     (try (match s with
          | Some (`Function (p, return)) -> let f = Option.get s in
-           if List.length p = List.length params && List.for_all2 Type.is_compatible params_types p then
+           if List.length p = List.length params && List.for_all2 Type.is_compatible p params_types then  (* Despite the fact that it is not safe, function calls are covariant in argument types *)
              return
            else
-             raise_unexpected_type_error_with_name name (Type.to_string f) (Type.to_string (`Function (params_types, `Any)))
+             raise_unexpected_type_error_with_name name (Type.to_string f) (Type.to_string (`Function (params_types, return)))
          | Some _ as s -> let t = Option.get s in
            raise_type_error ((get_string VariablesOfType) ^ (Type.to_string t) ^ (get_string NotCallable))
          | None -> (match Value.get_unknown_variable context name (fun () -> raise Not_found) with
@@ -261,7 +260,7 @@ let rec type_of_expr context : Expr.t -> Type.t = function
                if List.length p = List.length params && List.for_all2 Type.is_compatible params_types p then
                  return
                else
-                 raise_unexpected_type_error_with_name name (Type.to_string f) (Type.to_string (`Function (params_types, `Any)))
+                 raise_unexpected_type_error_with_name name (Type.to_string f) (Type.to_string (`Function (params_types, return)))
              | `Class (attr_meths, _) -> StringMap.find "nouveau" attr_meths  (* Constructor *)
              | t -> raise_type_error ((get_string VariablesOfType) ^ (Type.to_string t) ^ (get_string NotCallable))))
      with Not_found -> (try

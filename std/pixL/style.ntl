@@ -50,10 +50,16 @@ debut
 fin
 
 
-
 procedure couleur_de_fond(chaine couleur)
 debut
   couleur_fond(__traduire_couleur(couleur))
+fin
+
+
+procedure fond(chaine couleur)
+debut
+  couleur_de_fond(couleur)
+  effacer_ecran()
 fin
 
 
@@ -67,4 +73,3 @@ procedure finir_de_remplir()
 debut
   finir_remplissage()
 fin
-

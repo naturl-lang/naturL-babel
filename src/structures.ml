@@ -71,18 +71,19 @@ module Type = struct
     | `List t -> Some t
     | _ -> None
 
-  let rec is_compatible (type1: t) (type2: t) =
-    type2 = `Any || match type1 with
-    | `Any -> true
-    | `Int | `Float | `Char | `String | `Bool | `None -> type1 = type2
-    | `List t1 -> (match type2 with
-        | `List t2 -> is_compatible t1 t2
+  let rec is_compatible (expected: t) (actual: t) =
+    expected = `Any || match actual with
+    | `Any -> false
+    | `Int -> expected = `Int || expected = `Float
+    | `Char -> expected = `Char || expected = `String
+    | `Float | `String | `Bool | `None | `Class _ -> expected = actual
+    | `List t1 -> (match expected with  (* A list is covariant *)
+        | `List t2 -> is_compatible t2 t1
         | _ -> false)
-    | `Function (params1, return1) -> (match type2 with
-        | `Function (params2, return2) -> List.for_all2 is_compatible params1 params2 && is_compatible return1 return2
+    | `Function (params1, return1) -> (match expected with  (* A function is covariant in its return type contravariant in its argument type *)
+        | `Function (params2, return2) -> List.for_all2 is_compatible params1 params2 && is_compatible return2 return1
         | _ -> false)
-    | `Class _ -> type1 = type2
-    | `Custom _ -> to_string type1 = to_string type2
+    | `Custom _ -> to_string expected = to_string actual
 
   let get_attr_meths name (vars:t StringMap.t) =
     match (StringMap.find name vars) with
@@ -194,9 +195,14 @@ module Value = struct
       raise_syntax_error (get_string InvalidExpression)
 
 
+  open (struct
+    let accessed_var_regex = Str.regexp "\\([a-zA-Z_][a-zA-Z_0-9]*\\)\\(\\(\\.[a-zA-Z_][a-zA-Z_0-9]*\\)+\\)"
+  end)
+
   let rec get_unknown_variable context name error =
-    if Str.string_match (Str.regexp "\\([a-zA-Z_][a-zA-Z_0-9]*\\)\\.\\([a-zA-Z_][a-zA-Z_0-9]*\\)") name 0 then
+    if Str.string_match accessed_var_regex name 0 then
       let attribute = Str.matched_group 2 name in
+      let attribute = String.sub attribute 1 (String.length attribute - 1) in
       let name = Str.matched_group 1 name in
       let class_name = if name = "self" then get_current_class_name context
         else match StringMap.find name context.vars with
@@ -205,12 +211,16 @@ module Value = struct
       in match StringMap.find_opt class_name context.vars with
       | Some `Class (attr_meths, _) -> (match StringMap.find_opt attribute attr_meths with
           | Some t -> t
-          | _ -> raise_type_error ("Type " ^ class_name ^ " has no attribute " ^ attribute))
+          | _ -> if Str.string_match accessed_var_regex attribute 0 then
+              get_unknown_variable {context with vars = StringMap.union (fun _ -> fun _ -> fun value -> Some value) context.vars attr_meths} attribute error
+            else
+              raise_type_error ("Type " ^ class_name ^ " has no attribute " ^ attribute))
       | None -> raise_type_error ("Undefined type " ^ class_name)
-      | _ -> `Int
+      | _ -> assert false
     else
       error ()
-  and get_type context = function
+
+  let rec get_type context = function
     | Int _ -> `Int
     | Float _ -> `Float
     | Char _ -> `Char
@@ -222,13 +232,24 @@ module Value = struct
     | Instance (type_name, name) ->
       let type_name = if type_name = "self" then get_current_class_name context else type_name in
       let attr_meths, are_set = try Type.get_attr_meths type_name context.vars
-        with Not_found -> raise_name_error ((get_string UnknownVariable) ^type_name ^ "'") in
-      let is_set = try StringMap.find name are_set
-        with Not_found -> raise_name_error ((get_string UnknownVariable) ^ name^"' in class '"^type_name^"'") in
-      if is_set then StringMap.find name attr_meths
-      else raise_name_error ("The variable " ^ name ^ " has no value in the current context")
+        with Not_found -> raise_name_error ((get_string UnknownVariable) ^ type_name ^ "'") in
+      let attr_type, are_set = try StringMap.find name attr_meths, StringMap.find name are_set
+        with Not_found -> if Str.string_match accessed_var_regex name 0 then
+            let attr_name = Str.matched_group 1 name in
+            let sub_attr_name = Str.matched_group 2 name in
+            let sub_attr_name = String.sub sub_attr_name 1 (String.length sub_attr_name - 1) in
+            match StringMap.find_opt attr_name attr_meths with
+            | Some t -> let vars = context.vars |> StringMap.add attr_name t in
+              get_type { context with vars } (Instance (Type.to_string t, sub_attr_name)),
+              (try StringMap.find name are_set with Not_found -> true)
+            | None -> raise_name_error ((get_string UnknownVariable) ^ attr_name ^ "' in class '" ^ type_name ^ "'")
+          else
+            raise_name_error ((get_string UnknownVariable) ^ name ^ "' in class '" ^ type_name ^ "'") in
+      if are_set then
+        attr_type
+      else
+        raise_name_error ("The variable " ^ name ^ " has no value in the current context")
     | None -> `None
-
 end
 
 
@@ -256,4 +277,3 @@ module Expr = struct
     | Subscript of t * t      (* list[x] *)
     | Value of Value.t        (* x *)
 end
-
