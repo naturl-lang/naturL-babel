@@ -1,0 +1,300 @@
+utiliser std.pixL.*
+
+
+type_abstrait Raquette
+  attributs
+    reel longueur
+    reel largeur
+    reel dy
+    Vecteur vitesse
+    Vecteur position
+    chaine couleur <- "blanc"
+  methodes
+    fonction nouveau(booleen gauche) -> Raquette
+    variables
+      reel x, y
+    debut
+      instance longueur <- hauteur_fenetre() / 5.
+      instance largeur <- instance longueur / 5
+      instance dy <- instance longueur / 9.
+      instance vitesse <- Vecteur(0, 0)
+
+      si gauche alors
+        x <- -largeur_fenetre()/2 + instance largeur
+      sinon
+        x <- largeur_fenetre()/2 - instance largeur
+
+        instance couleur <- "vert"
+      fin
+      y <- 0
+      instance position <- Vecteur(x, y)
+
+      retourner instance
+    fin
+
+    fonction bord_haut() -> reel
+    debut
+      retourner instance position.y + instance longueur / 2.
+    fin
+
+    fonction bord_bas() -> reel
+    debut
+      retourner instance position.y - instance longueur / 2.
+    fin
+
+    fonction bord_gauche() -> reel
+    debut
+      retourner instance position.x - instance largeur / 2.
+    fin
+
+    fonction bord_droit() -> reel
+    debut
+      retourner instance position.x + instance largeur / 2.
+    fin
+
+    procedure haut()
+    debut
+      instance vitesse.y <- instance dy
+    fin
+
+    procedure bas()
+    debut
+      instance vitesse.y <- -instance dy
+    fin
+
+    procedure arreter()
+    debut
+      instance vitesse.y <- 0
+    fin
+
+    procedure arreter_haut()
+    debut
+      si instance vitesse.y > 0 alors
+        instance vitesse.y <- 0
+      fin
+    fin
+
+    procedure arreter_bas()
+    debut
+      si instance vitesse.y < 0 alors
+        instance vitesse.y <- 0
+      fin
+    fin
+
+    procedure aller_vers(reel y)
+    debut
+      si instance position.y - instance longueur/3.> y alors
+        instance bas()
+      sinon_si instance position.y + instance longueur/3. < y alors
+        instance haut()
+      sinon
+        instance arreter()
+      fin
+    fin
+
+    procedure collision_bords()
+    debut
+      si instance position.y + instance longueur/2. > hauteur_fenetre() / 2 alors
+        instance position.y <- hauteur_fenetre()/2 - instance longueur/2.
+        instance vitesse.y <- 0
+      sinon_si instance position.y - instance longueur/2. < -hauteur_fenetre() / 2 alors
+        instance position.y <- -hauteur_fenetre()/2 + instance longueur/2.
+        instance vitesse.y <- 0
+      fin
+    fin
+
+    procedure actualiser()
+    debut
+      instance position.y <- instance position.y + instance vitesse.y
+      instance collision_bords()
+    fin
+
+    procedure afficher()
+    variables
+      reel hauteur
+    debut
+      hauteur <- instance longueur - instance largeur
+      definir_couleur(instance couleur)
+      rectangle_plein(instance position, instance largeur, hauteur)
+      cercle_plein(Vecteur(instance position.x, instance position.y - hauteur/2.), instance largeur/2.)
+      cercle_plein(Vecteur(instance position.x, instance position.y + hauteur/2.), instance largeur/2.)
+    fin
+  fin
+fin
+
+
+type_abstrait Balle
+  attributs
+    reel rayon
+    Vecteur vitesse
+    Vecteur position
+    reel __vitesse_x
+    reel __vitesse_y
+  methodes
+    fonction nouveau() -> Balle
+    debut
+      instance rayon <- hauteur_fenetre() / 70.
+      instance __vitesse_x <- 1.2 * instance rayon
+      instance __vitesse_y <- 1.5 * instance rayon
+      instance vitesse <- Vecteur(instance __vitesse_x, instance __vitesse_y)
+      instance position <- Vecteur(0, 0)
+      retourner instance
+    fin
+
+    procedure reinitialiser()
+    debut
+      instance vitesse <- Vecteur(instance __vitesse_x, instance __vitesse_y)
+      instance position <- Vecteur(0, 0)
+    fin
+
+    procedure __rebondir()
+    debut
+      si instance position.y + instance rayon > hauteur_fenetre() / 2 alors
+        instance position.y <- hauteur_fenetre()/2 - instance rayon
+        instance vitesse.y <- -instance vitesse.y
+      sinon_si instance position.y - instance rayon < -hauteur_fenetre() / 2 alors
+        instance position.y <- -hauteur_fenetre()/2 + instance rayon
+        instance vitesse.y <- -instance vitesse.y
+      fin
+    fin
+
+
+    procedure collision_raquette(Raquette raquette)
+    variables
+      reel distance_haut, distance_bas, distance_gauche, distance_droite
+    debut
+      distance_haut <- instance position.y - raquette.bord_haut()
+      distance_bas <- instance position.y - raquette.bord_bas()
+      distance_gauche <- instance position.x - raquette.bord_gauche()
+      distance_droite <- instance position.x - raquette.bord_droit()
+      si distance_haut < instance rayon et distance_bas > instance rayon et distance_gauche > instance rayon et distance_droite < instance rayon alors
+        si instance vitesse.x > 0 alors
+          instance position.x <- raquette.bord_gauche() - instance rayon
+        sinon
+          instance position.x <- raquette.bord_droit() + instance rayon
+        fin
+        instance vitesse.x <- -instance vitesse.x
+      fin
+    fin
+
+    fonction dehors() -> booleen
+    debut
+      retourner instance position.x - instance rayon < -largeur_fenetre() / 2 ou instance position.x + instance rayon > largeur_fenetre() / 2
+    fin
+
+    procedure actualiser()
+    debut
+      instance position.x <- instance position.x + instance vitesse.x
+      instance position.y <- instance position.y + instance vitesse.y
+      instance __rebondir()
+    fin
+
+    procedure __afficher(chaine couleur)
+    debut
+      definir_couleur(couleur)
+      cercle_plein(instance position, instance rayon)
+    fin
+
+    procedure afficher()
+    debut
+      instance __afficher("blanc")
+    fin
+
+    procedure afficher_erreur()
+    debut
+      instance __afficher("rouge")
+    fin
+  fin
+fin
+
+
+type_abstrait Partie
+  attributs
+    Raquette joueur
+    Raquette ordi
+    Balle balle
+    entier score_joueur <- 0
+    entier score_ordi <- 0
+  methodes
+    fonction nouveau() -> Partie
+    debut
+      instance joueur <- Raquette(vrai)
+      instance ordi <- Raquette(faux)
+      instance balle <- Balle()
+
+      detecter_touche_pressee(instance joueur.haut, "haut")
+      detecter_touche_levee(instance joueur.arreter_haut, "haut")
+      detecter_touche_pressee(instance joueur.bas, "bas")
+      detecter_touche_levee(instance joueur.arreter_bas, "bas")
+
+      retourner instance
+    fin
+
+    procedure jouer_ordi()
+    debut
+      si instance balle.position.x > 0 et instance balle.vitesse.x > 0 alors
+        instance ordi.aller_vers(instance balle.position.y)
+      sinon
+        instance ordi.aller_vers(0.)
+      fin
+    fin
+
+    procedure afficher()
+    debut
+      fond("noir")
+
+      definir_couleur("blanc")
+      ligne(Vecteur(0, -hauteur_fenetre() / 2), Vecteur(0, hauteur_fenetre() / 2))
+      ecrire_texte(Vecteur( -40, -hauteur_fenetre() / 2), Police("Arial", 40), chaine(instance score_joueur))
+      ecrire_texte(Vecteur(40, -hauteur_fenetre() / 2), Police("Arial", 40), chaine(instance score_ordi))
+
+      instance joueur.afficher()
+      instance ordi.afficher()
+      instance balle.afficher()
+    fin
+
+    procedure finir_manche()
+    debut
+      si instance balle.position.x > 0 alors
+        instance score_joueur <- instance score_joueur + 1
+      sinon
+        instance score_ordi <- instance score_ordi + 1
+      fin
+      instance afficher()
+      instance balle.afficher_erreur()
+      instance balle.reinitialiser()
+      mettre_a_jour_ecran()
+      attendre(1000)
+    fin
+
+    procedure actualiser()
+    debut
+      instance joueur.actualiser()
+      instance jouer_ordi()
+      instance ordi.actualiser()
+
+      instance balle.actualiser()
+      instance balle.collision_raquette(instance joueur)
+      instance balle.collision_raquette(instance ordi)
+
+      si instance balle.dehors() alors
+        instance finir_manche()
+      fin
+    fin
+
+    procedure jouer()
+    debut
+      instance actualiser()
+      instance afficher()
+    fin
+  fin
+fin
+
+variables
+  Partie partie
+fin
+
+
+redimensionner_fenetre(1300, 900)
+partie <- Partie()
+lancer_partie(partie.jouer, 5)

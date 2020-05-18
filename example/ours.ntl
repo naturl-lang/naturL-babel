@@ -1,0 +1,52 @@
+utiliser std.pixL.*
+
+variables
+  reel rayon_nez, rayon_oeil
+fin
+
+rayon_nez <- 150.
+rayon_oeil <- 100.
+
+procedure __dessiner_oeil(chaine couleur)
+variables
+  reel x, y
+  Vecteur v
+debut
+  x <- 4. * reel(largeur_fenetre()) / 5.
+  y <- x
+  
+  definir_couleur(couleur)
+  cercle_plein(Vecteur(x, y), rayon_oeil)
+  cercle_plein(Vecteur(-x, y), rayon_oeil)
+  definir_couleur("noir")
+  cercle_plein(Vecteur(x, y), rayon_oeil / 3.)
+  cercle_plein(Vecteur(-x, y), rayon_oeil / 3.)
+fin
+
+
+procedure dessiner_oeil_ouvert()
+debut
+  __dessiner_oeil("blanc")
+fin
+
+
+procedure dessiner_oeil_ferme()
+debut
+  __dessiner_oeil("noir")
+fin
+
+
+procedure cligner()
+debut
+  dessiner_oeil_ferme()
+  executer_apres(dessiner_oeil_ouvert, 100)
+fin
+
+
+couleur_de_fond("marron")
+definir_couleur("saumon")
+cercle_plein(Vecteur(0., -2. * reel(largeur_fenetre()) / 5.), rayon_nez)
+dessiner_oeil_ouvert()
+cligner()
+
+lancer_partie(cligner, 2000)
