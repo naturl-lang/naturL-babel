@@ -1,0 +1,4 @@
+(library
+  (name lsp)
+  (libraries yojson)
+  (preprocess (pps ppx_yojson_conv)))
