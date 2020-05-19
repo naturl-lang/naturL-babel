@@ -138,7 +138,7 @@ let rec eval_code context =
             eval_code {context with scopes = (Function (func_name, false)):: List.tl context.scopes}
           else
             raise_syntax_error ~line: (get_line_no code start_index) (get_string UnexpectedDebut)
-        | "retourner" -> let expr, i = get_line code context.index in
+        | "retourner" -> let expr, i = try_update_err (get_line_no code context.index) (fun () -> get_line code context.index) in
           let return_expression =
             if string_match (regexp "^[ \t]*instance[ \t]*$") expr 0 then
               if is_class_context context.scopes then
@@ -185,11 +185,11 @@ let rec eval_code context =
         | _ ->
           (* Expression or affectation *)
           let line_no = get_line_no code context.index in
-          let r = regexp ("[\n\t ]*\\([A-Za-z_][A-Za-z_0-9]*\\(\\.[A-Za-z_][A-Za-z_0-9]*\\)*\\) *<- *\\(.*\\)\n") in
+          let r = regexp ("[\n\t ]*\\([A-Za-z_][A-Za-z_0-9]*\\(\\.[A-Za-z_][A-Za-z_0-9]*\\)*\\) *<- *\\(.*\\(\\\\ *\n\\)*.+\\)\n") in
           if string_match r code start_index then   (* Affectation *)
             let end_index = match_end() in
             let var = matched_group 1 code
-            and expr = matched_group 3 code in
+            and expr = matched_group 3 code |> replace_string "\\" "" |> replace_string "\n" "" in
             let var_type = try_update_err line_no (fun () -> get_var var context.vars)
             and expr, expr_type = try_update_err line_no (fun () -> eval_expression_with_type expr context) in
             if Type.is_compatible var_type expr_type then
@@ -198,14 +198,13 @@ let rec eval_code context =
             else
               raise_unexpected_type_error_with_name var (Type.to_string var_type) (Type.to_string expr_type) ~line: (get_line_no code index)
           else
-            let r = regexp ("^[\n\t ]*instance +\\([A-Za-z_][A-Za-z_0-9]*\\(\\.[A-Za-z_][A-Za-z_0-9]*\\)*\\) *<- *\\(.*\\)\n") in
+            let r = regexp ("^[\n\t ]*instance +\\([A-Za-z_][A-Za-z_0-9]*\\(\\.[A-Za-z_][A-Za-z_0-9]*\\)*\\) *<- *\\(.*\\(\\\\ *\n\\)*.+\\)\n") in
             if string_match r code start_index then (* USE OF INSTANCE *)
               if is_class_context context.scopes then
                 let class_name = get_current_class_name context in
                 let end_index = match_end () in
                 let var = matched_group 1 code in
-                let expr = try matched_group 3 code
-                  with Not_found -> failwith "" in
+                let expr = matched_group 3 code |> replace_string "\\" "" |> replace_string "\n" "" in
                 let attr_meths, are_set = Type.get_attr_meths class_name context.vars in
                 let var_type = get_var var ~main_vars:context.vars attr_meths in
                 let expr, expr_type = try_update_err line_no (fun () -> eval_expression_with_type expr context) in
@@ -221,7 +220,7 @@ let rec eval_code context =
                 raise_syntax_error "Keyword 'instance' cannot be used outside a class definition" ~line:(get_line_no code index)
             else
               let index = ignore_chrs code start_index in
-              let line, index = get_line code index in
+              let line, index = try_update_err line_no (fun () -> get_line code index) in
               let expr = try_update_err line_no (fun () -> eval_expression line context) in
               let next, context = _eval_code {context with index} in
               get_indentation depth ^ expr ^ "\n" ^ next, context
@@ -237,7 +236,7 @@ and eval_utiliser context =
       write_file py_name code
   in
   let line_no = get_line_no context.code context.index in
-  let line, index = get_line context.code context.index in
+  let line, index = try_update_err line_no (fun () -> get_line context.code context.index) in
   let dependencies = String.split_on_char ',' line in
   let is_imported = !Imports.is_imported in
   let vars = List.flatten (try_update_err line_no (fun () -> dependencies |> List.map get_imported_files_infos))

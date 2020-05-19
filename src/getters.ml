@@ -61,21 +61,25 @@ let get_word_and_returns code i =
 
 
 let get_expression code index terminator =
-  if string_match (regexp ("\\([^\n]*[) ]\\)\\(" ^ terminator ^ "\\)")) code index then
-    matched_group 1 code, group_end 2 + 1
+  if string_match (regexp ("\\(\\(.+ *\\\\ *\n\\)*[^\n]+\\)\\(" ^ terminator ^ "\\)")) code index then
+    matched_group 1 code |> replace_string "\\" "" |> replace_string "\n" "", group_end 3 + 1
   else
     raise_syntax_error ~line: (get_line_no code index) ((get_string MissingKeyword) ^ terminator ^ "'")
 
 let get_line code i =
   let len = String.length code in
-  let rec _get_line i line =
+  let rec _get_line escaped i line =
     if i < len then
       match code.[i] with
-        '\n' -> line, i + 1
-      | x -> _get_line (i + 1) (line ^ (String.make 1 x))
+        '\n' -> if escaped then _get_line false (i + 1) line else line, i + 1
+      | '\\' -> _get_line true (i + 1) line
+      | x -> if escaped && not (List.mem x [' '; '\t']) then
+          raise_syntax_error ("Unexpected character '" ^ (String.make 1 x) ^ "' after line continuation character")
+        else
+          _get_line escaped (i + 1) (line ^ (String.make 1 x))
     else
       line, len
-  in _get_line i ""
+  in _get_line false i ""
 
 (*Check if the specified type is a valid builtin or user-defined type, if that is the case, returns the right type *)
 let get_type vars code index =

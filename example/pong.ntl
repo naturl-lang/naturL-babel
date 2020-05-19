@@ -23,7 +23,6 @@ type_abstrait Raquette
         x <- -largeur_fenetre()/2 + instance largeur
       sinon
         x <- largeur_fenetre()/2 - instance largeur
-
         instance couleur <- "vert"
       fin
       y <- 0
@@ -167,7 +166,8 @@ type_abstrait Balle
       distance_bas <- instance position.y - raquette.bord_bas()
       distance_gauche <- instance position.x - raquette.bord_gauche()
       distance_droite <- instance position.x - raquette.bord_droit()
-      si distance_haut < instance rayon et distance_bas > instance rayon et distance_gauche > instance rayon et distance_droite < instance rayon alors
+      si distance_haut < instance rayon et distance_bas > instance rayon et \
+         distance_gauche > instance rayon et distance_droite < instance rayon alors
         si instance vitesse.x > 0 alors
           instance position.x <- raquette.bord_gauche() - instance rayon
         sinon
@@ -179,7 +179,8 @@ type_abstrait Balle
 
     fonction dehors() -> booleen
     debut
-      retourner instance position.x - instance rayon < -largeur_fenetre() / 2 ou instance position.x + instance rayon > largeur_fenetre() / 2
+      retourner instance position.x - instance rayon < -largeur_fenetre() / 2 ou \
+                instance position.x + instance rayon > largeur_fenetre() / 2
     fin
 
     procedure actualiser()

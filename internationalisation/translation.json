@@ -111,7 +111,7 @@
 		"fr": "Expression invalide",
 		"en": "Invalid expression"
 	},
-	"InvalidTokenExpresion": {
+	"InvalidTokenExpression": {
 		"fr": "Indentificateur invalide dans l'expression: '",
 		"en": "Invalid token in expression: '"
 	},

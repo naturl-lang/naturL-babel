@@ -34,6 +34,14 @@ let write_lines name lines =
     | line :: t -> Printf.fprintf chan "%s\n" line; __write_lines t
   in __write_lines lines; close_out chan
 
+let replace_string original replacement string =
+  let rec __replace_string = function
+      [] -> ""
+    | h :: t when h = original -> replacement ^ __replace_string t
+    | h :: t -> h ^ __replace_string t
+  in __replace_string (List.init (String.length string) (String.get string) |> List.map (String.make 1))
+
+
 let get_indentation depth =
   let rec _get_indentation depth =
     if depth = 0 then
