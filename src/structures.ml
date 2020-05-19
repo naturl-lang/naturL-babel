@@ -100,6 +100,7 @@ type scope =
   | Class_def of string
   | Attributes of string
   | Methods of string
+  | Block_comment
 
 let set_fscope_name scopes name =
   match scopes with
@@ -130,6 +131,7 @@ let rec str_of_scopes scopes =
     | Class_def name :: r -> "Class_def "^name^", " ^str_of_scopes r
     | Attributes some_shit :: r -> "Attributes declaration, "^some_shit^str_of_scopes r
     | Methods some_shit:: r -> "Methodes declaration, "^some_shit^str_of_scopes r
+    | Block_comment :: r -> "\\o/" ^ str_of_scopes r
 (* The current context of the code *)
 
 type context = {

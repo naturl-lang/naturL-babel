@@ -1,6 +1,5 @@
 utiliser std.pixL.*
 
-
 type_abstrait Raquette
   attributs
     reel longueur
@@ -148,6 +147,9 @@ type_abstrait Balle
 
     procedure __rebondir()
     debut
+      \ Inverse la vitesse réajuste la position lorque la balle
+        est en collision avec les côtés de la fenêtre.
+        Les collisions avec les bords se font seulment verticalement. /
       si instance position.y + instance rayon > hauteur_fenetre() / 2 alors
         instance position.y <- hauteur_fenetre()/2 - instance rayon
         instance vitesse.y <- -instance vitesse.y
@@ -157,55 +159,62 @@ type_abstrait Balle
       fin
     fin
 
-
-    procedure collision_raquette(Raquette raquette)
+    procedure collision_raquette(Raquette raquette)                    \o/
     variables
       reel distance_haut, distance_bas, distance_gauche, distance_droite
     debut
+      \ Un cercle et un rectangle sont en collision si et seulement si
+        les valeurs absolues des distances entre chacun des côtés du rectangle
+        et le centre du cercle sont inférieures au rayon du cercle  /                   \o/
       distance_haut <- instance position.y - raquette.bord_haut()
       distance_bas <- instance position.y - raquette.bord_bas()
       distance_gauche <- instance position.x - raquette.bord_gauche()
       distance_droite <- instance position.x - raquette.bord_droit()
-      si distance_haut < instance rayon et distance_bas > instance rayon et \
+      si distance_haut < instance rayon et distance_bas > instance rayon et |
          distance_gauche > instance rayon et distance_droite < instance rayon alors
         si instance vitesse.x > 0 alors
-          instance position.x <- raquette.bord_gauche() - instance rayon
+          instance position.x <- raquette.bord_gauche() - instance rayon   \o/
         sinon
           instance position.x <- raquette.bord_droit() + instance rayon
         fin
         instance vitesse.x <- -instance vitesse.x
       fin
-    fin
+    fin                      \o/
 
     fonction dehors() -> booleen
-    debut
-      retourner instance position.x - instance rayon < -largeur_fenetre() / 2 ou \
+    debut                                                                                                          \o/
+      \ La balle ne peut sortir que horizontalement puisqu'elle rebondit verticalment. /
+      retourner instance position.x - instance rayon < -largeur_fenetre() / 2 ou |
                 instance position.x + instance rayon > largeur_fenetre() / 2
     fin
 
     procedure actualiser()
     debut
+      \ Met à jour la position de la balle et vérifie les collisions avec les bords /
       instance position.x <- instance position.x + instance vitesse.x
       instance position.y <- instance position.y + instance vitesse.y
-      instance __rebondir()
+      instance __rebondir()           \o/
     fin
 
+    \ Méthodes privées permettant d'afficher la balle avec une certaine couleur /
     procedure __afficher(chaine couleur)
     debut
       definir_couleur(couleur)
       cercle_plein(instance position, instance rayon)
     fin
 
+    \ État classique de la balle /
     procedure afficher()
     debut
       instance __afficher("blanc")
     fin
 
+    \ État de la balle lorsque la partie est terminée /
     procedure afficher_erreur()
     debut
       instance __afficher("rouge")
     fin
-  fin
+  fin                                                   \o/
 fin
 
 
@@ -220,7 +229,7 @@ type_abstrait Partie
     fonction nouveau() -> Partie
     debut
       instance joueur <- Raquette(vrai)
-      instance ordi <- Raquette(faux)
+      instance ordi <- Raquette(faux)            \o/
       instance balle <- Balle()
 
       detecter_touche_pressee(instance joueur.haut, "haut")
@@ -237,7 +246,7 @@ type_abstrait Partie
         instance ordi.aller_vers(instance balle.position.y)
       sinon
         instance ordi.aller_vers(0.)
-      fin
+      fin                                                                                    \o/
     fin
 
     procedure afficher()
@@ -250,7 +259,7 @@ type_abstrait Partie
       ecrire_texte(Vecteur(40, -hauteur_fenetre() / 2), Police("Arial", 40), chaine(instance score_ordi))
 
       instance joueur.afficher()
-      instance ordi.afficher()
+      instance ordi.afficher()                     \o/
       instance balle.afficher()
     fin
 
@@ -294,7 +303,6 @@ fin
 variables
   Partie partie
 fin
-
 
 redimensionner_fenetre(1300, 900)
 partie <- Partie()

@@ -61,8 +61,8 @@ let get_word_and_returns code i =
 
 
 let get_expression code index terminator =
-  if string_match (regexp ("\\(\\(.+ *\\\\ *\n\\)*[^\n]+\\)\\(" ^ terminator ^ "\\)")) code index then
-    matched_group 1 code |> replace_string "\\" "" |> replace_string "\n" "", group_end 3 + 1
+  if string_match (regexp ("\\(\\(.+ *| *\n\\)*[^\n]+\\)\\(" ^ terminator ^ "\\)")) code index then
+    matched_group 1 code |> replace_string "|" "" |> replace_string "\n" "", group_end 3 + 1
   else
     raise_syntax_error ~line: (get_line_no code index) ((get_string MissingKeyword) ^ terminator ^ "'")
 
@@ -72,7 +72,7 @@ let get_line code i =
     if i < len then
       match code.[i] with
         '\n' -> if escaped then _get_line false (i + 1) line else line, i + 1
-      | '\\' -> _get_line true (i + 1) line
+      | '|' -> _get_line true (i + 1) line
       | x -> if escaped && not (List.mem x [' '; '\t']) then
           raise_syntax_error ("Unexpected character '" ^ (String.make 1 x) ^ "' after line continuation character")
         else

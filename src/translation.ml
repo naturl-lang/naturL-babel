@@ -87,6 +87,20 @@ let _valid_pos context =
   | Function (name, _) :: _ when not (get_return_type name) -> false
   | _-> true
 
+
+let remove_comments string =
+  let rec __remove_comments comment_open = function
+      [] -> ""
+    | '/' :: t when comment_open -> __remove_comments false t
+    | '\n' :: t when comment_open -> "\n" ^ __remove_comments true t
+    | _ :: t when comment_open -> __remove_comments true t
+    | h :: t when h = '\\' -> __remove_comments true t
+    | h :: t -> (String.make 1 h) ^ __remove_comments false t
+  in __remove_comments false (List.init (String.length string) (String.get string))
+
+let format_code code =
+  code |> String.trim |> remove_comments
+
 (*Core*)
 
 let rec eval_code context =
@@ -185,11 +199,11 @@ let rec eval_code context =
         | _ ->
           (* Expression or affectation *)
           let line_no = get_line_no code context.index in
-          let r = regexp ("[\n\t ]*\\([A-Za-z_][A-Za-z_0-9]*\\(\\.[A-Za-z_][A-Za-z_0-9]*\\)*\\) *<- *\\(.*\\(\\\\ *\n\\)*.+\\)\n") in
+          let r = regexp ("[\n\t ]*\\([A-Za-z_][A-Za-z_0-9]*\\(\\.[A-Za-z_][A-Za-z_0-9]*\\)*\\) *<- *\\(.*\\(| *\n\\)*.+\\)\n") in
           if string_match r code start_index then   (* Affectation *)
             let end_index = match_end() in
             let var = matched_group 1 code
-            and expr = matched_group 3 code |> replace_string "\\" "" |> replace_string "\n" "" in
+            and expr = matched_group 3 code |> replace_string "|" "" |> replace_string "\n" "" in
             let var_type = try_update_err line_no (fun () -> get_var var context.vars)
             and expr, expr_type = try_update_err line_no (fun () -> eval_expression_with_type expr context) in
             if Type.is_compatible var_type expr_type then
@@ -198,13 +212,13 @@ let rec eval_code context =
             else
               raise_unexpected_type_error_with_name var (Type.to_string var_type) (Type.to_string expr_type) ~line: (get_line_no code index)
           else
-            let r = regexp ("^[\n\t ]*instance +\\([A-Za-z_][A-Za-z_0-9]*\\(\\.[A-Za-z_][A-Za-z_0-9]*\\)*\\) *<- *\\(.*\\(\\\\ *\n\\)*.+\\)\n") in
+            let r = regexp ("^[\n\t ]*instance +\\([A-Za-z_][A-Za-z_0-9]*\\(\\.[A-Za-z_][A-Za-z_0-9]*\\)*\\) *<- *\\(.*\\(| *\n\\)*.+\\)\n") in
             if string_match r code start_index then (* USE OF INSTANCE *)
               if is_class_context context.scopes then
                 let class_name = get_current_class_name context in
                 let end_index = match_end () in
                 let var = matched_group 1 code in
-                let expr = matched_group 3 code |> replace_string "\\" "" |> replace_string "\n" "" in
+                let expr = matched_group 3 code |> replace_string "|" "" |> replace_string "\n" "" in
                 let attr_meths, are_set = Type.get_attr_meths class_name context.vars in
                 let var_type = get_var var ~main_vars:context.vars attr_meths in
                 let expr, expr_type = try_update_err line_no (fun () -> eval_expression_with_type expr context) in
@@ -525,12 +539,14 @@ and control_keywords =
 
 
 and get_code_context code =
-  let code = String.trim code and index = 0 and vars = StringMap.empty and scopes = [] in
+  let code = format_code code
+  and index = 0 and vars = StringMap.empty and scopes = [] in
   let _, context = try_catch stderr (fun () -> eval_code {code; index; vars; scopes}) in
   context
 
 and translate_code code =
-  let code = String.trim code ^ "\n" and index = 0 and vars = StringMap.empty and scopes = [] in
+  let code = format_code code
+  and index = 0 and vars = StringMap.empty and scopes = [] in
   let translation, _ = try_catch stderr (fun () -> eval_code {code; index; vars; scopes}) in
   let translation = String.trim translation in
   let translation = if not (are_imports_empty ()) && let word, _ = get_word translation 0 in word = "def"
