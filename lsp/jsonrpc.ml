@@ -24,31 +24,24 @@ module Message = struct
   let jsonrpc = "2.0"
 end
 
-module Notification = struct
-  include Message
-
-  type t = {
-    jsonrpc: string [@default jsonrpc];
-    method_: string [@key "method"];
-    params: Json.t option [@yojson.opton]
-  }
-  [@@deriving yojson]
-
-  let make ?params ~method_ = { jsonrpc; method_; params }
-end
 
 module Request = struct
   include Message
 
   type t = {
     jsonrpc: string [@default jsonrpc];
-    id: Id.t;
+    id: Id.t option; [@yojson.option]
     method_: string [@key "method"];
     params: Json.t option [@yojson.opton]
   }
   [@@deriving yojson]
 
-  let make ?params ~id ~method_ = { jsonrpc; id; method_; params }
+  let make ~id ~params ~method_ = { jsonrpc; id; method_; params }
+
+  let params f t = match t.params with
+      Some params -> Ok (f params)
+    | None -> Error "params are required"
+
 end
 
 module Response = struct
@@ -116,7 +109,7 @@ module Response = struct
       make ~code: InternalError ~message
   end
 
-  module ResponseResult = Result(struct module Ok = Json module Error = Error end)
+  module ResponseResult = Result(struct type ok = Json.t type error = Error.t module Ok = Json module Error = Error end)
 
   type t = {
     jsonrpc: string; [@default jsonrpc]
@@ -130,3 +123,9 @@ module Response = struct
   let ok id result = make ~id ~result: (Ok result)
   let error id error = make ~id ~result: (Error error)
 end
+(*
+type packet =
+  | Request of Request.t
+  | Reponse of Response.t
+  | Notification of Notification.t
+*)

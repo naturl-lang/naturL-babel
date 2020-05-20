@@ -4,27 +4,20 @@ module Id : sig
   include Json.Jsonable.S with type t := t
 end
 
-module Notification : sig
-  type t = {
-    jsonrpc: string;
-    method_: string;
-    params: Json.t option
-  }
-
-  val make: ?params: Json.t -> method_ : string -> t
-
-  include Json.Jsonable.S with type t := t
+module Message : sig
+  val jsonrpc: string
 end
 
 module Request : sig
   type t = {
     jsonrpc: string;
-    id: Id.t;
+    id: Id.t option;
     method_: string;
     params: Json.t option
   }
 
-  val make: ?params: Json.t -> id: Id.t -> method_ : string -> t
+  val make: id: Id.t option -> params: Json.t option -> method_ : string -> t
+  val params: (Json.t -> 'a) -> t -> ('a, string) result
 
   include Json.Jsonable.S with type t := t
 end
