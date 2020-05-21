@@ -78,45 +78,95 @@ module VersionedTextDocumentIdentifier = struct
   [@@deriving yojson]
 end
 
+module TextDocumentSyncdKind = struct
+  type t = None | Full | Incremental
+
+  let yojson_of_t = function
+    None -> `Int 0
+  | Full -> `Int 1
+  | Incremental -> `Int 2
+
+  let t_of_yojson = function
+    `Int 0 -> None
+  | `Int 1 -> Full
+  | `Int 2 -> Incremental
+  | json -> Json.error "Invalid sync kind" json
+end
+
+module CompletionOptions = struct
+  type t = {
+    triggerCharacters: char list option; [@yojson.option]
+  }
+  [@@deriving yojson] [@@yojson.allow_extra_fields]
+end
+
+module SignatureHelpOptions = struct
+  type t = Value
+  let yojson_of_t _ = `Assoc []
+  let t_of_yojson = function
+      `Assoc _ -> Value
+    | json -> Json.error "Invalid json for signature help option" json
+end
+
 (* Capabilities *)
 module CompletionClientCapabilities = struct
   type completionItem = {
-    snippetSupport: bool option; [@yojson.option]
-    commitCharacterSupport: bool option; [@yojson.option]
-    deprecatedSupport: bool option; [@yojson.option]
-    preselectSupport: bool option; [@yojson.option]
+    snippetSupport: bool; [@default false]
+    commitCharacterSupport: bool; [@default false]
+    deprecatedSupport: bool; [@default false]
+    preselectSupport: bool [@default false]
   }
   [@@deriving yojson] [@@yojson.allow_extra_fields]
 
   type t = {
-    dynamicRegistration: bool option; [@yojson.option]
+    dynamicRegistration: bool; [@default false]
     completionItem: completionItem option; [@yojson.option]
-    contextSupport: bool option [@yojson.option]
+    contextSupport: bool; [@default false]
   }
   [@@deriving yojson] [@@yojson.allow_extra_fields]
 end
 
 module DefinitionClientCapabilities = struct
   type t = {
-    dynamicRegistration: bool option; [@yojson.option]
-    linkSupport: bool option [@yojson.option]
+    dynamicRegistration: bool; [@default false]
+    linkSupport: bool [@default false]
   }
   [@@deriving yojson] [@@yojson.allow_extra_fields]
 end
 
 module PublishDiagnosticsClientCapabilities = struct
   type t = {
-    relatedInformation: bool option; [@yojson.option]
-    versionSupport: bool option; [@yojson.option]
+    relatedInformation: bool; [@default false]
+    versionSupport: bool; [@default false]
+  }
+  [@@deriving yojson] [@@yojson.allow_extra_fields]
+end
+
+module TextDocumentClientCapabilities = struct
+  type t = {
+    completion: CompletionClientCapabilities.t option; [@yojson.option]
+    definition: DefinitionClientCapabilities.t option; [@yojson.option]
+    publishDiagnostics: PublishDiagnosticsClientCapabilities.t option [@yojson.option]
   }
   [@@deriving yojson] [@@yojson.allow_extra_fields]
 end
 
 module ClientCapabilities = struct
   type t = {
-    completion: CompletionClientCapabilities.t option; [@yojson.option]
-    definition: DefinitionClientCapabilities.t option; [@yojson.option]
-    publishDiagnostics: PublishDiagnosticsClientCapabilities.t option [@yojson.option]
+    textDocument: TextDocumentClientCapabilities.t option [@yojson.option]
+  }
+  [@@deriving yojson] [@@yojson.allow_extra_fields]
+end
+
+module ServerCapabilities = struct
+  type t = {
+    textDocumentSync: TextDocumentSyncdKind.t option; [@yojson.option]
+    completionProvider: CompletionOptions.t option; [@yojson.option]
+    signatureHelp: SignatureHelpOptions.t option; [@yojson.option]
+    declarationProvider: bool option; [@yojson.option]
+    definitionProvider: bool option; [@yojson.option]
+    renameProvider: bool option; [@yojson.option]
+    foldingRangeSupport: bool option; [@yojson.option]
   }
   [@@deriving yojson] [@@yojson.allow_extra_fields]
 end
@@ -127,7 +177,7 @@ module InitializeParams = struct
   type t = {
     processId: int option;
     rootUri: DocumentUri.t option;
-    clientInfo: ClientCapabilities.t
+    capabilities: ClientCapabilities.t
   }
   [@@deriving yojson] [@@yojson.allow_extra_fields]
 end
@@ -210,6 +260,23 @@ end
 module DidCloseParams = struct
   type t = {
     textDocument: TextDocumentIdentifier.t
+  }
+  [@@deriving yojson]
+end
+
+(* Results *)
+module InitializeResult = struct
+  module ServerInfo = struct
+    type t = {
+      name: string;
+      version: string option; [@yojson.option]
+    }
+    [@@deriving yojson]
+  end
+
+  type t = {
+    capabilities: ServerCapabilities.t option; [@yojson.option]
+    serverInfo: ServerInfo.t option [@yojson.option]
   }
   [@@deriving yojson]
 end

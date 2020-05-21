@@ -45,25 +45,21 @@ module Response : sig
     type t = {
       code: Code.t;
       message: string;
-      data: Json.t option
+      data: Json.t option;
     }
 
     val make: ?data: Json.t -> code: Code.t -> message: string -> unit -> t
     val of_exn: exn -> ?data: Json.t -> unit -> t
   end
 
-  module ResponseResult : sig
-    type t
-    include Json.Jsonable.S with type t := t
-  end
-
   type t = {
     jsonrpc: string;
     id: Id.t;
-    result: ResponseResult.t
+    result: Json.t option;
+    error: Error.t option;
   }
 
-  val make: id: Id.t -> result: ResponseResult.t -> t
+  val make: id: Id.t -> result: (Json.t, Error.t) result -> t
   val ok: Id.t -> Json.t -> t
   val error: Id.t -> Error.t -> t
 

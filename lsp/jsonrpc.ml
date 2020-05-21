@@ -1,10 +1,3 @@
-(*
-   #require "ppx_yojson_conv" ;;
-   open Ppx_yojson_conv ;;
-*)
-
-open Structures
-
 module Id = struct
   type t =
       String of string
@@ -109,16 +102,17 @@ module Response = struct
       make ~code: InternalError ~message
   end
 
-  module ResponseResult = Result(struct type ok = Json.t type error = Error.t module Ok = Json module Error = Error end)
-
   type t = {
     jsonrpc: string; [@default jsonrpc]
     id: Id.t;
-    result: ResponseResult.t
+    result: Json.t option; [@yojson.option]
+    error: Error.t option; [@yojson.option]
   }
   [@@deriving yojson]
 
-  let make ~id ~result = { jsonrpc; id; result }
+  let make ~id ~result = match result with
+    | Ok result -> { jsonrpc; id; result = Some result; error = None }
+    | Error error -> { jsonrpc; id; result = None; error = Some error }
 
   let ok id result = make ~id ~result: (Ok result)
   let error id error = make ~id ~result: (Error error)
