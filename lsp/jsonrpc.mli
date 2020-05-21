@@ -37,6 +37,9 @@ module Response : sig
         | UnknownErrorCode
         | RequestCancelled
         | ContentModified
+
+      val to_int: t -> int
+      val of_int: int -> t
     end
 
     type t = {
@@ -45,8 +48,8 @@ module Response : sig
       data: Json.t option
     }
 
-    val make: ?data: Json.t -> code: Code.t -> message: string -> t
-    val of_exn: exn -> ?data: Json.t -> t
+    val make: ?data: Json.t -> code: Code.t -> message: string -> unit -> t
+    val of_exn: exn -> ?data: Json.t -> unit -> t
   end
 
   module ResponseResult : sig

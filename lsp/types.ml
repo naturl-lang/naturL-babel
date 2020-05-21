@@ -28,7 +28,7 @@ end
 
 module TextDocumentIdentifier = struct
   type t = {
-    uri: DocumentUri.t
+    uri: DocumentUri.t;
   }
   [@@deriving yojson]
 end
@@ -60,7 +60,7 @@ module Diagnostic = struct
   [@@deriving yojson] [@@yojson.allow_empty_fields]
 end
 
-module TextDocumentParam = struct
+module TextDocumentItem = struct
   type t = {
     uri: DocumentUri.t;
     languageId: string;
@@ -187,7 +187,7 @@ end
 
 module DidOpenParams = struct
   type t = {
-    textDocumentItem: TextDocumentIdentifier.t
+    textDocument: TextDocumentItem.t
   }
   [@@deriving yojson]
 end

@@ -1,4 +1,4 @@
-(library
-  (name lsp)
+(executable
+  (name server)
   (libraries yojson)
   (preprocess (pps ppx_yojson_conv)))

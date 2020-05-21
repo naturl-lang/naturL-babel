@@ -102,7 +102,7 @@ module Response = struct
     }
     [@@deriving yojson]
 
-    let make ?data ~code ~message = { code; message; data }
+    let make ?data ~code ~message () = { code; message; data }
 
     let of_exn exn =
       let message = Printexc.to_string exn in
