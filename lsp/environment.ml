@@ -9,7 +9,6 @@ let client_capabilities = ref None
 let files = ref UriMap.empty
 let initialized = ref false
 let shutdown = ref false
-let exited = ref false
 
 
 (* If the server tries to access client capabilities, it means that it is initialized so they can't be None *)
@@ -31,6 +30,3 @@ let initialized () = !initialized = true
 
 let is_shutdown () = !shutdown = true
 let shutdown () = shutdown := true
-
-let exit () = exited := true
-let exited () = !exited = true

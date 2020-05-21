@@ -1,6 +1,6 @@
 let handle_notification : Client_notification.t -> unit = function
   | Initialized -> Environment.initialize ()
-  | Exit -> Environment.exit ()
+  | Exit -> let code = if Environment.is_shutdown () then 0 else 1 in exit code
   | TextDocumentDidOpen params -> Environment.add_uri params.textDocument.uri params.textDocument.text
   | TextDocumentDidChange params -> Environment.update_uri params.textDocument.uri params.contentChanged.text
   | TextDocumentDidClose params -> Environment.remove_uri params.textDocument.uri
@@ -9,8 +9,8 @@ let handle_notification : Client_notification.t -> unit = function
 let handle_request id : Request.t -> unit = function
   | Shutdown -> Environment.shutdown ()
   | Initialize params -> Environment.set_client_capabilities params.capabilities; Sender.initialize stdout id
-  | TextDocumentDefinition _ -> print_endline "definition"
-  | TextDocumentCompletion _ -> print_endline "completion"
+  | TextDocumentDefinition params -> Functions.definition stdout params
+  | TextDocumentCompletion params -> Functions.completion stdout params
   | UnknownRequest name -> Sender.send_response stdout
             Jsonrpc.(Response.error id Response.Error.(make ~code:MethodNotFound ~message:("Unknown method " ^ name) ()))
 
@@ -47,12 +47,12 @@ let rec listen ic =
     (* Notification *)
     | None -> (match Client_notification.of_jsonrpc jsonrpc with
         | Ok notification ->
-          if Environment.initialized () || !Environment.client_capabilities <> None && notification = Initialized || notification = Exit then
+          if not (Environment.is_shutdown () && notification <> Exit) || notification = Initialized &&
+             (Environment.initialized () || !Environment.client_capabilities <> None && notification = Initialized) then
             handle_notification notification
         | Error _ -> print_endline "error")
   end;
   print_endline ".";
-  if not (Environment.exited ()) then
-    listen ic
+  listen ic
 
 let start = listen
