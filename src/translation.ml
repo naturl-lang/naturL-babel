@@ -88,6 +88,11 @@ let _valid_pos context =
   | _-> true
 
 
+let is_parsing_ended context = match context.max_index with
+  | Some index when context.index > index -> true
+  | _ -> false
+
+
 let remove_comments string =
   let rec __remove_comments comment_open = function
       [] -> ""
@@ -104,7 +109,7 @@ let format_code code =
 (*Core*)
 
 let rec eval_code context =
-  let rec _eval_code context =
+  let _eval_code context =
     (*print_string ("[+] Scopes: [" ^(str_of_scopes context.scopes)^"\n");*)
     let code = context.code and start_index = context.index in
     let depth = List.length context.scopes in
@@ -129,7 +134,7 @@ let rec eval_code context =
              raise_syntax_error ~line: (get_last_line context.code) (get_string UnexpectedEOF)
            else
              raise e) in
-      let next_translation, context = _eval_code context
+      let next_translation, context = eval_code context
       in translation ^ next_translation, context
     | None ->
       let is_def, func_name = get_fname_def_status context.scopes in
@@ -158,7 +163,7 @@ let rec eval_code context =
               if is_class_context context.scopes then
                 let expected = `Custom (get_current_class_name context) in
                 _check_retcall expected context;
-                if func_name = "__init__" then
+                if func_name = "nouveau" then
                   ""
                 else
                   "return self"
@@ -171,7 +176,7 @@ let rec eval_code context =
               "return " ^ py_expr
           in
           let new_scopes = ret context.scopes func_name in
-          let next, context = _eval_code {context with index = i; scopes = new_scopes} in
+          let next, context = eval_code {context with index = i; scopes = new_scopes} in
           get_indentation depth ^ return_expression ^ "\n" ^ next, context
         | "fin" ->
           if context.scopes = [] then
@@ -207,7 +212,7 @@ let rec eval_code context =
             let var_type = try_update_err line_no (fun () -> get_var var context.vars)
             and expr, expr_type = try_update_err line_no (fun () -> eval_expression_with_type expr context) in
             if Type.is_compatible var_type expr_type then
-              let next, context = _eval_code {context with index = end_index} in
+              let next, context = eval_code {context with index = end_index} in
               get_indentation depth ^ word ^ " = " ^ expr ^ "\n" ^ next, context
             else
               raise_unexpected_type_error_with_name var (Type.to_string var_type) (Type.to_string expr_type) ~line: (get_line_no code index)
@@ -226,7 +231,7 @@ let rec eval_code context =
                   let are_set = StringMap.add var true are_set in
                   let vars = StringMap.add class_name (`Class (attr_meths, are_set)) context.vars in
                   let context = {context with index = end_index; vars = vars} in
-                  let next, context = _eval_code context in
+                  let next, context = eval_code context in
                   get_indentation depth ^ "self." ^ var ^ " = " ^ expr ^ "\n" ^ next, context
                 else
                   raise_unexpected_type_error_with_name var (Type.to_string var_type) (Type.to_string expr_type) ~line: (get_line_no code index)
@@ -236,9 +241,12 @@ let rec eval_code context =
               let index = ignore_chrs code start_index in
               let line, index = try_update_err line_no (fun () -> get_line code index) in
               let expr = try_update_err line_no (fun () -> eval_expression line context) in
-              let next, context = _eval_code {context with index} in
+              let next, context = eval_code {context with index} in
               get_indentation depth ^ expr ^ "\n" ^ next, context
-  in _eval_code context
+  in if is_parsing_ended context then
+    "", context
+  else
+    _eval_code context
 
 
 (* Eval the files corresponding to the modules and import them in the python code *)
@@ -246,55 +254,66 @@ and eval_utiliser context =
   let write_pyfile filename =
     let naturl_name = filename ^ ".ntl" and py_name = filename ^ ".py" in
     if !import_mode = Overwrite || !import_mode = Moderated && not (Sys.file_exists py_name) then
-      let code = translate_code (read_file naturl_name) in
+      let code = translate_code (filename ^ ".ntl") (read_file naturl_name) in
       write_file py_name code
   in
   let line_no = get_line_no context.code context.index in
   let line, index = try_update_err line_no (fun () -> get_line context.code context.index) in
   let dependencies = String.split_on_char ',' line in
   let is_imported = !Imports.is_imported in
-  let vars = List.flatten (try_update_err line_no (fun () -> dependencies |> List.map get_imported_files_infos))
-             |> List.map (function content, cwdir, namespace, filename, element ->
+  let contexts = List.flatten (try_update_err line_no (fun () -> dependencies |> List.map get_imported_files_infos))
+               |> List.map (function content, cwdir, namespace, filename, element ->
                  let path = Sys.getcwd () and imports = !Imports.imports in
                  Sys.chdir cwdir;
                  Imports.imports := ImportSet.empty;
                  Imports.is_imported := true;
                  write_pyfile filename;
-                 let new_context = get_code_context content in
+                 let new_context = get_code_context (filename ^ ".ntl") content in
                  Imports.is_imported := is_imported;
                  Sys.chdir path;
                  Imports.imports := imports;
                  add_import ~userdefined:true namespace element;
-                 let prefix = if element = None then namespace ^ "." else "" in
-                 context.vars
-                 |> StringMap.fold (fun key -> fun value -> fun map -> StringMap.add (prefix ^ key) value map) new_context.vars)
+                 (if element = None then namespace ^ "." else ""), new_context) in  (* Return each context and the associated namespace prefixe *)
+  (* Add namespace prefixes to each var and def *)
+  let vars = contexts |> List.map
+               (function prefix, new_context ->
+                  context.vars |> StringMap.fold (fun key -> fun value -> fun map -> StringMap.add (prefix ^ key) value map) new_context.vars)
              |> List.fold_left (StringMap.union (fun _ -> fun _ -> fun t -> Some t)) context.vars
-  in { context with index; vars }
+  and defs = contexts |> List.map
+               (function prefix, new_context ->
+                  context.defs |> StringMap.fold (fun key -> fun value -> fun map -> if StringMap.mem key new_context.vars then
+                                                     StringMap.add (prefix ^ key) value map
+                                                   else map) new_context.defs)
+             |> List.fold_left (StringMap.union (fun _ -> fun _ -> fun t -> Some t)) context.defs
+  in { context with index; vars; defs }
 
 (* This function only adds the new declared variables in the set *)
 and eval_variables context =
-  let {code; index; vars; scopes} = context in
-  let rec eval_line vars type_struct = function
-      [] -> vars
-    | name :: t -> let name = String.trim name in
-      eval_line (StringMap.add name type_struct vars) type_struct t
-  in let rec _eval_variables vars code index =
-       let line_no = get_line_no code index in
-       let word, index = get_word code index
+  let rec eval_line context type_struct = function
+      [] -> context
+    | name :: t ->
+      let name = String.trim name
+      and line = get_line_no context.code context.index
+      and filename = context.filename and scopes = context.scopes in
+      eval_line  { context with vars = StringMap.add name type_struct context.vars ;
+                                defs = StringMap.add name { line; filename; scopes } context.defs }
+        type_struct t
+  in let rec _eval_variables context =
+       let line_no = get_line_no context.code context.index in
+       let word, index = get_word context.code context.index
        in if word = "debut" then
-         vars, index - 6
+          { context with index = index - 6 }
        else if word = "variables" then
-         _eval_variables vars code index
+         _eval_variables context
        else if word = "fin" then
-         vars, index
+         { context with index }
        else
-         let line, index = get_line code index in
+         let line, index = get_line context.code index in
          let type_struct = try_update_err line_no (fun () -> Type.of_string context.vars word) in
-         let vars = eval_line vars type_struct (String.split_on_char ',' line) in
+         let context = eval_line context type_struct (String.split_on_char ',' line) in
          try_update_warnings ~line: line_no;
-         _eval_variables vars code index
-  in let vars, index = _eval_variables vars code index
-  in { code; index; vars; scopes }
+         _eval_variables { context with index }
+  in _eval_variables context
 
 and eval_fonction context =
   let depth = List.length context.scopes - 1 in
@@ -324,9 +343,12 @@ and eval_fonction context =
   let cscopes = context.scopes in (*cscopes = current scopes*)
   try_update_warnings ~line;
   let next, context = eval_code {context with index; vars; scopes = set_fscope_name cscopes name} in
+  let defs = context.defs |> StringMap.add (if is_class_context context.scopes then get_current_class_name context ^ "." ^ name else name)
+               { line; filename = context.filename; scopes = context.scopes } in
   let offset = if context.index >= String.length context.code - 1 then "" else "\n\n" in
   let next = if next = "" then get_indentation (depth + 1) ^ "pass\n" else next in
-  get_indentation depth ^ "def " ^ name ^ "(" ^ names ^ "):\n" ^ next ^ offset, {context with vars = prev_vars}
+  let vars = if is_parsing_ended context then context.vars else prev_vars in
+  get_indentation depth ^ "def " ^ name ^ "(" ^ names ^ "):\n" ^ next ^ offset, { context with vars; defs }
 
 and eval_procedure context =
   let depth = List.length context.scopes - 1 in
@@ -345,9 +367,12 @@ and eval_procedure context =
   let cscopes = context.scopes in (*cscopes = current scopes*)
   try_update_warnings ~line;
   let next, context = eval_code {context with vars = vars; index = index; scopes = set_fscope_name cscopes name} in
+  let defs = context.defs |> StringMap.add (if is_class_context context.scopes then get_current_class_name context ^ "." ^ name else name)
+               { line; filename = context.filename; scopes = context.scopes } in
   let offset = if context.index >= String.length context.code - 1 then "" else "\n\n" in
   let next = if next = "" then get_indentation (depth + 1) ^ "pass\n" else next in
-  get_indentation depth ^ "def " ^ name ^ "(" ^ names ^ "):\n" ^ next ^ offset, {context with vars = prev_vars}
+  let vars = if is_parsing_ended context then context.vars else prev_vars in
+  get_indentation depth ^ "def " ^ name ^ "(" ^ names ^ "):\n" ^ next ^ offset, { context with vars; defs }
 
 and eval_si context =
   let code = context.code in
@@ -480,7 +505,7 @@ and eval_type_definition context =
   let scopes = List.tl context.scopes in
   let next, context = eval_code {context with index = i; vars = new_vars ; scopes = Class_def name :: scopes} in
   let next = if next = "" then get_indentation (depth + 1) ^ "pass" else next in
-  let vars = StringMap.remove "instance" context.vars in
+  let vars = if is_parsing_ended context then context.vars else StringMap.remove "instance" context.vars in
   get_indentation depth ^ "class " ^ name ^ ":\n" ^ next ^ "\n", {context with vars}
 
 and eval_constructor context =
@@ -505,7 +530,7 @@ and eval_constructor context =
   in
   let class_name = get_current_class_name context in
   let name, index = get_word context.code (context.index + 9) in (* 9 = 8 + 1 *)
-  let name = if name <> "nouveau" then raise_syntax_error ("The first method needs to be a constructor but got: "^name) else "__init__" in
+  let name = if name <> "nouveau" then raise_syntax_error ("The first method needs to be a constructor but got: " ^ name) else "nouveau" in
   let prev_vars = context.vars in
   let names, index, vars, types = get_param context index in
   let index = check_return_type index in
@@ -519,10 +544,16 @@ and eval_constructor context =
   let next = (get_methods_content context.scopes) ^ next in
   let attr_meths, are_set = Type.get_attr_meths class_name context.vars in
   let final_class_type = `Class (attr_meths, are_set) in
-  let vars = StringMap.add class_name final_class_type prev_vars
-             |> StringMap.remove "instance"
-             |> add_class_attr class_name "nouveau" (`Function (types, `Custom class_name)) false in
-  get_indentation depth ^ "def " ^ name ^ "(" ^ names ^ "):\n" ^ next ^ offset, {context with vars}
+  let vars = if is_parsing_ended context then
+      context.vars
+      |> StringMap.add class_name final_class_type
+      |> add_class_attr class_name "nouveau" (`Function (types, `Custom class_name)) false
+    else
+      prev_vars
+      |> StringMap.add class_name final_class_type
+      |> StringMap.remove "instance"
+      |> add_class_attr class_name "nouveau" (`Function (types, `Custom class_name)) false in
+  get_indentation depth ^ "def __init__(" ^ names ^ "):\n" ^ next ^ offset, {context with vars}
 
 and control_keywords =
   [
@@ -538,18 +569,24 @@ and control_keywords =
   ]
 
 
-and get_code_context code =
+and get_code_context ?max_index filename code =
   let code = format_code code
-  and index = 0 and vars = StringMap.empty and scopes = [] in
-  let _, context = try_catch stderr (fun () -> eval_code {code; index; vars; scopes}) in
+  and index = 0
+  and vars = StringMap.empty
+  and defs = StringMap.empty
+  and scopes = [] in
+  let _, context = try_catch stderr (fun () -> eval_code {filename; code; index; max_index; vars; defs; scopes}) in
   context
 
-and translate_code code =
+and translate_code ?max_index filename code =
   let code = format_code code
-  and index = 0 and vars = StringMap.empty and scopes = [] in
-  let translation, _ = try_catch stderr (fun () -> eval_code {code; index; vars; scopes}) in
+  and index = 0
+  and vars = StringMap.empty
+  and defs = StringMap.empty
+  and scopes = [] in
+  let translation, _ = try_catch stderr (fun () -> eval_code {filename; code; index; max_index; vars; defs; scopes}) in
   let translation = String.trim translation in
-  let translation = if not (are_imports_empty ()) && let word, _ = get_word translation 0 in word = "def"
+  let _ = if not (are_imports_empty ()) && let word, _ = get_word translation 0 in word = "def"
     then "\n" ^ translation
-    else translation
-  in get_imports () ^ (if are_imports_empty () then "" else "\n") ^ translation
+    else translation in
+  get_imports () ^ (if are_imports_empty () then "" else "\n") ^ translation

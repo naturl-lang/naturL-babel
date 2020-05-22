@@ -31,7 +31,7 @@ module Type = struct
     | `Function (params, return) -> (match return with
           `None -> if params = [] then "procedure"
           else"procedure: " ^ String.concat " x " (List.map (fun t -> "(" ^ (to_string t) ^ ")" ) params)
-        | _ -> "fonction: " ^ String.concat " x " (List.map to_string params) ^ " -> " ^ to_string return)
+        | _ -> "fonction: " ^ (if params = [] then "_" else String.concat " x " (List.map to_string params)) ^ " -> " ^ to_string return)
     | `None -> "Ø"
     | `Any -> "?"
     | `Class _ -> "type"
@@ -54,9 +54,11 @@ module Type = struct
                                                        (of_string vars) (String.sub s 1 (String.length s - 2))),
                                          `None)
     | "fonction:" :: tail -> (match Str.split (Str.regexp " -> ") (String.concat " " tail) with
-          params :: return :: [] -> `Function ((String.split_on_char 'x' params)
-                                               |> List.map (fun s -> let s = String.trim s in
-                                                             (of_string vars) (String.sub s 1 (String.length s - 2))),
+          params :: return :: [] -> `Function ((if String.trim params = "_" then []
+                                                else
+                                                  (String.split_on_char 'x' params)
+                                                  |> List.map (fun s -> let s = String.trim s in
+                                                                (of_string vars) (String.sub s 1 (String.length s - 2)))),
                                                of_string vars return)
         | _ -> raise_name_error ((get_string UnknownType) ^ str ^ "'"))
     | ("Ø" | "rien") :: [] -> `None
@@ -100,7 +102,6 @@ type scope =
   | Class_def of string
   | Attributes of string
   | Methods of string
-  | Block_comment
 
 let set_fscope_name scopes name =
   match scopes with
@@ -131,20 +132,29 @@ let rec str_of_scopes scopes =
     | Class_def name :: r -> "Class_def "^name^", " ^str_of_scopes r
     | Attributes some_shit :: r -> "Attributes declaration, "^some_shit^str_of_scopes r
     | Methods some_shit:: r -> "Methodes declaration, "^some_shit^str_of_scopes r
-    | Block_comment :: r -> "\\o/" ^ str_of_scopes r
+
+
+type line = {
+  line: int;
+  filename: string;
+  scopes: scope list
+}
+
 (* The current context of the code *)
 
 type context = {
-  code: string;                    (* The whole code *)
-  index: int;                      (* The index *)
-  vars: Type.t StringMap.t;        (* The set of known variables *)
-  scopes: scope list;              (* The stack of scopes *)
+  filename: string;                      (* The name of the file *)
+  code: string;                          (* The whole code *)
+  index: int;                            (* The current index in the code *)
+  max_index: int option;                 (* If not None, tell when to stop *)
+  vars: Type.t StringMap.t;              (* The map of known variables *)
+  defs: line StringMap.t;                (* The map of variable definition lines *)
+  scopes: scope list;                    (* The stack of scopes *)
 }
 
 let rec get_current_class_name context =
     match context.scopes with
-        | [] -> (print_int context.index; print_string "\n";
-          failwith "Internal error: get_current_class_name is not used with a class context")
+        | [] -> raise Not_found
         | Class_def name :: _ -> name
         | _ :: r -> get_current_class_name {context with scopes = r}
 

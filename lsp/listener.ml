@@ -7,10 +7,10 @@ let handle_notification : Client_notification.t -> unit = function
   | Unknown_notification _ -> ()
 
 let handle_request id : Request.t -> unit = function
-  | Shutdown -> Environment.shutdown ()
+  | Shutdown -> Environment.shutdown (); Sender.send_response stdout Jsonrpc.(Response.ok id `Null)
   | Initialize params -> Environment.set_client_capabilities params.capabilities; Sender.initialize stdout id
-  | TextDocumentDefinition params -> Functions.definition stdout params
-  | TextDocumentCompletion params -> Functions.completion stdout params
+  | TextDocumentDefinition params -> Functions.definition stdout id params
+  | TextDocumentCompletion params -> Functions.completion stdout id params
   | UnknownRequest name -> Sender.send_response stdout
             Jsonrpc.(Response.error id Response.Error.(make ~code:MethodNotFound ~message:("Unknown method " ^ name) ()))
 
@@ -52,7 +52,6 @@ let rec listen ic =
             handle_notification notification
         | Error _ -> print_endline "error")
   end;
-  print_endline ".";
   listen ic
 
 let start = listen

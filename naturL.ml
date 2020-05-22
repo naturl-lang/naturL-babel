@@ -16,9 +16,9 @@ let read_input chan_name =
      done)
   with End_of_file -> close_in chan
 
-let write_translation chan_name text =
+let write_translation chan_name filename text =
   let chan = map_option chan_name (fun name -> open_out name) (fun () -> stdout) in
-  Printf.fprintf chan "%s" (translate_code text)
+  Printf.fprintf chan "%s" (translate_code filename text)
 
 
 let input_name = ref ""
@@ -46,6 +46,6 @@ let () =
     usage;
   (try read_input (match !input_name with "" -> None | name -> Some name)
    with Sys.Break -> print_newline());
-  write_translation (match !output_name with "" -> None | name -> Some name) !source;
+  write_translation (match !output_name with "" -> None | name -> Some name) (if !input_name = "" then "<stdin>" else !input_name) !source;
   if !output_name = "" then print_newline ();
   print_warnings ~severity: !warning_severity

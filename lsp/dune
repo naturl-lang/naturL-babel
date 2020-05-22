@@ -1,4 +1,4 @@
 (executable
   (name server)
-  (libraries yojson)
+  (libraries yojson src)
   (preprocess (pps ppx_yojson_conv)))

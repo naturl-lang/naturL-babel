@@ -93,6 +93,14 @@ module TextDocumentSyncdKind = struct
   | json -> Json.error "Invalid sync kind" json
 end
 
+module CompletionItem = struct
+  type t = {
+    label: string;
+    detail: string option; [@yojson.option]
+  }
+  [@@deriving yojson]
+end
+
 module CompletionOptions = struct
   type t = {
     triggerCharacters: char list option; [@yojson.option]

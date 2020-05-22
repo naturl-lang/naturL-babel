@@ -103,3 +103,78 @@ let fstring format =
 let fprint ?(oc=stdout) format =
   let f = format_of_string format in
   Printf.fprintf oc f
+
+(* Return if a single-char string is valid inside an identifier *)
+let is_id_char s =
+  Str.string_match (Str.regexp "[0-9A-Za-z_]") s 0
+
+let get_word_at_index index text =
+  let n = String.length text in
+  let rec _get_word_at is_in_word current_word current_index =
+    if current_index >= n then
+      current_word
+    else
+      let s = String.make 1 text.[current_index] in
+      if is_id_char s then
+        let word = if is_in_word then current_word ^ s else s in
+        _get_word_at true word (current_index + 1)
+      else if current_index < index then
+        _get_word_at false current_word (current_index + 1)
+      else
+        current_word
+  in _get_word_at false "" 0
+
+let get_word_at_position line character text =
+  let n = String.length text in
+  let rec _get_word_at is_in_word current_word index current_line current_char =
+    if index >= n then
+      current_word
+    else
+      let s = String.make 1 text.[index] in
+      if not (is_id_char s) && current_line >= line && current_char >= character then
+        current_word
+      else if s = "\n" then
+        _get_word_at false current_word (index + 1) (current_line + 1) current_char
+      else if current_line < line then
+        _get_word_at false current_word (index + 1) current_line current_char
+      else if is_id_char s then
+        let word = if is_in_word then current_word ^ s else s in
+        _get_word_at true word (index + 1) current_line (current_char + 1)
+      else
+        _get_word_at false current_word (index + 1) current_line (current_char + 1)
+  in _get_word_at false "" 0 0 0
+
+let get_index_at line character text =
+  let n = String.length text in
+  let rec _get_line_at line character index =
+    if index >= n || line < 0 || character < 0 then raise Not_found
+    else if line = 0 && character = 0 then
+      index
+    else if text.[index] = '\n' then
+      _get_line_at (line - 1) character (index + 1)
+    else if line = 0 then
+      _get_line_at line (character - 1) (index + 1)
+    else
+      _get_line_at line character (index + 1)
+  in _get_line_at line character 0
+
+let get_line_length line text =
+  let n = String.length text in
+  let rec __get_line_length character length =
+    if character > n then
+      raise Not_found
+    else if text.[character] = '\n' then
+      length
+    else
+      __get_line_length (character + 1) (length + 1)
+  in
+  let rec _get_line_length line index =
+    if index > n then
+      raise Not_found
+    else if line = 0 then
+      __get_line_length index 0
+    else if text.[index] = '\n' then
+      _get_line_length (line - 1) (index + 1)
+    else
+      _get_line_length line (index + 1)
+  in _get_line_length line 0

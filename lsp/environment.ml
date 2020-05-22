@@ -17,6 +17,8 @@ let get_client_capabilities () =
 let set_client_capabilities (capabilities: ClientCapabilities.t) =
   client_capabilities := Some capabilities
 
+let get_content uri =
+  !files |> UriMap.find uri
 let add_uri uri (content: string) =
   files := !files |> UriMap.add uri content
 let update_uri uri new_content =
