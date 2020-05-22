@@ -34,8 +34,13 @@ jobs:
         run: |
           ls; ls example
           for e in $(ls example); do opam exec -- dune exec ./naturL.exe -- --input example/$e; done
-      - name: Upload artifact
+      - name: Upload transpiler artifact
         uses: actions/upload-artifact@v1.0.0
         with:
           name: ${{ matrix.os }}-naturL.exe
           path: _build/default/naturL.exe
+      - name: Upload lsp server artifact
+        uses: actions/upload-artifact@v1.0.0
+        with:
+          name: ${{ matrix.os }}-naturL-lsp-server.exe
+          path: _build/default/lsp/server.exe
