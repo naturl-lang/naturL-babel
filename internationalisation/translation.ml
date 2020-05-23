@@ -1,5 +1,14 @@
 open Yojson
 
+exception NoNaturLPath
+
+let () =
+  Printexc.register_printer
+    (function
+      | NoNaturLPath -> Some (Printf.sprintf ": no NATURLPATH environment variable is set on this computer")
+      | _ -> None (* for other exceptions *)
+    )
+
 type language =
   | French
   | English
@@ -108,9 +117,12 @@ let to_int = function
   | NotSubscriptable -> 44
   | ListIndicesIntegers -> 45
 
-let json = let path = [Sys.getenv "NATURLPATH"; "internationalisation"; "translation.json"]
-                      |> List.fold_left (fun s -> fun elt -> Filename.concat s elt) "" in
-  ref (Basic.from_file path)
+let json =let path =
+  try [Sys.getenv "NATURLPATH"; "internationalisation"; "translation.json"]
+                      |> List.fold_left (fun s -> fun elt -> Filename.concat s elt) ""
+  with Not_found -> raise NoNaturLPath
+  in
+    ref (Basic.from_file path)
 
 
 let getLangID = function
