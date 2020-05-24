@@ -161,9 +161,7 @@ let get_index_at line character text =
 let get_line_length line text =
   let n = String.length text in
   let rec __get_line_length character length =
-    if character > n then
-      raise Not_found
-    else if text.[character] = '\n' then
+    if character >= n || text.[character] = '\n' then
       length
     else
       __get_line_length (character + 1) (length + 1)

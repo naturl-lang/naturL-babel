@@ -4,7 +4,7 @@ type t = {
 }
 
 
-exception Invalid_line
+exception Invalid_line of string
 exception Unknown_field of string
 exception Missing_content_length
 
@@ -37,7 +37,7 @@ let read ic =
       (match Field.of_string field with
        | Content_length -> read { t with content_length = int_of_string value }
        | Content_type -> read { t with content_type = value})
-    | _ -> raise Invalid_line
+    | l -> raise (Invalid_line (String.concat ":" l))
   in let header = read empty
   in if header.content_length = empty.content_length then
     raise Missing_content_length
