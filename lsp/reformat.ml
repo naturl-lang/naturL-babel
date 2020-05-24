@@ -1,5 +1,3 @@
-#use "topfind";;
-#require "str";;
 let contains s1 s2 =
   let re = Str.regexp_string s2
   in
