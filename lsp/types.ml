@@ -53,8 +53,6 @@ module Diagnostic = struct
   type t = {
     range: Range.t;
     severity: Severity.t option; [@yojson.option]
-    code: int option; [@yojson.option]
-    source: string option; [@yojson.option]
     message: string
   }
   [@@deriving yojson] [@@yojson.allow_empty_fields]
@@ -260,7 +258,7 @@ module DidChangeParams = struct
 
   type t = {
     textDocument: VersionedTextDocumentIdentifier.t;
-    contentChanged: TextDocumentContentChangeEvent.t
+    contentChanges: TextDocumentContentChangeEvent.t list
   }
   [@@deriving yojson]
 end

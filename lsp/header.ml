@@ -31,7 +31,8 @@ let empty = { content_length = -1;
 let read ic =
   let rec read t =
     match String.split_on_char ':' (input_line ic) with
-    | "\r" :: [] -> t
+    | "" :: [] when Sys.win32 || Sys.cygwin -> t
+    | "\r" :: [] when Sys.unix -> t
     | field :: value :: [] -> let value = String.trim value in
       (match Field.of_string field with
        | Content_length -> read { t with content_length = int_of_string value }
