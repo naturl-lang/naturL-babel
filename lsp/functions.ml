@@ -66,13 +66,17 @@ let diagnostic oc =
     }
   in
   try
-    let diagnostics = !Environment.files |> Environment.UriMap.bindings |> List.map
-                        (function _, content ->
-                           let context = { Src__Structures.empty_context with code = content } in
-                           let diagnostics = (Src__Errors.get_errors (fun () -> eval_code context ) |> List.map (to_diagnostic Warning content))
-                           in diagnostics @
-                           (Src__Warnings.get_warnings () |> List.map (to_diagnostic Warning content)))
-                      |> List.flatten
-                      |> List.map Diagnostic.yojson_of_t
-    in Sender.send_notification oc Jsonrpc.Request.(make ~id:None ~params:(Some (`List diagnostics)) ~method_:"textDocument/publishDiagnostics")
+    !Environment.files |> Environment.UriMap.bindings |> List.iter
+      (function uri, content ->
+         let context = { Src__Structures.empty_context with code = content } in
+         let diagnostics = (Src__Errors.get_errors (fun () -> eval_code context ) |> List.map (to_diagnostic Error content)) in
+         let diagnostics = diagnostics @
+                           (Src__Warnings.get_warnings () |> List.map (to_diagnostic Warning content)) in
+         let params: PublishDiagnosticsParams.t = {
+             uri;
+             version = None;
+             diagnostics
+           } in
+         let json = PublishDiagnosticsParams.yojson_of_t params in
+         Sender.send_notification oc Jsonrpc.Request.(make ~id:None ~params:(Some json) ~method_:"textDocument/publishDiagnostics"))
   with Not_found -> ()
