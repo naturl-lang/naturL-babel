@@ -120,7 +120,7 @@
 		"en": "' is a reserved keyword"
 	},
 	"TokenCapture": {
-		"fr": "Impossible de capturer l'identificateur inconnu",
+		"fr": "Identificateur inconnu",
 		"en": "Could not capture the unknown token"
 	},
 	"MissingClosingParenthesis": {

@@ -152,6 +152,16 @@ type context = {
   scopes: scope list;                    (* The stack of scopes *)
 }
 
+let empty_context = {
+  filename = "<stdin>";
+  code = "";
+  index = 0;
+  max_index = None;
+  vars = StringMap.empty;
+  defs = StringMap.empty;
+  scopes = [];
+}
+
 let rec get_current_class_name context =
     match context.scopes with
         | [] -> raise Not_found

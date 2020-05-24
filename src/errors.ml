@@ -51,9 +51,22 @@ let try_update_err line func =
   | ImportError (msg, None) -> raise (ImportError (msg, Some line))
   | SyntaxError _ | TypeError _ | NameError _ | ImportError _ as error -> raise error
 
-let try_catch oc func =
+let try_catch ?raise_errors oc func =
+  let raise_error = raise_errors = Some true in
   try func () with
+  | SyntaxError _ | TypeError _ | NameError _ | ImportError _ as error when raise_error -> raise error
   | SyntaxError (msg, Some line) -> syntax_error msg line oc
   | TypeError (msg, Some line) -> type_error msg line oc
   | NameError (msg, Some line) -> name_error msg line oc
   | ImportError (msg, Some line) -> import_error msg line oc
+
+let try_execute func ~on_success ~on_failure =
+  try let value = func () in on_success value with
+  | SyntaxError (msg, Some line) | TypeError (msg, Some line)
+  | NameError (msg, Some line) | ImportError (msg, Some line) -> on_failure (msg, line)
+
+(* Get a list of (msg, line) corresponding to errors got by executing the function *)
+let get_errors func =
+  try let _ = func () in []  with
+  | SyntaxError (msg, Some line) | TypeError (msg, Some line)
+  | NameError (msg, Some line) | ImportError (msg, Some line) -> [ msg, line ]

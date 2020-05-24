@@ -569,22 +569,16 @@ and control_keywords =
   ]
 
 
-and get_code_context ?max_index filename code =
-  let code = format_code code
-  and index = 0
-  and vars = StringMap.empty
-  and defs = StringMap.empty
-  and scopes = [] in
-  let _, context = try_catch stderr (fun () -> eval_code {filename; code; index; max_index; vars; defs; scopes}) in
+and get_code_context ?(raise_errors = false) ?max_index filename code =
+  let code = format_code code in
+  let context = { empty_context with filename; code; max_index } in
+  let _, context = try_catch ~raise_errors stderr (fun () -> eval_code context) in
   context
 
-and translate_code ?max_index filename code =
-  let code = format_code code
-  and index = 0
-  and vars = StringMap.empty
-  and defs = StringMap.empty
-  and scopes = [] in
-  let translation, _ = try_catch stderr (fun () -> eval_code {filename; code; index; max_index; vars; defs; scopes}) in
+and translate_code ?(raise_errors = false) ?max_index filename code =
+  let code = format_code code in
+  let context = { empty_context with filename; code; max_index } in
+  let translation, _ = try_catch ~raise_errors stderr (fun () -> eval_code context) in
   let translation = String.trim translation in
   let _ = if not (are_imports_empty ()) && let word, _ = get_word translation 0 in word = "def"
     then "\n" ^ translation

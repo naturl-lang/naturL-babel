@@ -20,6 +20,9 @@ let try_update_warnings ~line =
     (fun { message; severity; _ } -> Queue.add { message; severity; line } final);
   Queue.clear staged
 
+let get_warnings () =
+  Utils.list_of_queue final |> List.map (fun { message; severity = _; line} -> message, Option.get line)
+
 let print_warning min_severity = function
     { message; severity; line = Some line} when severity >= min_severity ->
     Printf.fprintf stderr "Warning at line %d: %s.\n" line message

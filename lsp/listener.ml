@@ -1,8 +1,10 @@
 let handle_notification : Client_notification.t -> unit = function
   | Initialized -> Environment.initialize ()
   | Exit -> let code = if Environment.is_shutdown () then 0 else 1 in exit code
-  | TextDocumentDidOpen params -> Environment.add_uri params.textDocument.uri params.textDocument.text
-  | TextDocumentDidChange params -> Environment.update_uri params.textDocument.uri params.contentChanged.text
+  | TextDocumentDidOpen params -> let uri = params.textDocument.uri in
+    Environment.add_uri uri params.textDocument.text; Functions.diagnostic stdout
+  | TextDocumentDidChange params -> let uri = params.textDocument.uri in
+    Environment.add_uri uri (List.hd params.contentChanges).text; Functions.diagnostic stdout
   | TextDocumentDidClose params -> Environment.remove_uri params.textDocument.uri
   | Unknown_notification _ -> ()
 
