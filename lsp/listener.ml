@@ -18,12 +18,14 @@ let handle_request id : Request.t -> unit = function
 
 
 let rec listen ic =
-  let rec read_content ic length =
+  let read_content ic length =
+    let rec read_content ic length accu =
     if length = 0 then
-      ""
+      accu
     else
       let s = String.make 1 (input_char ic) in
-      s ^ read_content ic (length - 1)
+      read_content ic (length - 1) (accu ^ s)
+    in read_content ic length ""
   in
   let header = Header.read ic
   in let content = read_content ic header.content_length in
