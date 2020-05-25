@@ -123,16 +123,16 @@ let expr_of_string context str : Expr.t =
   in
   let perform_op (e1: Expr.t) (e2: Expr.t) op expr_ : Expr.t =
     match op, e1, e2 with
-    | "+", Value (Int x1), Value (Int x2) -> Value (Int (x1 + x2))
+    | "+", Value (Int x1), Value (Int x2) -> Value (Int (x1 ++ x2))
     | "+", Value (Float x1), Value (Float x2) -> Value (Float (x1 +. x2))
     | "+", Value (String x1), Value (String x2) -> Value (String (x1 ^ x2))
-    | "-", Value (Int x1), Value (Int x2) -> Value(Int (x1 - x2))
+    | "-", Value (Int x1), Value (Int x2) -> Value(Int (x1 -- x2))
     | "-", Value (Float x1), Value (Float x2) -> Value (Float (x1 -. x2))
-    | ("*" | "fois"), Value (Int x1), Value (Int x2) -> Value (Int (x1 * x2))
+    | ("*" | "fois"), Value (Int x1), Value (Int x2) -> Value (Int (x1 ** x2))
     | "*", Value (Float x1), Value (Float x2) -> Value (Float (x1 *. x2))
     | "\\", Value (Float x1), Value (Float x2) -> Value (Float (x1 /. x2))
-    | "div", Value (Int x1), Value (Int x2) -> Value (Int (x1 / x2))
-    | "%", Value (Int x1), Value (Int x2) -> Value (Int (x1 mod x2))
+    | "div", Value (Int x1), Value (Int x2) -> Value (Int (x1 // x2))
+    | "%", Value (Int x1), Value (Int x2) -> Value (Int (x1 % x2))
     | "=", Value v1, Value v2 when not (is_var v1 || is_var v2) -> Value (Bool Value.(to_string v1 = to_string v2))
     | ">", Value (Int x1), Value (Int x2) -> Value (Bool (x1 > x2))
     | ">", Value (Float x1), Value (Float x2) -> Value (Bool (x1 > x2))
@@ -151,9 +151,9 @@ let expr_of_string context str : Expr.t =
     | "or", Value (Bool false), x -> x
     | "or", x, Value (Bool false) -> x
     | "not", Value (Bool x), _ -> Value (Bool (not x))
-    | "neg", Value (Int x), _ -> Value (Int (-x))
+    | "neg", Value (Int x), _ -> Value (Int (~--x))
     | "neg", Value (Float x), _ -> Value (Float (-1.*. x))
-    | "get[", List l, Value (Int i) when i <= List.length l -> List.nth l i
+    | "get[", List l, Value (Int i) when i <= to_big (List.length l) -> List.nth l (of_big i)
     | _-> expr_
   in
   let rec _simplify (expr: Expr.t) =

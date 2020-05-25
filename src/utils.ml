@@ -176,3 +176,12 @@ let get_line_length line text =
     else
       _get_line_length line (index + 1)
   in _get_line_length line 0
+
+let (++) = Z.(+)
+let (--) = Z.(-)
+let (~--) = Z.neg
+let ( ** ) = Z.( * )
+let (%) = Z.(mod)
+let (//) = Z.(/)
+let to_big = Z.of_int
+let of_big = Z.to_int

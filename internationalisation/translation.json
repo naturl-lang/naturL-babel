@@ -112,7 +112,7 @@
 		"en": "Invalid expression"
 	},
 	"InvalidTokenExpression": {
-		"fr": "Indentificateur invalide dans l'expression: '",
+		"fr": "Identificateur invalide dans l'expression: '",
 		"en": "Invalid token in expression: '"
 	},
 	"ReservedKeyword": {

@@ -1,7 +1,7 @@
 (lang dune 2.5)
 (name naturL)
 (source (github TheNaturLFoundation/naturL))
-(version 8d6d07c-dirty)
+(version 1.0)
 (authors
   "Simon Scatton <simon.scatton@epita.fr"
   "Rostan Tabet <rostan.tabet@epita.fr"
@@ -26,6 +26,7 @@ Analyzes syntax and semantic, and generates error messages when necessary")
         (ocaml (and (>= 4.8.0) (<= 4.10.0)))
         (dune (>= 1.11))
         yojson
+        zarith
         ppx_inline_test
         ppx_expect
         ppx_yojson_conv
