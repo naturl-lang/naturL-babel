@@ -34,6 +34,9 @@ jobs:
         run: |
           ls; ls example
           for e in $(ls example); do opam exec -- dune exec ./naturL.exe -- --input example/$e; done
+      - name: Print files (Unix)
+        if: matrix.os != 'windows-latest'
+        run: find .
       - name: Upload transpiler artifact
         uses: actions/upload-artifact@v1.0.0
         with:
