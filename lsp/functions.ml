@@ -4,38 +4,47 @@ open Src.Translation
 
 let definition oc id (params: DefinitionParams.t) =
   let uri = params.textDocument.uri in
-  let content = Environment.get_content uri in
   try
-    let index = get_index_at (params.position.line - 1) (params.position.character - 1) content in
-    Src__Errors.try_execute (fun () -> get_code_context ~raise_errors:true ~max_index:index uri content)
-      ~on_success: (fun context ->
-          let word = get_word_at_index index content in
-          let line_infos = match context.defs |> StringMap.find_opt word with
-            | Some value -> value
-            | None -> let open Src.Structures in
-              context.defs |> StringMap.find (get_current_class_name context ^ "." ^ word)
-          in
-          let location: Location.t = {
-            uri;
-            range = {
-              start = { line = line_infos.line; character = 1};
-              end_ = { line = line_infos.line; character = get_line_length (line_infos.line - 1) content }
+    let content = Environment.get_content uri in
+    try
+      let index = get_index_at params.position.line params.position.character content in
+      Src__Errors.try_execute (fun () -> get_code_context ~raise_errors:true ~max_index:index uri content)
+        ~on_success: (fun context ->
+            let word = get_word_at_index index content in
+            let line_infos = match context.defs |> StringMap.find_opt word with
+              | Some value -> value
+              | None -> let open Src.Structures in
+                context.defs |> StringMap.find (get_current_class_name context ^ "." ^ word)
+            in
+            let location: Location.t = {
+              uri;
+              range = {
+                start = { line = line_infos.line - 1; character = 0};
+                end_ = { line = line_infos.line - 1; character = get_line_length (line_infos.line - 1) content - 1 }
+              }
             }
-          }
-          in Sender.send_response oc (Jsonrpc.Response.ok id (Location.yojson_of_t location)))
-      ~on_failure: (function msg, line ->
-          Sender.send_response oc
-            Jsonrpc.Response.(error id Jsonrpc.Response.Error.(make
-                                                                 ~code:Code.InternalError
-                                                                 ~message: ("Error at line " ^ (string_of_int line) ^ ": " ^ msg) ())))
+            in Sender.send_response oc (Jsonrpc.Response.ok id (Location.yojson_of_t location)))
+        ~on_failure: (function msg, line ->
+            Sender.send_response oc
+              Jsonrpc.Response.(error id Jsonrpc.Response.Error.(make
+                                                                   ~code:Code.InternalError
+                                                                   ~message: ("Error at line " ^ (string_of_int line) ^ ": " ^ msg) ())))
+    with Not_found -> Sender.send_response oc
+                        Jsonrpc.Response.
+                          (error id Jsonrpc.Response.Error.
+                                      (make
+                                         ~code:Code.InvalidParams
+                                         ~message: ("Invalid position (line " ^ (string_of_int params.position.line) ^ ", character " ^ (string_of_int params.position.character) ^ ")") ()))
   with Not_found -> Sender.send_response oc
-                      Jsonrpc.Response.(error id Jsonrpc.Response.Error.(make ~code:Code.InvalidParams ~message: "Invalid position" ()))
+                      Jsonrpc.Response.(error id Jsonrpc.Response.Error.(make
+                                                                           ~code:Code.InternalError
+                                                                           ~message: ("Unknown uri " ^ params.textDocument.uri ^ ". Have you sent an open notification ?") ()))
 
 let completion oc id (params: CompletionParams.t) =
   let uri = params.textDocument.uri in
   let content = Environment.get_content uri in
   try
-    let index = get_index_at (params.position.line - 1) (params.position.character - 1) content in
+    let index = get_index_at params.position.line params.position.character content in
     Src__Errors.try_execute (fun () -> get_code_context ~raise_errors:true ~max_index:index uri content)
       ~on_success:(fun context ->
           let items = context.vars |> StringMap.bindings |> List.map (function name, type_ ->
@@ -51,15 +60,19 @@ let completion oc id (params: CompletionParams.t) =
                                                                  ~code:Code.InternalError
                                                                  ~message: ("Error at line " ^ (string_of_int line) ^ ": " ^ msg) ())))
   with Not_found -> Sender.send_response oc
-                      Jsonrpc.Response.(error id Jsonrpc.Response.Error.(make ~code:Code.InvalidParams ~message: "Invalid position" ()))
+                      Jsonrpc.Response.
+                        (error id Jsonrpc.Response.Error.
+                                    (make
+                                       ~code:Code.InvalidParams
+                                       ~message: ("Invalid position (line " ^ (string_of_int params.position.line) ^ ", character " ^ (string_of_int params.position.character) ^ ")") ()))
 
 let diagnostic oc =
   (* Convert a couple (message, line) to a diagnostic *)
   let to_diagnostic severity content (message, line) : Diagnostic.t =
     {
       range = {
-        start = { line; character = 1 };
-        end_ = { line; character = get_line_length (line - 1) content }
+        start = { line = line - 1; character = 0 };
+        end_ = { line = line - 1; character = get_line_length (line - 1) content - 1 }
       };
       severity = Some severity;
       message
