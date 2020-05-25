@@ -207,6 +207,8 @@ module Value = struct
       String (Str.matched_group 1 str)
     else if str = "vrai" || str = "faux" then
       Bool (str = "vrai")
+    else if str = "nul" then
+      None
     else if Str.string_match (Str.regexp ("^" ^ name_re ^ "$")) str 0 then
       Variable str
     else if Str.string_match (Str.regexp ("^instance " ^ name_re ^ "$")) str 0 then
