@@ -22,10 +22,10 @@ jobs:
         uses: actions/cache@v1.1.2
         with:
           path: ~/.opam
-          key: ${{ ocaml-version }}
+          key: ${{ matrix.ocaml-version }}
       - name: Build OCaml
         if: steps.ocaml-cache.outputs.cache-hit != 'true'
-        run: opam switch create ${{ ocaml-version }}
+        run: opam switch create ${{ matrix.ocaml-version }}
       - name: Install dependencies (Windows)
         if: matrix.os == 'windows-latest' 
         run: opam install .
