@@ -14,18 +14,26 @@ jobs:
         ocaml-version: ['ocaml-base-compiler.4.08.0', 'ocaml-base-compiler.4.09.0', 'ocaml-base-compiler.4.10.0']
     steps:
       - uses: actions/checkout@master
-      - uses: avsm/setup-ocaml@v1.0
-        with: 
+      - name: Setup OCaml System (Unix)
+        if: matrix.os != 'windows-latest'
+        uses: avsm/setup-ocaml@v1.0
+        with:
           ocaml-version: 'ocaml-system'
-      - name: Try to restore OCaml cache
+      - name: Try to restore OCaml cache (Unix)
+        if: matrix.os != 'windows-latest'
         id: ocaml-cache
         uses: actions/cache@v1.1.2
         with:
           path: ~/.opam
           key: ${{ matrix.ocaml-version }}
-      - name: Build OCaml
-        if: steps.ocaml-cache.outputs.cache-hit != 'true'
+      - name: Build OCaml (Unix)
+        if: steps.ocaml-cache.outputs.cache-hit != 'true' && matrix.os != 'windows-latest'
         run: opam switch create ${{ matrix.ocaml-version }}
+      - name: Build OCaml (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: avsm/setup-ocaml@v1.0
+        with:
+          ocaml-version: ${{ matrix.ocaml-version }}
       - name: Install dependencies (Windows)
         if: matrix.os == 'windows-latest' 
         run: opam install .
