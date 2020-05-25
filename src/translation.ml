@@ -204,7 +204,7 @@ let rec eval_code context =
         | _ ->
           (* Expression or affectation *)
           let line_no = get_line_no code context.index in
-          let r = regexp ("[\n\t ]*\\([A-Za-z_][A-Za-z_0-9]*\\(\\.[A-Za-z_][A-Za-z_0-9]*\\)*\\) *<- *\\(.*\\(| *\n\\)*.+\\)\n") in
+          let r = regexp ("[\n\t ]*\\([A-Za-z_][A-Za-z_0-9]*\\(\\.[A-Za-z_][A-Za-z_0-9]*\\)*\\) *<- *\\(.*\\(| *\n\\)*.+\\)\n*") in
           if string_match r code start_index then   (* Affectation *)
             let end_index = match_end() in
             let var = matched_group 1 code
@@ -217,7 +217,7 @@ let rec eval_code context =
             else
               raise_unexpected_type_error_with_name var (Type.to_string var_type) (Type.to_string expr_type) ~line: (get_line_no code index)
           else
-            let r = regexp ("^[\n\t ]*instance +\\([A-Za-z_][A-Za-z_0-9]*\\(\\.[A-Za-z_][A-Za-z_0-9]*\\)*\\) *<- *\\(.*\\(| *\n\\)*.+\\)\n") in
+            let r = regexp ("^[\n\t ]*instance +\\([A-Za-z_][A-Za-z_0-9]*\\(\\.[A-Za-z_][A-Za-z_0-9]*\\)*\\) *<- *\\(.*\\(| *\n\\)*.+\\)\n*") in
             if string_match r code start_index then (* USE OF INSTANCE *)
               if is_class_context context.scopes then
                 let class_name = get_current_class_name context in
