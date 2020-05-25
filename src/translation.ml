@@ -295,6 +295,8 @@ and eval_variables context =
       let name = String.trim name
       and line = get_line_no context.code context.index
       and filename = context.filename and scopes = context.scopes in
+      if name = "fin" then
+        raise_syntax_error ~line:(get_line_no context.code context.index) "Unexpected keyword 'fin'. Maybe you should skip a line";
       eval_line  { context with vars = StringMap.add name type_struct context.vars ;
                                 defs = StringMap.add name { line; filename; scopes } context.defs }
         type_struct t
@@ -309,8 +311,12 @@ and eval_variables context =
          { context with index }
        else
          let line, index = get_line context.code index in
+         if word = "" then raise_syntax_error ~line:line_no "'variables' is unclosed";
          let type_struct = try_update_err line_no (fun () -> Type.of_string context.vars word) in
-         let context = eval_line context type_struct (String.split_on_char ',' line) in
+         let context = eval_line context type_struct (line
+                                                      |> String.split_on_char ','
+                                                      |> List.map (String.split_on_char ' ')
+                                                      |> List.flatten) in
          try_update_warnings ~line: line_no;
          _eval_variables { context with index }
   in _eval_variables context
