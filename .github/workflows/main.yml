@@ -36,11 +36,15 @@ jobs:
           ocaml-version: ${{ matrix.ocaml-version }}
       - name: Install dependencies (Windows)
         if: matrix.os == 'windows-latest' 
-        run: opam install .
+        run: 
+          opam init --disable-sandboxing --reinit
+          opam install .
         continue-on-error: true
       - name: Install dependencies (Unix)
         if: matrix.os != 'windows-latest'
-        run: opam install .
+        run:
+          opam init --disable-sandboxing --reinit 
+          opam install .
       - name: Build
         run: opam exec -- dune build @install
       - name: Test
