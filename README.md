@@ -9,15 +9,14 @@ naturL is a pseudo-code to Python script transpiler. The pseudo-code is written 
 
 ### Unix
 
-Close this repository using 
+Execute this command in a unix terminal 
 
 ```
-git clone https://github.com/TheNaturLFoundation/naturL.git
+git clone https://github.com/TheNaturLFoundation/naturL.git /usr/bin ; cd /usr/bin/naturL ; bash install.sh
 ```
 
 Or download the zip file [here](https://github.com/TheNaturLFoundation/naturL/archive/master.zip).
-Run the makefile using:
-
+and run install.sh
 ```
 make
 ```
