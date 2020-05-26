@@ -226,7 +226,7 @@ let rec eval_code context =
                 let var = matched_group 1 code in
                 let expr = matched_group 3 code |> replace_string "|" "" |> replace_string "\n" "" in
                 let attr_meths, are_set = Type.get_attr_meths class_name context.vars in
-                let var_type = get_var var ~main_vars:context.vars attr_meths in
+                let var_type = try_update_err line_no (fun () -> get_var var ~main_vars:context.vars attr_meths) in
                 let expr, expr_type = try_update_err line_no (fun () -> eval_expression_with_type expr context) in
                 if Type.is_compatible var_type expr_type then
                   let are_set = StringMap.add var true are_set in

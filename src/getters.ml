@@ -127,12 +127,12 @@ let get_var name ?main_vars vars =
           | None -> attr_name, vars   (* We are already inside the class *)
           | _ -> assert false)
       | Some t -> raise_name_error ("Type " ^ (Type.to_string t) ^ " has no attribute " ^ attr_name)
-      | None -> raise_name_error (get_string UnknownVariable ^ var_name)
+      | None -> raise_name_error (get_string UnknownVariable ^ var_name ^ "'")
     else
       name, vars
   in
   try StringMap.find name vars
-  with Not_found -> raise_name_error ((get_string UnknownVariable) ^ name)
+  with Not_found -> raise_name_error ((get_string UnknownVariable) ^ name ^ "'")
 
 
 (* Returns information about the files that need to be imported : *)
