@@ -76,9 +76,10 @@ module Type = struct
   let rec is_compatible (expected: t) (actual: t) =
     expected = `Any || match actual with
     | `Any -> false
+    | `None -> true
     | `Int -> expected = `Int || expected = `Float
     | `Char -> expected = `Char || expected = `String
-    | `Float | `String | `Bool | `None | `Class _ -> expected = actual
+    | `Float | `String | `Bool | `Class _ -> expected = actual
     | `List t1 -> (match expected with  (* A list is covariant *)
         | `List t2 -> is_compatible t2 t1
         | _ -> false)
