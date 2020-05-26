@@ -14,37 +14,12 @@ jobs:
         ocaml-version: ['4.08.0', '4.09.0', '4.10.0']
     steps:
       - uses: actions/checkout@master
-      - name: Setup OCaml System (Unix)
-        if: matrix.os != 'windows-latest'
-        uses: avsm/setup-ocaml@v1.0
-        with:
-          ocaml-version: 'ocaml-system'
-      - name: Try to restore OCaml cache (Unix)
-        if: matrix.os != 'windows-latest'
-        id: ocaml-cache
-        uses: actions/cache@v1.1.2
-        with:
-          path: ~/.opam
-          key: ${{ matrix.ocaml-version }}
-      - name: Build OCaml (Unix)
-        if: true || steps.ocaml-cache.outputs.cache-hit != 'true' && matrix.os != 'windows-latest'
-        run: opam switch reinstall ocaml-base-compiler.${{ matrix.ocaml-version }}
-      - name: Build OCaml (Windows)
-        if: matrix.os == 'windows-latest'
-        uses: avsm/setup-ocaml@v1.0
-        with:
+      - uses: avsm/setup-ocaml@v1.0
+        with: 
           ocaml-version: ${{ matrix.ocaml-version }}
-      - name: Initialize opam (Windows)
+      - name: Install dependencies (Windows)
         if: matrix.os == 'windows-latest' 
-        run: opam init --disable-sandboxing --reinit
-        continue-on-error: true
-      - name: Install Dependencies (Windows)
-        if: matrix.os == 'windows-latest'
         run: opam install .
-        continue-on-error: true
-      - name: Initialize opam (Unix)
-        if: matrix.os != 'windows-latest' 
-        run: opam init --disable-sandboxing --reinit
         continue-on-error: true
       - name: Install dependencies (Unix)
         if: matrix.os != 'windows-latest'
@@ -59,9 +34,6 @@ jobs:
         run: |
           ls; ls example
           for e in $(ls example); do opam exec -- dune exec ./naturL.exe -- --input example/$e; done
-      - name: Print files (Unix)
-        if: matrix.os != 'windows-latest'
-        run: find .
       - name: Upload transpiler artifact
         uses: actions/upload-artifact@v1.0.0
         with:
