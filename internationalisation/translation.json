@@ -28,7 +28,7 @@
 		"en": "' has type '"
 	},
 	"ButGotMessage": {
-		"fr": "' mais le type attendu était '",
+		"fr": "' mais le type affecté est '",
 		"en": "' but got '"
 	},
 	"ReturnTypeMatchMessage": {
