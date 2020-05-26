@@ -30,6 +30,17 @@ let functions =
           | _ -> assert false);
       import = (fun () -> ())
     };
+    "supprimer", {
+      typer = (function
+            `List t :: `Int :: [] -> t
+          | t -> raise_unexpected_type_error_with_name "supprimer"
+                   (Type.to_string (`Function ([`List `Any], `Any)))
+                   (Type.to_string (`Function (t, `Any))));
+      translator = (function
+            l :: x :: [] -> l ^ ".pop(" ^ (string_of_int (int_of_string x - 1)) ^ ")"
+          | _ -> assert false);
+      import = (fun () -> ())
+    };
     "ajouter", {
       typer = (function
             `List t1 :: t2 :: [] when Type.is_compatible t1 t2 -> `None
@@ -135,18 +146,18 @@ let functions =
     };
     "reel", {
       typer = (function
-            `Int :: [] -> `Float
+            #Type.t :: [] -> `Float
           | t -> raise_unexpected_type_error_with_name "reel"
-                   (Type.to_string (`Function ([`Int], `Float)))
+                   (Type.to_string (`Function ([`Any], `Float)))
                    (Type.to_string (`Function (t, `Float))));
       translator = (fun s -> "float(" ^ (List.hd s) ^ ")");
       import = (fun () -> ())
     };
     "entier", {
       typer = (function
-            `Float :: [] -> `Int
+            #Type.t :: [] -> `Int
           | t -> raise_unexpected_type_error_with_name "reel"
-                   (Type.to_string (`Function ([`Float], `Int)))
+                   (Type.to_string (`Function ([`Any], `Int)))
                    (Type.to_string (`Function (t, `Int))));
       translator = (fun s -> "int(" ^ (List.hd s) ^ ")");
       import = (fun () -> ())
@@ -467,6 +478,25 @@ let functions =
     }
   ]
   in string_map_of_list assoc
+
+let accessible_keywords: (string * Type.t) list = [
+  "afficher", `Function ([`Any], `None);
+  "taille", `Function ([`List `Any], `Any);
+  "supprimer", `Function ([`List `Any; `Int], `Any);
+  "ajouter", `Function ([`List `Any; `Any], `None);
+  "min", `Function ([`Float; `Float], `Float);
+  "max", `Function ([`Float; `Float], `Float);
+  "abs", `Function ([`Float], `Float);
+  "cos", `Function ([`Float], `Float);
+  "sin", `Function ([`Float], `Float);
+  "arccos", `Function ([`Float], `Float);
+  "arcsin", `Function ([`Float], `Float);
+  "arctan", `Function ([`Float], `Float);
+  "racine", `Function ([`Float], `Float);
+  "chaine", `Function ([`Any], `String);
+  "entier", `Function ([`Any], `Int);
+  "reel", `Function ([`Any], `Int)
+]
 
 let add_builtins map =
   StringMap.fold (function name -> function value -> StringMap.add name value) map functions

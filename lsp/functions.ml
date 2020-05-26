@@ -41,30 +41,24 @@ let definition oc id (params: DefinitionParams.t) =
                                                                            ~message: ("Unknown uri " ^ params.textDocument.uri ^ ". Have you sent an open notification ?") ()))
 
 let completion oc id (params: CompletionParams.t) =
+  let send_completion items =
+    let items = items @ Src__Builtins.accessible_keywords
+                |> List.map (function (name, type_) ->
+                    let open CompletionItem in
+                    {
+                      label = name;
+                      detail = Some (Src.Structures.Type.to_string type_)
+                    })
+    in Sender.send_response oc (Jsonrpc.Response.ok id (`List (items |> List.map CompletionItem.yojson_of_t)))
+    in
   let uri = params.textDocument.uri in
   let content = Environment.get_content uri in
   try
     let index = get_index_at params.position.line params.position.character content in
     Src__Errors.try_execute (fun () -> get_code_context ~raise_errors:true ~max_index:index uri content)
-      ~on_success:(fun context ->
-          let items = context.vars |> StringMap.bindings |> List.map (function name, type_ ->
-              let open CompletionItem in
-              {
-                label = name;
-                detail = Some (Src.Structures.Type.to_string type_)
-              })
-          in Sender.send_response oc (Jsonrpc.Response.ok id (`List (items |> List.map CompletionItem.yojson_of_t))))
-      ~on_failure:(function msg, line ->
-          Sender.send_response oc
-            Jsonrpc.Response.(error id Jsonrpc.Response.Error.(make
-                                                                 ~code:Code.InternalError
-                                                                 ~message: ("Error at line " ^ (string_of_int line) ^ ": " ^ msg) ())))
-  with Not_found -> Sender.send_response oc
-                      Jsonrpc.Response.
-                        (error id Jsonrpc.Response.Error.
-                                    (make
-                                       ~code:Code.InvalidParams
-                                       ~message: ("Invalid position (line " ^ (string_of_int params.position.line) ^ ", character " ^ (string_of_int params.position.character) ^ ")") ()))
+      ~on_success:(fun context -> send_completion (StringMap.bindings context.vars))
+      ~on_failure:(fun _ -> send_completion [])  (* Even when there is an error, the builtin functions are sent *)
+  with Not_found -> send_completion []
 
 let diagnostic oc =
   (* Convert a couple (message, line) to a diagnostic *)
