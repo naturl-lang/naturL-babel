@@ -3,20 +3,21 @@ if ! [ -x "$(command -v opam)" ]; then
     exit 1
 fi
 
-if ! [ -x "$(command ls ~/.opam > /dev/null)" ]; then
+if ! [ -x "$(command -v ocamlc)" ]; then
     echo 'Info : opam is not initialized, running opam init...' >&2
     opam init --yes
     eval $(opam env)
 fi
 
-OCAMLVERSION = $(ocamlc --version)
+OCAMLVERSION=$(ocamlc --version)
 
-if [$OCAMLVERSION != "4.08.0" && $OCAMLVERSION != "4.09.0" && $OCAMLVERSION != "4.10.0"]; then
-    echo 'No compatible ocaml version detected, installing latest'
-    opam switch create ocaml-base-compiler.4.10.0
-    eval $(opam env)
+if [ $OCAMLVERSION != "4.08.0" ] && [ $OCAMLVERSION != "4.09.0" ] && [ $OCAMLVERSION != "4.10.0" ]; then
+    read -r -p 'No compatible ocaml version detected detected, maybe you have an more recent existing switch ? [y/n]' response
+	if ! [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+		opam switch create ocaml-base-compiler.4.10.0
+		eval $(opam env)
+	fi
 fi
-
 echo 'Installing the programm'
 opam install .
 echo 'Compiling'
