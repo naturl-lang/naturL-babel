@@ -54,7 +54,7 @@ let completion oc id (params: CompletionParams.t) =
   let uri = params.textDocument.uri in
   let content = Environment.get_content uri in
   try
-    let index = get_index_at params.position.line params.position.character content in
+    let index = get_index_at params.position.line params.position.character content - 1 in
     Src__Errors.try_execute (fun () -> get_code_context ~raise_errors:true ~max_index:index uri content)
       ~on_success:(fun context -> send_completion (StringMap.bindings context.vars))
       ~on_failure:(fun _ -> send_completion [])  (* Even when there is an error, the builtin functions are sent *)
@@ -75,7 +75,7 @@ let diagnostic oc =
   try
     !Environment.files |> Environment.UriMap.bindings |> List.iter
       (function uri, content ->
-         let context = { Src__Structures.empty_context with code = content } in
+         let context = { Src__Structures.empty_context with code = format_code content } in
          let diagnostics = (Src__Errors.get_errors (fun () -> eval_code context ) |> List.map (to_diagnostic Error content)) in
          let diagnostics = diagnostics @
                            (Src__Warnings.get_warnings () |> List.map (to_diagnostic Warning content)) in

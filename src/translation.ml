@@ -70,7 +70,7 @@ let rec get_fname_def_status scopes =
   match scopes with
     | [] -> false, ""
     | Function_definition name :: _ -> true, name
-    | (Function (name,_)) :: _ -> false, name
+    | Function (name, _) :: _ -> false, name
     | _ :: r -> get_fname_def_status r
 
 let _valid_pos context =
@@ -204,7 +204,7 @@ let rec eval_code context =
             raise_syntax_error "Unclosed scope: expected 'fin'" ~line: (get_line_no code context.index)
         | _ ->
           (* Expression or affectation *)
-          let line_no = get_line_no code context.index in
+          let line_no = get_line_no code start_index in
           let r = regexp ("[\n\t ]*\\([A-Za-z_][A-Za-z_0-9]*\\(\\.[A-Za-z_][A-Za-z_0-9]*\\)*\\) *<- *\\(.*\\(| *\n\\)*.+\\)\n*") in
           if string_match r code start_index then   (* Affectation *)
             let end_index = match_end() in
