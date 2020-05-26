@@ -177,7 +177,7 @@ let print_vars = StringMap.iter (function name -> function t ->
 module Value = struct
 
   type t =
-    | Int of Z.t
+    | Int of Big_int.big_int
     | Float of float
     | Char of char
     | String of string
@@ -187,7 +187,7 @@ module Value = struct
     | None
 
   let to_string = function
-      Int i -> Z.to_string i
+      Int i -> Big_int.string_of_big_int i
     | Float f -> string_of_float f
     | Char c -> "'" ^ String.make 1 c ^ "'"
     | String s -> {|"|} ^ s ^ {|"|}
@@ -200,7 +200,7 @@ module Value = struct
     let str = String.trim str
     and name_re = "[_a-zA-Z\\.][_a-zA-Z0-9\\.]*" in
     if Str.string_match (Str.regexp "^-?[0-9]+$") str 0 then
-      Int (Z.of_string str)
+      Int (Big_int.big_int_of_string str)
     else if Str.string_match (Str.regexp {|^[0-9]+.[0-9]*$|}) str 0 then
       Float (float_of_string str)
     else if Str.string_match (Str.regexp {|^'\(.\)'$|}) str 0 then

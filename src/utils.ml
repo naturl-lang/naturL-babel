@@ -181,11 +181,15 @@ let get_line_length line text =
       _get_line_length line (index + 1)
   in _get_line_length line 0
 
-let (++) = Z.(+)
-let (--) = Z.(-)
-let (~--) = Z.neg
-let ( ** ) = Z.( * )
-let (%) = Z.(mod)
-let (//) = Z.(/)
-let to_big = Z.of_int
-let of_big = Z.to_int
+let (++) = Big_int.add_big_int
+let (--) = Big_int.sub_big_int
+let (~--) = Big_int.minus_big_int
+let ( ** ) = Big_int.mult_big_int
+let (%) = Big_int.mod_big_int
+let (//) = Big_int.div_big_int
+let ( >>= ) = Big_int.ge_big_int
+let ( <<= ) = Big_int.le_big_int
+let ( >> ) = Big_int.gt_big_int
+let ( << ) = Big_int.lt_big_int
+let to_big = Big_int.big_int_of_int
+let of_big = Big_int.int_of_big_int
