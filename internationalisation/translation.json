@@ -11,10 +11,10 @@
 		"fr": "Erreur de nommage",
 		"en": "Name error"
 	},
-  "ImportError":{
-      "fr": "Erreur d'importation",
-      "en": "Import Error"
-  },
+	"ImportError":{
+		"fr": "Erreur d'importation",
+		"en": "Import Error"
+	},
 	"NameTypeMessage": {
 		"fr": "Une expression de type '",
 		"en": "Expected an expression of type '"
@@ -144,12 +144,12 @@
 		"en": "Unknown operator '"
 	},
 	"InvalidOperation": {
-		"fr": "Opération invalide pour les expression de type ",
-		"en": "Invalid operation for expressions of type "
+		"fr": "Opération invalide pour les expression de type '",
+		"en": "Invalid operation for expressions of type '"
 	},
 	"AndType": {
-		"fr": " et de type ",
-		"en": " and type "
+		"fr": "' et de type '",
+		"en": "' and type '"
 	},
 	"CannotCompare": {
 		"fr": "Impossible de comparer une expression de type ",

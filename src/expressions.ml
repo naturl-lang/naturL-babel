@@ -227,9 +227,9 @@ let rec type_of_expr context : Expr.t -> Type.t = function
     if Type.is_compatible l_type r_type && is_type_accepted l_type e then l_type
     else if Type.is_compatible r_type l_type && is_type_accepted r_type e then r_type
     else
-      raise_type_error ((get_string InvalidOperation) ^ (Type.to_string l_type) ^ (get_string AndType) ^ (Type.to_string r_type))
+      raise_type_error ((get_string InvalidOperation) ^ (Type.to_string l_type) ^ (get_string AndType) ^ (Type.to_string r_type) ^"'")
   | Not arg | Neg arg as e -> let arg_type = type_of_expr context arg in if is_type_accepted arg_type e then arg_type else
-      raise_type_error ((get_string InvalidOperation) ^ (Type.to_string arg_type))
+      raise_type_error ((get_string InvalidOperation) ^ (Type.to_string arg_type) "'")
   | Eq (l, r) | Gt (l, r) | Gt_eq (l, r) | Lt (l, r) | Lt_eq (l, r) -> let l_type = type_of_expr context l and r_type = type_of_expr context r in
     if let open Type in is_compatible l_type r_type || is_compatible r_type l_type then
       `Bool
