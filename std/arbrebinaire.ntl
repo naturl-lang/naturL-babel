@@ -1,0 +1,15 @@
+type_abstrait ArbreBinaire
+	attributs
+		? cle
+		ArbreBinaire gauche
+		ArbreBinaire droit
+	methodes
+		fonction nouveau(? cle, ArbreBinaire gauche, ArbreBinaire droit) -> ArbreBinaire
+		debut
+			instance cle <- cle
+			instance gauche <- gauche
+			instance droit <- droit
+			retourner instance
+		fin
+	fin
+fin
