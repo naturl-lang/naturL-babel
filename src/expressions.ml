@@ -233,6 +233,11 @@ let expr_of_string context str : Expr.t =
 
 (* Returns the type of an expression *)
 let rec type_of_expr context : Expr.t -> Type.t = function
+  | Plus (Value (Char _), Value (Char _)) -> `String
+  | Plus (Value (Variable name), Value (Char _)) when Value.get_type context (Value.Variable name) = `Char -> `String
+  | Plus (Value (Char _), Value (Variable name)) when Value.get_type context (Value.Variable name) = `Char -> `String
+  | Plus (Value (Variable name1), Value (Variable name2)) when Value.get_type context (Value.Variable name1) = `Char &&
+         (Value.get_type context (Value.Variable name2) = `Char) -> `String
   | Plus (l, r) | Minus (l, r) | Times (l, r) | Div (l, r) | Div_int (l, r) | Modulus (l, r) | Pow (l, r) | And (l, r) | Or (l, r) as e ->
     let l_type = type_of_expr context l and r_type = type_of_expr context r in
     if Type.is_compatible l_type r_type && is_type_accepted l_type e then l_type
