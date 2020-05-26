@@ -26,7 +26,7 @@ Analyzes syntax and semantic, and generates error messages when necessary")
         (ocaml (and (>= 4.8.0) (<= 4.10.0)))
         (dune (>= 1.11))
         yojson
-        zarith
+        num
         ppx_inline_test
         ppx_expect
         ppx_yojson_conv
