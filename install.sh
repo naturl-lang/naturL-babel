@@ -24,5 +24,5 @@ echo 'Compiling'
 eval $(opam env)
 dune build @install
 echo 'Setting environment variable and exporting'
-echo export NATURLPATH=$PWD > ~./bashrc
+echo export NATURLPATH=$PWD >> ~/.bashrc
 exit 0
