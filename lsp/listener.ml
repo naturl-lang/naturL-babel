@@ -10,7 +10,10 @@ let handle_notification : Client_notification.t -> unit = function
 
 let handle_request id : Request.t -> unit = function
   | Shutdown -> Environment.shutdown (); Sender.send_response stdout Jsonrpc.(Response.ok id `Null)
-  | Initialize params -> Environment.set_client_capabilities params.capabilities; Sender.initialize stdout id
+  | Initialize params -> Environment.set_client_capabilities params.capabilities; Sender.initialize stdout id;
+    (match params.initializationOptions with
+       Some lang -> Internationalisation__Translation.set_lang_of_string lang
+     | None -> ())
   | TextDocumentDefinition params -> Functions.definition stdout id params
   | TextDocumentCompletion params -> Functions.completion stdout id params
   | TextDocumentFormat params -> Functions.reformat stdout id params

@@ -199,7 +199,8 @@ module InitializeParams = struct
   type t = {
     processId: int option;
     rootUri: DocumentUri.t option;
-    capabilities: ClientCapabilities.t
+    capabilities: ClientCapabilities.t;
+    initializationOptions: string option [@yojson.option]
   }
   [@@deriving yojson] [@@yojson.allow_extra_fields]
 end
