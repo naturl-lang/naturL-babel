@@ -33,6 +33,14 @@ module TextDocumentIdentifier = struct
   [@@deriving yojson]
 end
 
+module TextEdit = struct
+  type t = {
+    range: Range.t;
+    newText: string
+  }
+  [@@deriving yojson]
+end
+
 module Diagnostic = struct
   module Severity = struct
     type t = Error | Warning | Information | Hint
@@ -112,6 +120,14 @@ module SignatureHelpOptions = struct
   let t_of_yojson = function
       `Assoc _ -> Value
     | json -> Json.error "Invalid json for signature help option" json
+end
+
+module FormattingOptions = struct
+  type t = {
+    tabSize: int;
+    insertSpaces: bool
+  }
+  [@@deriving yojson] [@@yojson.allow_extra_fields]
 end
 
 (* Capabilities *)
@@ -266,6 +282,14 @@ end
 module DidCloseParams = struct
   type t = {
     textDocument: TextDocumentIdentifier.t
+  }
+  [@@deriving yojson]
+end
+
+module DocumentFormattingParams = struct
+  type t = {
+    textDocument: TextDocumentIdentifier.t;
+    options: FormattingOptions.t
   }
   [@@deriving yojson]
 end

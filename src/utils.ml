@@ -181,6 +181,17 @@ let get_line_length line text =
       _get_line_length line (index + 1)
   in _get_line_length line 0
 
+let get_last_position text =
+  let n = String.length text in
+  let rec get_last_position index line character =
+    if index >= n then
+      line, character
+    else if text.[index] = '\n' then
+      get_last_position (index + 1) (line + 1) 0
+    else
+      get_last_position (index + 1) line (character + 1)
+  in get_last_position 0 0 0
+
 let (++) = Big_int.add_big_int
 let (--) = Big_int.sub_big_int
 let (~--) = Big_int.minus_big_int

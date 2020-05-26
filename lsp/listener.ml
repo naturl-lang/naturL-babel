@@ -13,6 +13,7 @@ let handle_request id : Request.t -> unit = function
   | Initialize params -> Environment.set_client_capabilities params.capabilities; Sender.initialize stdout id
   | TextDocumentDefinition params -> Functions.definition stdout id params
   | TextDocumentCompletion params -> Functions.completion stdout id params
+  | TextDocumentFormat params -> Functions.reformat stdout id params
   | UnknownRequest name -> Sender.send_response stdout
             Jsonrpc.(Response.error id Response.Error.(make ~code:MethodNotFound ~message:("Unknown method " ^ name) ()))
 

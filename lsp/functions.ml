@@ -60,6 +60,19 @@ let completion oc id (params: CompletionParams.t) =
       ~on_failure:(fun _ -> send_completion [])  (* Even when there is an error, the builtin functions are sent *)
   with Not_found -> send_completion []
 
+let reformat oc id (params: DocumentFormattingParams.t) =
+  let content = Environment.get_content params.textDocument.uri in
+  let formatted = Reformat.reformat content in
+  let end_line, end_char = get_last_position content in
+  let edits = [TextEdit.{
+      range = {
+        start = { line = 0; character = 0 };
+        end_ = { line = end_line; character = end_char}
+      };
+      newText = formatted
+    }] |> List.map TextEdit.yojson_of_t
+  in Sender.send_response oc (Jsonrpc.Response.ok id (`List edits))
+
 let diagnostic oc =
   (* Convert a couple (message, line) to a diagnostic *)
   let to_diagnostic severity content (message, line) : Diagnostic.t =

@@ -5,6 +5,7 @@ type t =
   | Initialize of InitializeParams.t
   | TextDocumentDefinition of DefinitionParams.t
   | TextDocumentCompletion of CompletionParams.t
+  | TextDocumentFormat of DocumentFormattingParams.t
   | UnknownRequest of string
 
 
@@ -15,4 +16,5 @@ let of_jsonrpc (request: Jsonrpc.Request.t) =
   | "textDocument/declaration" | "textDocument/definition" ->
     request |> Jsonrpc.Request.params (fun json -> TextDocumentDefinition (DefinitionParams.t_of_yojson json))
   | "textDocument/completion" -> request |> Jsonrpc.Request.params (fun json -> TextDocumentCompletion (CompletionParams.t_of_yojson json))
+  | "textDocument/formatting" -> request |> Jsonrpc.Request.params (fun json -> TextDocumentFormat (DocumentFormattingParams.t_of_yojson json))
   | m -> Ok (UnknownRequest m)
