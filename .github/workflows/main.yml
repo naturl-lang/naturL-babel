@@ -34,9 +34,17 @@ jobs:
         uses: avsm/setup-ocaml@v1.0
         with:
           ocaml-version: ${{ matrix.ocaml-version }}
-      - name: Install dependencies (Windows)
+      - name: Initialize opam (Windows)
         if: matrix.os == 'windows-latest' 
+        run: opam init --disable-sandboxing --reinit
+        continue-on-error: true
+      - name: Install Dependencies (Windows)
+        if: matrix.os == 'windows-latest'
         run: opam install .
+        continue-on-error: true
+      - name: Initialize opam (Unix)
+        if: matrix.os != 'windows-latest' 
+        run: opam init --disable-sandboxing --reinit
         continue-on-error: true
       - name: Install dependencies (Unix)
         if: matrix.os != 'windows-latest'

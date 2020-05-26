@@ -19,7 +19,6 @@ let keywords = [
   "type_abstrait";
   "methodes";
   "attributs";
-  "instance";
 ]
 
 
