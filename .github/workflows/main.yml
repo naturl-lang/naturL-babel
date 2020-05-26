@@ -48,9 +48,7 @@ jobs:
         continue-on-error: true
       - name: Install dependencies (Unix)
         if: matrix.os != 'windows-latest'
-        run:
-          opam init --disable-sandboxing --reinit 
-          opam install .
+        run: opam install .
       - name: Build
         run: opam exec -- dune build @install
       - name: Test
