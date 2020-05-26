@@ -1,4 +1,5 @@
 open Str
+open Syntax
 open Utils
 open Global
 open Errors
@@ -213,7 +214,7 @@ let rec eval_code context =
             and expr, expr_type = try_update_err line_no (fun () -> eval_expression_with_type expr context) in
             if Type.is_compatible var_type expr_type then
               let next, context = eval_code {context with index = end_index} in
-              get_indentation depth ^ word ^ " = " ^ expr ^ "\n" ^ next, context
+              get_indentation depth ^ (resolve_py_conficts word) ^ " = " ^ expr ^ "\n" ^ next, context
             else
               raise_unexpected_type_error_with_name var (Type.to_string var_type) (Type.to_string expr_type) ~line: (get_line_no code index)
           else
@@ -232,7 +233,7 @@ let rec eval_code context =
                   let vars = StringMap.add class_name (`Class (attr_meths, are_set)) context.vars in
                   let context = {context with index = end_index; vars = vars} in
                   let next, context = eval_code context in
-                  get_indentation depth ^ "self." ^ var ^ " = " ^ expr ^ "\n" ^ next, context
+                  get_indentation depth ^ "self." ^ (resolve_py_conficts var) ^ " = " ^ expr ^ "\n" ^ next, context
                 else
                   raise_unexpected_type_error_with_name var (Type.to_string var_type) (Type.to_string expr_type) ~line: (get_line_no code index)
               else
@@ -354,7 +355,7 @@ and eval_fonction context =
   let offset = if context.index >= String.length context.code - 1 then "" else "\n\n" in
   let next = if next = "" then get_indentation (depth + 1) ^ "pass\n" else next in
   let vars = if is_parsing_ended context then context.vars else prev_vars in
-  get_indentation depth ^ "def " ^ name ^ "(" ^ names ^ "):\n" ^ next ^ offset, { context with vars; defs }
+  get_indentation depth ^ "def " ^ resolve_py_conficts name ^ "(" ^ names ^ "):\n" ^ next ^ offset, { context with vars; defs }
 
 and eval_procedure context =
   let depth = List.length context.scopes - 1 in
@@ -378,7 +379,7 @@ and eval_procedure context =
   let offset = if context.index >= String.length context.code - 1 then "" else "\n\n" in
   let next = if next = "" then get_indentation (depth + 1) ^ "pass\n" else next in
   let vars = if is_parsing_ended context then context.vars else prev_vars in
-  get_indentation depth ^ "def " ^ name ^ "(" ^ names ^ "):\n" ^ next ^ offset, { context with vars; defs }
+  get_indentation depth ^ "def " ^ resolve_py_conficts name ^ "(" ^ names ^ "):\n" ^ next ^ offset, { context with vars; defs }
 
 and eval_si context =
   let code = context.code in
@@ -512,7 +513,7 @@ and eval_type_definition context =
   let next, context = eval_code {context with index = i; vars = new_vars ; scopes = Class_def name :: scopes} in
   let next = if next = "" then get_indentation (depth + 1) ^ "pass" else next in
   let vars = if is_parsing_ended context then context.vars else StringMap.remove "instance" context.vars in
-  get_indentation depth ^ "class " ^ name ^ ":\n" ^ next ^ "\n", {context with vars}
+  get_indentation depth ^ "class " ^ (resolve_py_conficts name) ^ ":\n" ^ next ^ "\n", {context with vars}
 
 and eval_constructor context =
   let depth = List.length context.scopes - 2 in

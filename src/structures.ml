@@ -1,3 +1,4 @@
+open Syntax
 open Utils
 open Errors
 open Internationalisation.Translation
@@ -191,8 +192,8 @@ module Value = struct
     | Char c -> "'" ^ String.make 1 c ^ "'"
     | String s -> {|"|} ^ s ^ {|"|}
     | Bool b -> if b then "True" else "False"
-    | Variable name -> name
-    | Instance (type_def, name) -> type_def ^ "." ^ name
+    | Variable name -> resolve_py_conficts name
+    | Instance (type_def, name) -> resolve_py_conficts type_def ^ "." ^ (resolve_py_conficts name)
     | None -> "None"
 
   let of_string = function str ->

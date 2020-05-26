@@ -1,4 +1,5 @@
 open Str
+open Syntax
 open Utils
 open Global
 open Structures
@@ -98,11 +99,12 @@ let get_param context index =
     | [] -> set_names names, index, vars, List.rev types
     | h :: t -> let r = regexp {|^\(.*\)\ +\([a-zA-Z_][a-zA-Z_0-9]*\)$|} in
       let _ = string_match r h 0 in
-      let type_ = Type.of_string vars (matched_group 1 h)
-      and name = matched_group 2 h
-      and i = match_end ()
-      and sep = if is_first then "" else ", " in
-      _get_params (StringMap.add (String.trim name) type_ vars) (names ^ sep ^ name) (index + i + 1) ~types: (type_ :: types) t in
+      let type_ = Type.of_string vars (matched_group 1 h) in
+      let name = matched_group 2 h in
+      let i = match_end () in
+      let new_name = resolve_py_conficts name in
+      let sep = if is_first then "" else ", " in
+      _get_params (StringMap.add (String.trim name) type_ vars) (names ^ sep ^ new_name) (index + i + 1) ~types: (type_ :: types) t in
   let r = regexp {| *\(.+ [A-Za-z_][A-Za-z0-9_]*\(, ?[^ ]+ [A-Za-z_][A-Za-z0-9_]*\)*\))|} in
   if string_match r context.code index then
     _get_params context.vars "" (index + 1) (split (regexp ",") (matched_group 1 context.code)) ~is_first: true

@@ -95,6 +95,10 @@ let rec string_map_of_list = function
   | [] -> StringMap.empty
   | (key, value) :: t -> StringMap.add key value (string_map_of_list t)
 
+let rec string_set_of_list = function
+  | [] -> StringSet.empty
+  | key :: t -> string_set_of_list t |> StringSet.add key
+
 
 let fstring format =
   let f = format_of_string format in

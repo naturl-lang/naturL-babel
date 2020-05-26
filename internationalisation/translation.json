@@ -69,7 +69,7 @@
 	},
 	"UnexpectedChar": {
 		"fr": "Caractère non attendu '",
-		"en": "Unexpected character"
+		"en": "Unexpected character '"
 	},
 	"InFunctionDefinition": {
 		"fr": "' dans la définition de la fonction",
