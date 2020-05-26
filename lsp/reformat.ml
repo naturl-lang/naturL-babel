@@ -1,3 +1,4 @@
+#load "str.cma";;
 let contains s1 s2 =
   let re = Str.regexp_string s2
   in
@@ -34,23 +35,23 @@ let reformat_operators string =
     |(Str.Delim a) :: t -> " " ^ a ^ " " ^ (_reformat_operators t)
   in _reformat_operators token_list;;
 
-let rec get_indentation indentation_level = match indentation_level with
-  | 0 -> ""
-  | x when x < 0 -> failwith "Negative indentation level"
-  | _ -> "  " ^ get_indentation (indentation_level-1);;
+let get_indentation indentation_level tab_size insert_space =
+  if insert_space then
+    String.make (indentation_level*tab_size) ' '
+  else
+    String.make indentation_level '\t'
 
 (*TODO Ajouter un reformat pour les arguments passés dans l'appel d'une fonction.*)
 
-let reformat string =
+let reformat string tab_size insert_space =
   let token_list = strip string in
   let rec _reformat token_list indentation result = match token_list with
     | [] -> result
-    | h :: t when contains h "sinon_si" || contains h "sinon" ->  _reformat t (indentation) (result ^ (get_indentation (indentation-1)) ^ (reformat_operators h) ^ "\n")
-    | h :: t when contains h "procedure" || contains h "fonction" -> _reformat t (indentation+1) (result ^ (get_indentation indentation) ^ (reformat_function_definition h) ^ "\n")
-    | h :: t when contains h "tant_que" || contains h "pour" || contains h "pour_chaque" || contains h "si" -> _reformat t (indentation+1) (result ^ (get_indentation indentation) ^ (reformat_operators h) ^ "\n")
-    | h :: t when Str.string_match (Str.regexp "variables") h 0 -> _reformat t (indentation+1) (result ^ (get_indentation indentation) ^ h ^ "\n")
-    | h :: t when Str.string_match (Str.regexp "fin") h 0 -> _reformat t (indentation-1) (result ^ (get_indentation (indentation-1)) ^ h ^ "\n")
-    | h :: t when Str.string_match (Str.regexp "debut") h 0 -> _reformat t (indentation) (result ^ (get_indentation (indentation-1)) ^ h ^ "\n")
-    | h :: t -> _reformat t indentation (result ^ (get_indentation indentation) ^ (reformat_operators h) ^ "\n")
+    | h :: t when contains h "sinon_si" || contains h "sinon" ->  _reformat t (indentation) (result ^ (get_indentation (indentation-1) tab_size insert_space) ^ (reformat_operators h) ^ "\n")
+    | h :: t when contains h "procedure" || contains h "fonction" -> _reformat t (indentation+1) (result ^ (get_indentation indentation tab_size insert_space) ^ (reformat_function_definition h) ^ "\n")
+    | h :: t when contains h "tant_que" || contains h "pour" || contains h "pour_chaque" || contains h "si" -> _reformat t (indentation+1) (result ^ (get_indentation indentation tab_size insert_space) ^ (reformat_operators h) ^ "\n")
+    | h :: t when Str.string_match (Str.regexp "variables") h 0 -> _reformat t (indentation+1) (result ^ (get_indentation indentation tab_size insert_space) ^ h ^ "\n")
+    | h :: t when Str.string_match (Str.regexp "fin") h 0 -> _reformat t (indentation-1) (result ^ (get_indentation (indentation-1) tab_size insert_space) ^ h ^ "\n")
+    | h :: t when Str.string_match (Str.regexp "debut") h 0 -> _reformat t (indentation) (result ^ (get_indentation (indentation-1) tab_size insert_space) ^ h ^ "\n")
+    | h :: t -> _reformat t indentation (result ^ (get_indentation indentation tab_size insert_space) ^ (reformat_operators h) ^ "\n")
   in _reformat token_list 0 "";;
-
