@@ -49,4 +49,6 @@ naturL is run via command line interface using the folowing options.
 ## Use naturL with idL
 naturL can be installed on Windows using our own IDE : [idL](https://github.com/TheNaturLFoundation/idL)
  
-If you like our programs : [buy us a coffee](https://www.buymeacoffee.com/naturL)
+If you like our programs :
+
+<a href="https://www.buymeacoffee.com/naturL" target="_blank"><img src="https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png" alt="Buy Me A Coffee" style="height: 41px !important;width: 174px !important;box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;-webkit-box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;" ></a>
