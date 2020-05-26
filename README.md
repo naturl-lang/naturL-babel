@@ -1,6 +1,6 @@
 
 # naturL
-
+![Build](https://github.com/TheNaturLFoundation/naturL/workflows/Build/badge.svg?branch=master&event=push)
 ## What is naturL
 
 naturL is a pseudo-code to Python script transpiler. The pseudo-code is written in French formalized pseudo-code "naturL" to a Python script. This language eases the learning of programming with idiomatic languages structures, close to French logic terms.
