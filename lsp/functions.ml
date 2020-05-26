@@ -62,7 +62,7 @@ let completion oc id (params: CompletionParams.t) =
 
 let reformat oc id (params: DocumentFormattingParams.t) =
   let content = Environment.get_content params.textDocument.uri in
-  let formatted = Reformat.reformat content in
+  let formatted = Reformat.reformat content params.options.tabSize params.options.insertSpaces in
   let end_line, end_char = get_last_position content in
   let edits = [TextEdit.{
       range = {
