@@ -11,8 +11,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        ocaml-version: ['ocaml-base-compiler.4.08.0', 'ocaml-base-compiler.4.09.0', 'ocaml-base-compiler.4.10.0']
-        ocaml-version-windows: ['4.08.0', '4.09.0', '4.10.0']
+        ocaml-version: ['4.08.0', '4.09.0', '4.10.0']
     steps:
       - uses: actions/checkout@master
       - name: Setup OCaml System (Unix)
@@ -29,12 +28,12 @@ jobs:
           key: ${{ matrix.ocaml-version }}
       - name: Build OCaml (Unix)
         if: steps.ocaml-cache.outputs.cache-hit != 'true' && matrix.os != 'windows-latest'
-        run: opam switch create ${{ matrix.ocaml-version }}
+        run: opam switch create ocaml-base-compiler.${{ matrix.ocaml-version }}
       - name: Build OCaml (Windows)
         if: matrix.os == 'windows-latest'
         uses: avsm/setup-ocaml@v1.0
         with:
-          ocaml-version: ${{ matrix.ocaml-version-windows }}
+          ocaml-version: ${{ matrix.ocaml-version }}
       - name: Install dependencies (Windows)
         if: matrix.os == 'windows-latest' 
         run: opam install .
