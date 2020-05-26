@@ -36,7 +36,7 @@ let tokenize input (vars: Type.t StringMap.t) =
     and reg_number = Str.regexp "[0-9]+\\.?[0-9]*"
     and reg_operator = Str.regexp {|ou\|et\|non\|=\|!=\|<=\|>=\|<\|>\|*\|fois\|+\|-\|/\|div\|mod\|\^|}
     and reg_string = Str.regexp  {|"\([^"]\)*"|}
-    and reg_char = Str.regexp "'[a-Za-z0-9]*'"
+    and reg_char = Str.regexp "'[\x00-\xff]'"
     and reg_openp = Str.regexp "("
     and reg_closep = Str.regexp ")"
     and reg_coma = Str.regexp ","
