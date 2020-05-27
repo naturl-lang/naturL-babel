@@ -25,7 +25,7 @@ let rec listen ic =
   let read_content ic length =
     let rec read_content ic length accu =
       let line = input_line ic in
-      let length = length - String.length line - (if Sys.unix then 1 else 2)
+      let length = length - String.length line - 1
       and accu = accu ^ line in
       if length <= 0 then
         accu
