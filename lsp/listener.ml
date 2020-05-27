@@ -48,7 +48,7 @@ let rec listen ic =
           else
             Sender.send_response stdout
               Jsonrpc.(Response.error id Response.Error.(make ~code:ServerNotInitialized ~message:"Please first initialize the server" ()))
-        | Error _ -> print_endline "error")
+        | Error _ -> prerr_endline "error")
        with Ppx_yojson_conv_lib__Yojson_conv.Of_yojson_error _ ->
          Sender.send_response stdout
            Jsonrpc.(Response.error id Response.Error.(make ~code:InvalidRequest ~message:"Invalid request format" ())))
@@ -58,7 +58,7 @@ let rec listen ic =
           if not (Environment.is_shutdown () && notification <> Exit) || notification = Initialized &&
                                                                          (Environment.initialized () || !Environment.client_capabilities <> None && notification = Initialized) then
             handle_notification notification
-        | Error _ -> print_endline "error")
+        | Error _ -> prerr_endline "error")
   end;
   listen ic
 

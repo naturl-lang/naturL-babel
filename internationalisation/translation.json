@@ -16,8 +16,8 @@
 		"en": "Import Error"
 	},
 	"Warning":{
-		"fr": "Avertissement à la ligne",
-		"en": "Warning at line"
+		"fr": "Avertissement à la ligne ",
+		"en": "Warning at line "
 	},
 	"NameTypeMessage": {
 		"fr": "Une expression de type '",
@@ -184,7 +184,7 @@
 		"en": "List indices must be integers"
 	},
 	"GivenExpression": {
-		"fr": "L'expression founie ne vérifie pas le type déclaré", 
+		"fr": "L'expression founie ne vérifie pas le type déclaré",
 		"en": "Given expression does not match the declared type"
 	},
 	"AttributeScore":{
@@ -192,79 +192,79 @@
 		"en": "Attributes scope is never closed"
 	},
 	"DeclareAttributes": {
-		"fr": "Impossible de déclarer une méthode sans aucun attributs", 
+		"fr": "Impossible de déclarer une méthode sans aucun attributs",
 		"en": "Cannot declaire method without any attributes"
 	},
 	"AllListElements": {
-		"fr": "Tous les éléments d'une liste doivent être du même type", 
+		"fr": "Tous les éléments d'une liste doivent être du même type",
 		"en": "All elements of a list must have the same type"
-	}, 
-	"AfterLineContinuation": { 
-		"fr": "' après un caractère de continuation de ligne", 
+	},
+	"AfterLineContinuation": {
+		"fr": "' après un caractère de continuation de ligne",
 		"en": "' after line continuation character"
 	},
 	"HasNoAttribute": {
-		"fr": "' n'as pas d'attribut ", 
+		"fr": "' n'as pas d'attribut ",
 		"en": "' has no attribute"
 	},
 	"UnknownPackage": {
-		"fr": "Paquet inconnu '", 
+		"fr": "Paquet inconnu '",
 		"en": "Unknown package '"
 	},
 	"MissingNaturlPackage": {
-		"fr": " ' (ficher naturl-package manquant)", 
+		"fr": " ' (ficher naturl-package manquant)",
 		"en": "' (missing naturl-package file)"
 	},
 	"CannotImportPackage": {
-		"fr": "Impossible d'importer le paquet '", 
+		"fr": "Impossible d'importer le paquet '",
 		"en": "Cannot importe package '"
 	},
 	"UndefinedType": {
-		"fr": "Type indéfini '", 
+		"fr": "Type indéfini '",
 		"en": "Undefined type '"
 	},
 	"InClass": {
-		"fr": "' dans le type abstrait '", 
+		"fr": "' dans le type abstrait '",
 		"en": "' in class '"
 	},
 	"TheVariable": {
-		"fr": "La variable '", 
+		"fr": "La variable '",
 		"en": "The variable '"
 	},
 	"HasNoValue": {
-		"fr": "' n'as pas de valeur dans le contexte actuel", 
+		"fr": "' n'as pas de valeur dans le contexte actuel",
 		"en": "' has no value in current context"
 	},
 	"CannotResolveName": {
-		"fr": "Impossible de reconnaître le nom '", 
+		"fr": "Impossible de reconnaître le nom '",
 		"en": "Cannot resolve name '"
 	},
 	"CannotDeclareMethod": {
-		"fr": "Impossible de déclarer une méthode sans arguments", 
+		"fr": "Impossible de déclarer une méthode sans arguments",
 		"en": "Cannot declare a method without arguments"
 	},
 	"KeywordInstance": {
-		"fr": "Le mot clé 'instance' ne peut pas être utilisé en dehors d'une définiton de type abstrait", 
+		"fr": "Le mot clé 'instance' ne peut pas être utilisé en dehors d'une définiton de type abstrait",
 		"en": "Keyword 'instance' cannot be used outside a class definition"
 	},
 	"UnclosedScope": {
-		"fr": "Environnement non fermé : mot clé 'fin' attendu", 
+		"fr": "Environnement non fermé : mot clé 'fin' attendu",
 		"en": "Unclosed scope: expected 'fin'"
 	},
 	"MaybeSkipLine": {
-		"fr": "Mot clé 'fin' non attendu, peut être faut-il sauter une ligne ?", 
+		"fr": "Mot clé 'fin' non attendu, peut être faut-il sauter une ligne ?",
 		"en": "Unexpected keyword 'fin'. Maybe you should skip a line"
 	},
 	"UnclosedVariable": {
-		"fr": "L'environnement de définition de variables n'est pas fermé", 
+		"fr": "L'environnement de définition de variables n'est pas fermé",
 		"en": "'variable' environment is unclosed"
 	},
 	"ConstructorReturn": {
-		"fr": "Le type de retour du constructeur n'est pas le même que celui du type abstrait défini", 
+		"fr": "Le type de retour du constructeur n'est pas le même que celui du type abstrait défini",
 		"en": "Constructor return type is not the same as class type"
 	},
 	"FirstMethod": {
-		"fr": "La première méthode d'un type abstrait doit être un constructeur mais la première méthode était :", 
+		"fr": "La première méthode d'un type abstrait doit être un constructeur mais la première méthode était :",
 		"en": "The first method of a class needs to be a constructor but got :"
 	}
 }

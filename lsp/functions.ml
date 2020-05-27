@@ -52,8 +52,8 @@ let completion oc id (params: CompletionParams.t) =
     in Sender.send_response oc (Jsonrpc.Response.ok id (`List (items |> List.map CompletionItem.yojson_of_t)))
     in
   let uri = params.textDocument.uri in
-  let content = Environment.get_content uri in
   try
+    let content = Environment.get_content uri in
     let index = get_index_at params.position.line params.position.character content - 1 in
     Src__Errors.try_execute (fun () -> get_code_context ~raise_errors:true ~max_index:index uri content)
       ~on_success:(fun context -> send_completion (StringMap.bindings context.vars))
@@ -61,17 +61,22 @@ let completion oc id (params: CompletionParams.t) =
   with Not_found -> send_completion []
 
 let reformat oc id (params: DocumentFormattingParams.t) =
-  let content = Environment.get_content params.textDocument.uri in
-  let formatted = Reformat.reformat content params.options.tabSize params.options.insertSpaces in
-  let end_line, end_char = get_last_position content in
-  let edits = [TextEdit.{
-      range = {
-        start = { line = 0; character = 0 };
-        end_ = { line = end_line; character = end_char}
-      };
-      newText = formatted
-    }] |> List.map TextEdit.yojson_of_t
-  in Sender.send_response oc (Jsonrpc.Response.ok id (`List edits))
+  try
+    let content = Environment.get_content params.textDocument.uri in
+    let formatted = Reformat.reformat content params.options.tabSize params.options.insertSpaces in
+    let end_line, end_char = get_last_position content in
+    let edits = [TextEdit.{
+        range = {
+          start = { line = 0; character = 0 };
+          end_ = { line = end_line; character = end_char}
+        };
+        newText = formatted
+      }] |> List.map TextEdit.yojson_of_t
+    in Sender.send_response oc (Jsonrpc.Response.ok id (`List edits))
+  with Not_found ->  Sender.send_response oc
+                      Jsonrpc.Response.(error id Jsonrpc.Response.Error.(make
+                                                                           ~code:Code.InternalError
+                                                                           ~message: ("Unknown uri " ^ params.textDocument.uri ^ ". Have you sent an open notification ?") ()))
 
 let diagnostic oc =
   (* Convert a couple (message, line) to a diagnostic *)
@@ -87,7 +92,8 @@ let diagnostic oc =
   in
   try
     !Environment.files |> Environment.UriMap.bindings |> List.iter
-      (function uri, content ->
+      (function uri, _ ->
+         let content = Environment.get_content uri in
          let context = { Src__Structures.empty_context with code = format_code content } in
          let diagnostics = (Src__Errors.get_errors (fun () -> eval_code context ) |> List.map (to_diagnostic Error content)) in
          let diagnostics = diagnostics @

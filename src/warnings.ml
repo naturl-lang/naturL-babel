@@ -25,7 +25,7 @@ let get_warnings () =
 
 let print_warning min_severity = function
     { message; severity; line = Some line} when severity >= min_severity ->
-    Printf.fprintf stderr "Warning at line %d: %s.\n" line message
+    prerr_endline (Internationalisation.Translation.get_string Warning ^ (string_of_int line) ^ " : " ^ message)
   | _ -> ()
 
 let print_warnings ~severity =
