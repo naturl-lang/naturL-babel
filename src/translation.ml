@@ -338,24 +338,28 @@ and eval_fonction context =
       get_type context.vars context.code (i + 2)
   in
   let name, index = get_word context.code (context.index + 9) in (* 9 = 8 + 1 *)
-  let names, index, vars, types = get_param context index in
-  let index, type_ = check_return_type index in
-  let fx = `Function (types, type_) in
-  let vars, prev_vars = if is_method_context context.scopes then
-      let class_name = get_current_class_name context in
-      let f = add_class_attr class_name name fx true in
-      f vars, f context.vars
-    else
-      vars |> StringMap.add name fx, context.vars |> StringMap.add name fx in
-  let cscopes = context.scopes in (*cscopes = current scopes*)
-  try_update_warnings ~line;
-  let next, context = eval_code {context with index; vars; scopes = set_fscope_name cscopes name} in
-  let defs = context.defs |> StringMap.add (if is_class_context context.scopes then get_current_class_name context ^ "." ^ name else name)
-               { line; filename = context.filename; scopes = context.scopes } in
-  let offset = if context.index >= String.length context.code - 1 then "" else "\n\n" in
-  let next = if next = "" then get_indentation (depth + 1) ^ "pass\n" else next in
-  let vars = if is_parsing_ended context then context.vars else prev_vars in
-  get_indentation depth ^ "def " ^ resolve_py_conficts name ^ "(" ^ names ^ "):\n" ^ next ^ offset, { context with vars; defs }
+  if name = "->" then 
+    raise_syntax_error (get_string InvalidFunctionDefinition) ~line: line
+  else
+    let names, index, vars, types = get_param context index in
+    let index, type_ = check_return_type index in
+    let fx = `Function (types, type_) in
+    let vars, prev_vars = 
+      if is_method_context context.scopes then
+        let class_name = get_current_class_name context in
+        let f = add_class_attr class_name name fx true in
+        f vars, f context.vars
+      else
+        vars |> StringMap.add name fx, context.vars |> StringMap.add name fx in
+    let cscopes = context.scopes in (*cscopes = current scopes*)
+    try_update_warnings ~line;
+    let next, context = eval_code {context with index; vars; scopes = set_fscope_name cscopes name} in
+    let defs = context.defs |> StringMap.add (if is_class_context context.scopes then get_current_class_name context ^ "." ^ name else name)
+                 { line; filename = context.filename; scopes = context.scopes } in
+    let offset = if context.index >= String.length context.code - 1 then "" else "\n\n" in
+    let next = if next = "" then get_indentation (depth + 1) ^ "pass\n" else next in
+    let vars = if is_parsing_ended context then context.vars else prev_vars in
+    get_indentation depth ^ "def " ^ resolve_py_conficts name ^ "(" ^ names ^ "):\n" ^ next ^ offset, { context with vars; defs }
 
 and eval_procedure context =
   let depth = List.length context.scopes - 1 in

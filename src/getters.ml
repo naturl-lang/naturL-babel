@@ -104,7 +104,8 @@ let get_param context index =
       let i = match_end () in
       let new_name = resolve_py_conficts name in
       let sep = if is_first then "" else ", " in
-      _get_params (StringMap.add (String.trim name) type_ vars) (names ^ sep ^ new_name) (index + i + 1) ~types: (type_ :: types) t in
+      _get_params (StringMap.add (String.trim name) type_ vars) (names ^ sep ^ new_name) (index + i + 1) ~types: (type_ :: types) t 
+    in
   let r = regexp {| *\(.+ [A-Za-z_][A-Za-z0-9_]*\(, ?[^ ]+ [A-Za-z_][A-Za-z0-9_]*\)*\))|} in
   if string_match r context.code index then
     _get_params context.vars "" (index + 1) (split (regexp ",") (matched_group 1 context.code)) ~is_first: true
