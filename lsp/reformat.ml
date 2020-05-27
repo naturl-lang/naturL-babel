@@ -35,7 +35,9 @@ let reformat_operators string =
   in _reformat_operators token_list;;
 
 let get_indentation indentation_level tab_size insert_space =
-  if insert_space then
+  if indentation <= 0 then
+	""
+  else if insert_space then
     String.make (indentation_level*tab_size) ' '
   else
     String.make indentation_level '\t'
@@ -49,8 +51,8 @@ let reformat string tab_size insert_space =
     | h :: t when contains h "sinon_si" || contains h "sinon" ->  _reformat t (indentation) (result ^ (get_indentation (indentation-1) tab_size insert_space) ^ (reformat_operators h) ^ "\n")
     | h :: t when contains h "procedure" || contains h "fonction" -> _reformat t (indentation+1) (result ^ (get_indentation indentation tab_size insert_space) ^ (reformat_function_definition h) ^ "\n")
     | h :: t when contains h "tant_que" || contains h "pour" || contains h "pour_chaque" || contains h "si" -> _reformat t (indentation+1) (result ^ (get_indentation indentation tab_size insert_space) ^ (reformat_operators h) ^ "\n")
-    | h :: t when Str.string_match (Str.regexp "variables") h 0 -> _reformat t (indentation+1) (result ^ (get_indentation indentation tab_size insert_space) ^ h ^ "\n")
+    | h :: t when Str.string_match (Str.regexp "variables") h 0 || Str.string_match (Str.regexp "attributs") h 0 || Str.string_match (Str.regexp "methodes") h 0 -> _reformat t (indentation+1) (result ^ (get_indentation indentation tab_size insert_space) ^ h ^ "\n")
     | h :: t when Str.string_match (Str.regexp "fin") h 0 -> _reformat t (indentation-1) (result ^ (get_indentation (indentation-1) tab_size insert_space) ^ h ^ "\n")
-    | h :: t when Str.string_match (Str.regexp "debut") h 0 -> _reformat t (indentation) (result ^ (get_indentation (indentation-1) tab_size insert_space) ^ h ^ "\n")
+    | h :: t when Str.string_match (Str.regexp "debut") h 0 -> _reformat t (indentation-1) (result ^ (get_indentation (indentation-2) tab_size insert_space) ^ h ^ "\n")
     | h :: t -> _reformat t indentation (result ^ (get_indentation indentation tab_size insert_space) ^ (reformat_operators h) ^ "\n")
   in _reformat token_list 0 "";;
