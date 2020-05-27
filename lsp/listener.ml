@@ -24,14 +24,11 @@ let handle_request id : Request.t -> unit = function
 let rec listen ic =
   let read_content ic length =
     let rec read_content ic length accu =
-      let line = input_line ic in
-      let length = length - String.length line - (if Sys.unix then 1 else 2)
-      and accu = accu ^ line in
-      if length <= 0 then
-        accu
-      else
-        read_content ic length accu
-
+    if length = 0 then
+      accu
+    else
+      let s = String.make 1 (input_char ic) in
+      read_content ic (length - 1) (accu ^ s)
     in read_content ic length ""
   in
   let header = Header.read ic
