@@ -10,7 +10,7 @@ let handle_notification : Client_notification.t -> unit = function
 
 let handle_request id : Request.t -> unit = function
   | Shutdown -> Environment.shutdown (); Sender.send_response stdout Jsonrpc.(Response.ok id `Null)
-  | Initialize params -> Environment.set_client_capabilities params.capabilities; Sender.initialize stdout id;
+  | Initialize params -> Environment.set_client_capabilities params.capabilities; Sender.initialize stdout id ;
     (match params.initializationOptions with
        Some lang -> Internationalisation__Translation.set_lang_of_string lang
      | None -> ())
@@ -18,14 +18,14 @@ let handle_request id : Request.t -> unit = function
   | TextDocumentCompletion params -> Functions.completion stdout id params
   | TextDocumentFormat params -> Functions.reformat stdout id params
   | UnknownRequest name -> Sender.send_response stdout
-            Jsonrpc.(Response.error id Response.Error.(make ~code:MethodNotFound ~message:("Unknown method " ^ name) ()))
+                             Jsonrpc.(Response.error id Response.Error.(make ~code:MethodNotFound ~message:("Unknown method " ^ name) ()))
 
 
 let rec listen ic =
   let read_content ic length =
     let rec read_content ic length accu =
       let line = input_line ic in
-      let length = length - String.length line - 1
+      let length = length - String.length line - (if Sys.unix then 1 else 2)
       and accu = accu ^ line in
       if length <= 0 then
         accu
@@ -59,7 +59,7 @@ let rec listen ic =
     | None -> (match Client_notification.of_jsonrpc jsonrpc with
         | Ok notification ->
           if not (Environment.is_shutdown () && notification <> Exit) || notification = Initialized &&
-             (Environment.initialized () || !Environment.client_capabilities <> None && notification = Initialized) then
+                                                                         (Environment.initialized () || !Environment.client_capabilities <> None && notification = Initialized) then
             handle_notification notification
         | Error _ -> print_endline "error")
   end;
