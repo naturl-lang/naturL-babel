@@ -75,7 +75,7 @@ let get_line code i =
         '\n' -> if escaped then _get_line false (i + 1) line else line, i + 1
       | '|' -> _get_line true (i + 1) line
       | x -> if escaped && not (List.mem x [' '; '\t']) then
-          raise_syntax_error ("Unexpected character '" ^ (String.make 1 x) ^ "' after line continuation character")
+          raise_syntax_error ((get_string UnexpectedChar) ^ (String.make 1 x) ^ (get_string AfterLineContinuation))
         else
           _get_line escaped (i + 1) (line ^ (String.make 1 x))
     else
@@ -126,7 +126,7 @@ let get_var name ?main_vars vars =
           | Some `Class (attrs, _) -> attr_name, attrs
           | None -> attr_name, vars   (* We are already inside the class *)
           | _ -> assert false)
-      | Some t -> raise_name_error ("Type " ^ (Type.to_string t) ^ " has no attribute " ^ attr_name)
+      | Some t -> raise_name_error ((get_string TheType) ^ (Type.to_string t) ^ (get_string HasNoAttribute) ^ attr_name)
       | None -> raise_name_error (get_string UnknownVariable ^ var_name ^ "'")
     else
       name, vars
@@ -175,7 +175,7 @@ let rec get_imported_files_infos ?(prefix = "") ?(element = None) name =
         infos
       end
     else
-      raise_import_error ("Unknown package '" ^ dir ^ "'")
+      raise_import_error ((get_string UnknownPackage) ^ dir ^ "'")
   else if Str.string_match (Str.regexp (r ^ "*\\)\\.\\*$")) name 0 then (* pack.* *)
     let name = matched_group 1 name ^ (matched_group 2 name) in
     get_imported_files_infos ~element: (Some "*") name
@@ -204,6 +204,6 @@ let rec get_imported_files_infos ?(prefix = "") ?(element = None) name =
       Sys.chdir "..";
       infos
     else
-      raise_import_error ("Can not import package '" ^ prefix ^ name ^ "' (missing naturl-package file)")
+      raise_import_error ((get_string CannotImportPackage) ^ prefix ^ name ^ (get_string MissingNaturlPackage))
   else
-    raise_import_error ("Unknown module or package '" ^ prefix ^ name ^ "'")
+    raise_import_error ((get_string UnknownPackage) ^ prefix ^ name ^ "'")

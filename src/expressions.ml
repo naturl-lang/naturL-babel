@@ -82,7 +82,7 @@ open (struct
     match op with
     | "neg" -> Neg arg
     | "non" -> Not arg
-    | op -> raise_syntax_error ("Unknown operator '" ^ op ^ "'")
+    | op -> raise_syntax_error ((get_string UnknownOperator) ^ op ^ "'")
 
   let string_of_token = function
     | Operator str | Identifier str | Litteral str -> str ^ " "
@@ -253,7 +253,7 @@ let rec type_of_expr context : Expr.t -> Type.t = function
       raise_type_error ((get_string CannotCompare) ^ (Type.to_string l_type) ^ (get_string AndType) ^ (Type.to_string r_type))
   | List [] -> `List `Any
   | List (h :: t) -> if is_list_uniform context.vars (List.map (type_of_expr context) (h :: t)) then `List (type_of_expr context h)
-    else raise_type_error ("All elements of a list must have the same type") (*TODO Fix translation*)
+    else raise_type_error (get_string AllListElements)
   | Call (name, params) -> let params_types = List.map (type_of_expr context) params in
     (* If the function is a method, replace 'instance func' by 'self.func' *)
     let name = match String.split_on_char ' ' name with

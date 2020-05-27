@@ -28,6 +28,7 @@ type key =
   | TypeError
   | NameError
   | ImportError
+  | Warning
   | NameTypeMessage
   | NameButGotMessage
   | HasTypeMessage
@@ -69,6 +70,27 @@ type key =
   | TheType
   | NotSubscriptable
   | ListIndicesIntegers
+  | GivenExpression
+  | AttributeScope
+  | DeclareAttributes
+  | AllListElements
+  | AfterLineContinuation
+  | HasNoAttribute
+  | UnknownPackage
+  | CannotImportPackage
+  | UndefinedType
+  | InClass
+  | TheVariable
+  | HasNoValue
+  | CannotResolveName
+  | CannotDeclareMethod
+  | KeywordInstance
+  | UnclosedScope
+  | MaybeSkipLine
+  | UnclosedVariable
+  | ConstructorReturn
+  | FirstMethod
+  | MissingNaturlPackage
 
 let to_int = function
   | SyntaxError -> 1
@@ -116,6 +138,29 @@ let to_int = function
   | TheType -> 43
   | NotSubscriptable -> 44
   | ListIndicesIntegers -> 45
+  | GivenExpression -> 46
+  | AttributeScope -> 47
+  | DeclareAttributes -> 48
+  | AllListElements -> 49
+  | AfterLineContinuation -> 50
+  | HasNoAttribute -> 51
+  | UnknownPackage -> 52
+  | CannotImportPackage -> 53
+  | UndefinedType -> 54
+  | InClass -> 55
+  | TheVariable -> 56
+  | HasNoValue -> 57
+  | CannotResolveName -> 58
+  | CannotDeclareMethod -> 59
+  | KeywordInstance -> 60
+  | UnclosedScope -> 61
+  | MaybeSkipLine -> 62
+  | UnclosedVariable -> 63
+  | ConstructorReturn -> 64
+  | FirstMethod -> 65
+  | Warning -> 66
+  | MissingNaturlPackage -> 67
+  
 
 let json =let path =
   try [Sys.getenv "NATURLPATH"; "internationalisation"; "translation.json"]
@@ -142,6 +187,7 @@ let get_string key  =
   | TypeError -> get_member_from_JSON "TypeError"
   | NameError -> get_member_from_JSON "NameError"
   | ImportError -> get_member_from_JSON "ImportError"
+  | Warning -> get_member_from_JSON "Warning"
   | NameTypeMessage -> get_member_from_JSON "NameTypeMessage"
   | NameButGotMessage -> get_member_from_JSON "NameButGotMessage"
   | HasTypeMessage -> get_member_from_JSON "HasTypeMessage"
@@ -183,3 +229,24 @@ let get_string key  =
   | TheType -> get_member_from_JSON "TheType"
   | NotSubscriptable -> get_member_from_JSON "NotSubscriptable"
   | ListIndicesIntegers -> get_member_from_JSON "ListIndicesIntegers"
+  | GivenExpression -> get_member_from_JSON "GivenExpression"
+  | AttributeScope -> get_member_from_JSON "AttributeScope"
+  | DeclareAttributes -> get_member_from_JSON "DeclareAttributes"
+  | AllListElements -> get_member_from_JSON "AllListElements"
+  | AfterLineContinuation -> get_member_from_JSON "AfterLineContinuation"
+  | HasNoAttribute -> get_member_from_JSON "HasNoAttribute"
+  | UnknownPackage -> get_member_from_JSON "UnknownPackage"
+  | CannotImportPackage -> get_member_from_JSON "CannotImportPackage"
+  | UndefinedType -> get_member_from_JSON "UndefinedType"
+  | InClass -> get_member_from_JSON "InClass"
+  | TheVariable -> get_member_from_JSON	"TheVariable"
+  | HasNoValue -> get_member_from_JSON "HasNoValue"
+  | CannotResolveName -> get_member_from_JSON "CannotResolveName"
+  | CannotDeclareMethod -> get_member_from_JSON "CannotDeclareMethod"
+  | KeywordInstance-> get_member_from_JSON "KeywordInstance"
+  | UnclosedScope -> get_member_from_JSON "UnclosedScope"
+  | MaybeSkipLine -> get_member_from_JSON "MaybeSkipLine"
+  | UnclosedVariable -> get_member_from_JSON "UnclosedVariable"
+  | ConstructorReturn -> get_member_from_JSON "ConstructorReturn"
+  | FirstMethod -> get_member_from_JSON "FirstMethod"
+  | MissingNaturlPackage -> get_member_from_JSON "MissingNaturlPackage"

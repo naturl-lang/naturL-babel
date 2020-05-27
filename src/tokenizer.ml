@@ -69,7 +69,7 @@ let tokenize input (vars: Type.t StringMap.t) =
         else if StringMap.mem left vars || Imports.is_namespace_imported left then
           (Identifier token) :: _tokenize input (index + (String.length token))
         else
-          raise_name_error ("Can not resolve name '" ^ left ^ "'")
+          raise_name_error ("(get_string CannotResolveName) '" ^ left ^ "'")
       else if Str.string_match reg_identifier input index then
         let token = Str.matched_string input in
         if List.mem token Syntax.keywords then

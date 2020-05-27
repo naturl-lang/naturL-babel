@@ -4,7 +4,7 @@ open Errors
 open Structures
 open Getters
 open Expressions
-
+open Internationalisation.Translation
 
 (*AUX*)
 (*CORE*)
@@ -28,7 +28,7 @@ let eval_attributes context =
           let vars = context.vars |> StringMap.add class_name (`Class (attr_meths, are_set)) in
           { context with vars }, result
         else
-          raise_type_error "Given expression does not match the declared type" ~line: (get_line_no context.code context.index)
+          raise_type_error (get_string GivenExpression) ~line: (get_line_no context.code context.index)
       else
         let type_ = Type.of_string context.vars word in
         (*getting var name*)
@@ -57,7 +57,7 @@ let eval_attributes context =
         let context, l_result =  manage_line (String.length line) line 0 context (get_current_class_name context) "" in
         _main_process {context with index = i } (result ^ l_result) code_len
     else
-      raise_syntax_error "Attributes scope is never ended" ~line: (get_line_no context.code context.index)
+      raise_syntax_error (get_string AttributeScope) ~line: (get_line_no context.code context.index)
   in
   let code = context.code in
   try_update_err (get_line_no code context.index) (fun () -> _main_process context "" (String.length code))
@@ -82,7 +82,7 @@ let rec is_method_context scopes =
 let _get_attrs_result context =
   match List.hd context.scopes with
   | Attributes content -> content
-  | _ -> raise_syntax_error "Cannot declare methodes without any attributes" ~line: (get_line_no context.code context.index)
+  | _ -> raise_syntax_error (get_string DeclareAttributes) ~line: (get_line_no context.code context.index)
 
 let rec get_methods_content scopes =
   match scopes with

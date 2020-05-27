@@ -153,7 +153,7 @@ let rec eval_code context =
                  let next, context = eval_code context in
                  translated ^ next, context
                else
-                 raise_syntax_error "Cannot declare methods without arguments" ~line: (get_line_no context.code context.index)
+                 raise_syntax_error (get_string CannotDeclareMethod) ~line: (get_line_no context.code context.index)
         | "debut" -> if is_def then
             eval_code {context with scopes = (Function (func_name, false)):: List.tl context.scopes}
           else
@@ -169,7 +169,7 @@ let rec eval_code context =
                 else
                   "return self"
               else
-                raise_name_error ("Keyword 'instance' cannot be used outside a class definition")
+                raise_name_error (get_string KeywordInstance)
             else
               let py_expr, expr_type = try_update_err (get_line_no code context.index) (fun () -> eval_expression_with_type expr context) in
               _check_retcall expr_type context;
@@ -201,7 +201,7 @@ let rec eval_code context =
         | "" -> if List.length context.scopes = 0 then
             "", context
           else
-            raise_syntax_error "Unclosed scope: expected 'fin'" ~line: (get_line_no code context.index)
+            raise_syntax_error (get_string UnclosedScope) ~line: (get_line_no code context.index)
         | _ ->
           (* Expression or affectation *)
           let line_no = get_line_no code start_index in
@@ -237,7 +237,7 @@ let rec eval_code context =
                 else
                   raise_unexpected_type_error_with_name var (Type.to_string var_type) (Type.to_string expr_type) ~line: (get_line_no code index)
               else
-                raise_syntax_error "Keyword 'instance' cannot be used outside a class definition" ~line:(get_line_no code index)
+                raise_syntax_error (get_string KeywordInstance) ~line:(get_line_no code index)
             else
               let index = ignore_chrs code start_index in
               let line, index = try_update_err line_no (fun () -> get_line code index) in
@@ -297,7 +297,7 @@ and eval_variables context =
       and line = get_line_no context.code context.index
       and filename = context.filename and scopes = context.scopes in
       if name = "fin" then
-        raise_syntax_error ~line:(get_line_no context.code context.index) "Unexpected keyword 'fin'. Maybe you should skip a line";
+        raise_syntax_error ~line:(get_line_no context.code context.index) (get_string MaybeSkipLine);
       eval_line  { context with vars = StringMap.add name type_struct context.vars ;
                                 defs = StringMap.add name { line; filename; scopes } context.defs }
         type_struct t
@@ -312,7 +312,7 @@ and eval_variables context =
          { context with index }
        else
          let line, index = get_line context.code index in
-         if word = "" then raise_syntax_error ~line:line_no "'variables' is unclosed";
+         if word = "" then raise_syntax_error ~line:line_no (get_string UnclosedVariable);
          let type_struct = try_update_err line_no (fun () -> Type.of_string context.vars word) in
          let context = eval_line context type_struct (line
                                                       |> String.split_on_char ','
@@ -478,7 +478,7 @@ and eval_pour_chaque context =
   let iterable, index = get_expression code index "faire"  in let iterable_expr, iterable_type = try_update_err line (fun () -> eval_expression_with_type iterable context) in
   (match Type.get_iterable_type iterable_type with
    | Some t -> if not (Type.is_compatible t var_type) then raise_unexpected_type_error (Type.to_string t) (Type.to_string var_type) ~line
-   | None -> raise_type_error ((get_string TheType) ^ (Type.to_string iterable_type) ^ "' is not iterable") ~line);
+   | None -> raise_type_error ((get_string TheType) ^ (Type.to_string iterable_type) ^ (get_string NotSubscriptable)) ~line);
   try_update_warnings ~line;
   let next, context = eval_code {context with index} in
   let next = if next = "" then get_indentation (depth + 1) ^ "pass\n" else next in
@@ -533,11 +533,11 @@ and eval_constructor context =
       if result = class_name then
         i
       else
-        raise_syntax_error "The constructor does not return the right type." ~line: line
+        raise_syntax_error (get_string ConstructorReturn) ~line: line
   in
   let class_name = get_current_class_name context in
   let name, index = get_word context.code (context.index + 9) in (* 9 = 8 + 1 *)
-  let name = if name <> "nouveau" then raise_syntax_error ("The first method needs to be a constructor but got: " ^ name) else "nouveau" in
+  let name = if name <> "nouveau" then raise_syntax_error ((get_string FirstMethod) ^ name) else "nouveau" in
   let prev_vars = context.vars in
   let names, index, vars, types = get_param context index in
   let index = check_return_type index in

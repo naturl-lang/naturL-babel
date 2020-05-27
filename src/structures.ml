@@ -233,15 +233,15 @@ module Value = struct
       let class_name = if name = "self" then get_current_class_name context
         else match StringMap.find name context.vars with
             `Custom name -> name
-          | t -> raise_name_error ("Type " ^ (Type.to_string t) ^ " has no attribute " ^ attribute)
+          | t -> raise_name_error ((get_string TheType) ^ (Type.to_string t) ^ (get_string HasNoAttribute) ^ attribute)
       in match StringMap.find_opt class_name context.vars with
       | Some `Class (attr_meths, _) -> (match StringMap.find_opt attribute attr_meths with
           | Some t -> t
           | _ -> if Str.string_match accessed_var_regex attribute 0 then
               get_unknown_variable {context with vars = StringMap.union (fun _ -> fun _ -> fun value -> Some value) context.vars attr_meths} attribute error
             else
-              raise_type_error ("Type " ^ class_name ^ " has no attribute " ^ attribute))
-      | None -> raise_type_error ("Undefined type " ^ class_name)
+              raise_type_error ((get_string TheType) ^ class_name ^ (get_string HasNoAttribute) ^ attribute))
+      | None -> raise_type_error ((get_string UndefinedType) ^ class_name)
       | _ -> assert false
     else
       error ()
@@ -268,13 +268,13 @@ module Value = struct
             | Some t -> let vars = context.vars |> StringMap.add attr_name t in
               get_type { context with vars } (Instance (Type.to_string t, sub_attr_name)),
               (try StringMap.find name are_set with Not_found -> true)
-            | None -> raise_name_error ((get_string UnknownVariable) ^ attr_name ^ "' in class '" ^ type_name ^ "'")
+            | None -> raise_name_error ((get_string UnknownVariable) ^ attr_name ^ (get_string InClass) ^ type_name ^ "'")
           else
-            raise_name_error ((get_string UnknownVariable) ^ name ^ "' in class '" ^ type_name ^ "'") in
+            raise_name_error ((get_string UnknownVariable) ^ name ^ (get_string InClass) ^ type_name ^ "'") in
       if are_set then
         attr_type
       else
-        raise_name_error ("The variable " ^ name ^ " has no value in the current context")
+        raise_name_error ((get_string TheVariable) ^ name ^ (get_string HasNoValue))
     | None -> `None
 end
 
