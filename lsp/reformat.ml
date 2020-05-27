@@ -35,7 +35,7 @@ let reformat_operators string =
   in _reformat_operators token_list;;
 
 let get_indentation indentation_level tab_size insert_space =
-  if indentation <= 0 then
+  if indentation_level <= 0 then
 	""
   else if insert_space then
     String.make (indentation_level*tab_size) ' '
