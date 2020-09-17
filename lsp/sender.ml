@@ -11,7 +11,7 @@ let send_packet oc packet =
   in let json = Yojson.Safe.to_string yojson
   in let content_length = String.length json in
   Header.(write oc (make ~content_length ()));
-  print_endline (String.make 100 '*' ^ "Sent message : " ^ json ^ (String.make 100 '*'));
+  print_endline (String.make 10 '*' ^ "Sent message : " ^ json ^ (String.make 10 '*'));
   output_string oc (json ^ "\n");
   flush oc
 

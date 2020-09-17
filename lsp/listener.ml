@@ -27,18 +27,19 @@ let handle_request oc id : Request.t -> unit = function
 
 
 let rec listen ic oc =
-  let read_content ic length =
-    let rec read_content ic length accu =
-    if length = 0 then
-      accu
-    else
+  let read_content ic =
+    let rec read_content ic accu =
+    try
       let s = String.make 1 (input_char ic) in
-      read_content ic (length - 1) (accu ^ s)
-    in read_content ic length ""
+      read_content ic (accu ^ s)
+    with End_of_file -> accu
+    in read_content ic ""
   in
-  let header = Header.read ic
-  in let content = read_content ic header.content_length in
-  print_endline (String.make 100 '*' ^ "Received message " ^ content ^ (String.make 100 '*'));
+  print_string "Reading header...";
+  let _ = Header.read ic in
+  print_endline "Done.";
+  let content = read_content ic in
+  print_endline (String.make 10 '*' ^ "Received message " ^ content ^ (String.make 10 '*'));
   let yojson = Yojson.Safe.from_string content in
   let jsonrpc = Jsonrpc.Request.t_of_yojson yojson in
   begin
