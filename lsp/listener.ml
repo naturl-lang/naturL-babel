@@ -38,7 +38,6 @@ let rec listen ic oc =
   in
   let header = Header.read ic
   in let content = read_content ic header.content_length in
-  print_endline (String.make 100 '*' ^ "Received message " ^ content ^ (String.make 100 '*'));
   let yojson = Yojson.Safe.from_string content in
   let jsonrpc = Jsonrpc.Request.t_of_yojson yojson in
   begin
