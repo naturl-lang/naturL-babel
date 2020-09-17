@@ -30,7 +30,8 @@ let empty = { content_length = -1;
 
 let read ic =
   let rec read t =
-    match String.split_on_char ':' (input_line ic) with
+    let line = input_line ic in print_endline line;
+    match String.split_on_char ':' line with
     | "" :: [] when Sys.win32 || Sys.cygwin -> t
     | "\r" :: [] when Sys.unix -> t
     | field :: value :: [] -> let value = String.trim value in

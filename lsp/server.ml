@@ -4,6 +4,7 @@ let setup_server fx addr port =
   let sock = socket PF_INET SOCK_STREAM 0 in
   bind sock sockaddr;
   listen sock 1;  (* An LSP sevrver only accepts one client *)
+  Printf.printf "Server connected at port %d\n" port;
   let fd, _ = accept sock in
   (* Low level UNIX file descriptor to high level channels *)
   let ic = in_channel_of_descr fd

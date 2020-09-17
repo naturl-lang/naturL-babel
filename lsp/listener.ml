@@ -33,11 +33,16 @@ let rec listen ic oc =
       accu
     else
       let s = String.make 1 (input_char ic) in
+      print_string s;
       read_content ic (length - 1) (accu ^ s)
     in read_content ic length ""
   in
-  let header = Header.read ic
-  in let content = read_content ic header.content_length in
+  print_endline "Reading header";
+  let header = Header.read ic in
+  print_endline " Done.";
+  print_endline "Reading content";
+  let content = read_content ic header.content_length in
+  print_endline " Done.";
   let yojson = Yojson.Safe.from_string content in
   let jsonrpc = Jsonrpc.Request.t_of_yojson yojson in
   begin
