@@ -32,14 +32,13 @@ let read ic =
   let rec read t =
     let line = input_line ic in print_endline line;
     match String.split_on_char ':' line with
-    | "" :: [] when Sys.win32 || Sys.cygwin -> t
-    | "" :: [] when Sys.win32 || Sys.cygwin -> print_endline "Something strange happened"; t
+    | ("" :: [] | []) when Sys.win32 || Sys.cygwin -> t
     | "\r" :: [] when Sys.unix -> t
     | field :: value :: [] -> let value = String.trim value in
       (match Field.of_string field with
        | Content_length -> read { t with content_length = int_of_string value }
        | Content_type -> read { t with content_type = value})
-    | l -> print_endline ("Invalid line - " ^ (String.concat ":" l)); raise (Invalid_line (String.concat ":" l))
+    | l -> print_endline ("Invalid line - '" ^ (String.concat ":" l) ^ "'"); raise (Invalid_line (String.concat ":" l))
   in let header = read empty
   in if header.content_length = empty.content_length then
     begin
