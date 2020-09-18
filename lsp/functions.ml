@@ -74,9 +74,10 @@ let reformat oc id (params: DocumentFormattingParams.t) =
       }] |> List.map TextEdit.yojson_of_t
     in Sender.send_response oc (Jsonrpc.Response.ok id (`List edits))
   with Not_found ->  Sender.send_response oc
-                      Jsonrpc.Response.(error id Jsonrpc.Response.Error.(make
-                                                                           ~code:Code.InternalError
-                                                                           ~message: ("Unknown uri " ^ params.textDocument.uri ^ ". Have you sent an open notification ?") ()))
+                       Jsonrpc.Response.(error id Jsonrpc.Response.Error.(
+                           make
+                             ~code:Code.InternalError
+                             ~message: ("Unknown uri " ^ params.textDocument.uri ^ ". Have you sent an open notification ?") ()))
 
 let diagnostic oc =
   (* Convert a couple (message, line) to a diagnostic *)
@@ -91,11 +92,8 @@ let diagnostic oc =
     }
   in
   try
-    print_endline "Known URIs :" ;
-    !Environment.files |> Environment.UriMap.iter (fun s -> fun _ -> print_endline s);
       !Environment.files |> Environment.UriMap.iter
       (fun uri -> fun  _ ->
-        Printf.printf "Sending textDocument/publishDiagnostics for URI %s\n" uri ; flush stdout;
          let content = Environment.get_content uri in
          let context = { Src__Structures.empty_context with code = format_code content } in
          let diagnostics = (Src__Errors.get_errors (fun () -> eval_code context ) |> List.map (to_diagnostic Error content)) in
@@ -108,4 +106,4 @@ let diagnostic oc =
            } in
          let json = PublishDiagnosticsParams.yojson_of_t params in
          Sender.send_notification oc Jsonrpc.Request.(make ~id:None ~params:(Some json) ~method_:"textDocument/publishDiagnostics"))
-  with Not_found -> print_endline "Content not found";
+  with Not_found -> ()
