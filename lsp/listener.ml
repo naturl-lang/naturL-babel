@@ -8,11 +8,9 @@ let handle_notification ic oc : Client_notification.t -> unit = function
      let code = if Environment.is_shutdown () then 0 else 1 in exit code
   | TextDocumentDidOpen params ->
     let uri = params.textDocument.uri in
-    Printf.printf "textDocument/didOpen %s\n" uri ;
     Environment.add_uri uri params.textDocument.text; Functions.diagnostic oc
   | TextDocumentDidChange params ->
     let uri = params.textDocument.uri in
-    Printf.printf "textDocument/didChange %s\n" uri;
     Environment.add_uri uri (List.hd params.contentChanges).text; Functions.diagnostic oc
   | TextDocumentDidClose params -> Environment.remove_uri params.textDocument.uri
   | Unknown_notification _ -> ()
@@ -44,6 +42,8 @@ let rec listen ic oc =
   let content = read_content ic header.content_length in
   let yojson = Yojson.Safe.from_string content in
   let jsonrpc = Jsonrpc.Request.t_of_yojson yojson in
+  print_endline "Known URIs :";
+  !Environment.files |> Environment.UriMap.iter (fun s -> fun _ -> print_endline ("\t* " ^ s));
   begin
     match jsonrpc.id with
     (* Request *)
