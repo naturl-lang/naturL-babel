@@ -42,8 +42,6 @@ let rec listen ic oc =
   let content = read_content ic header.content_length in
   let yojson = Yojson.Safe.from_string content in
   let jsonrpc = Jsonrpc.Request.t_of_yojson yojson in
-  print_endline "Known URIs :";
-  !Environment.files |> Environment.UriMap.iter (fun s -> fun _ -> print_endline ("\t* " ^ s));
   begin
     match jsonrpc.id with
     (* Request *)

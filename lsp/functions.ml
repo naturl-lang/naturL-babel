@@ -104,5 +104,6 @@ let diagnostic oc =
              diagnostics
            } in
          let json = PublishDiagnosticsParams.yojson_of_t params in
+         Printf.printf "Sent textDocument/publishDiagnostics to URI %s\n" uri ;
          Sender.send_notification oc Jsonrpc.Request.(make ~id:None ~params:(Some json) ~method_:"textDocument/publishDiagnostics"))
   with Not_found -> ()
