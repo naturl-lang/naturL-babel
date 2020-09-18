@@ -19,7 +19,7 @@ let set_client_capabilities (capabilities: ClientCapabilities.t) =
 
 let get_content uri =
   match !files |> UriMap.find_opt uri with
-  | None | Some "" -> Uri.read_uri uri
+  | None -> Uri.read_uri uri
   | Some content -> content
 
 let add_uri uri (content: string) =

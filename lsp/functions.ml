@@ -93,19 +93,19 @@ let diagnostic oc =
   try
     print_endline "Known URIs :" ;
     !Environment.files |> Environment.UriMap.iter (fun s -> fun _ -> print_endline s);
-    !Environment.files |> Environment.UriMap.iter
+      !Environment.files |> Environment.UriMap.iter
       (fun uri -> fun  _ ->
-         Printf.printf "Sending textDocument/publishDiagnostics for URI %s\n" uri ; flush stdout;
+        Printf.printf "Sending textDocument/publishDiagnostics for URI %s\n" uri ; flush stdout;
          let content = Environment.get_content uri in
          let context = { Src__Structures.empty_context with code = format_code content } in
          let diagnostics = (Src__Errors.get_errors (fun () -> eval_code context ) |> List.map (to_diagnostic Error content)) in
          let diagnostics = diagnostics @
                            (Src__Warnings.get_warnings () |> List.map (to_diagnostic Warning content)) in
          let params: PublishDiagnosticsParams.t = {
-           uri;
-           version = None;
-           diagnostics
-         } in
+             uri;
+             version = None;
+             diagnostics
+           } in
          let json = PublishDiagnosticsParams.yojson_of_t params in
          Sender.send_notification oc Jsonrpc.Request.(make ~id:None ~params:(Some json) ~method_:"textDocument/publishDiagnostics"))
-  with Not_found -> ()
+  with Not_found -> print_endline "Content not found";
