@@ -30,7 +30,7 @@ let empty = { content_length = -1;
 
 let read ic =
   let rec read t =
-    let line = input_line ic in print_endline line;
+    let line = input_line ic in
     match String.split_on_char ':' line with
     | ("" :: [] | "\r" :: []) when Sys.win32 || Sys.cygwin -> t
     | "\r" :: [] when Sys.unix -> t

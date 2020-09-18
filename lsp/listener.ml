@@ -6,10 +6,14 @@ let handle_notification ic oc : Client_notification.t -> unit = function
         close_in ic
       with _ -> close_in_noerr ic);
      let code = if Environment.is_shutdown () then 0 else 1 in exit code
-  | TextDocumentDidOpen params -> let uri = params.textDocument.uri in
-                                  Environment.add_uri uri params.textDocument.text; Functions.diagnostic oc
-  | TextDocumentDidChange params -> let uri = params.textDocument.uri in
-                                    Environment.add_uri uri (List.hd params.contentChanges).text; Functions.diagnostic oc
+  | TextDocumentDidOpen params ->
+    let uri = params.textDocument.uri in
+    Printf.printf "textDocument/didOpen %s\n" uri ;
+    Environment.add_uri uri params.textDocument.text; Functions.diagnostic oc
+  | TextDocumentDidChange params ->
+    let uri = params.textDocument.uri in
+    Printf.printf "textDocument/didChange %s\n" uri;
+    Environment.add_uri uri (List.hd params.contentChanges).text; Functions.diagnostic oc
   | TextDocumentDidClose params -> Environment.remove_uri params.textDocument.uri
   | Unknown_notification _ -> ()
 
@@ -33,16 +37,11 @@ let rec listen ic oc =
       accu
     else
       let s = String.make 1 (input_char ic) in
-      print_string s;
       read_content ic (length - 1) (accu ^ s)
     in read_content ic length ""
   in
-  print_endline "Reading header";
   let header = Header.read ic in
-  print_endline " Done.";
-  print_endline "Reading content";
   let content = read_content ic header.content_length in
-  print_endline " Done.";
   let yojson = Yojson.Safe.from_string content in
   let jsonrpc = Jsonrpc.Request.t_of_yojson yojson in
   begin
@@ -68,7 +67,7 @@ let rec listen ic oc =
            if not (Environment.is_shutdown () && notification <> Exit) ||
                 notification = Initialized &&
                   (Environment.initialized () || !Environment.client_capabilities <> None && notification = Initialized) then
-            handle_notification ic oc notification
+               handle_notification ic oc notification
         | Error _ -> prerr_endline "error")
   end;
   listen ic oc
