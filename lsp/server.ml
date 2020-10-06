@@ -1,16 +1,29 @@
-let setup_server fx addr port =
-  let open Unix in
-  let sockaddr = ADDR_INET (addr, port) in
-  let sock = socket PF_INET SOCK_STREAM 0 in
-  bind sock sockaddr;
-  listen sock 1;  (* An LSP sevrver only accepts one client *)
-  let fd, _ = accept sock in
-  (* Low level UNIX file descriptor to high level channels *)
-  let ic = in_channel_of_descr fd
-  and oc = out_channel_of_descr fd in
-  fx ic oc
+open Js_of_ocaml
+
+let send_to_lsp_server callback message =
+  Listener.receive callback @@ Js.to_string message
 
 let () =
-  let port = 9131
-  and address = Unix.inet_addr_loopback in
-  setup_server Listener.start address port
+  Js.Unsafe.global##.send := Js.wrap_callback send_to_lsp_server;
+  Js.export "send" send_to_lsp_server;
+
+(*
+let () = send_to_lsp_server print_endline
+"\r\n\r\n{
+  \"id\": 1,
+  \"method\": \"initialize\",
+  \"params\": {
+    \"processId\": null,
+    \"rootUri\": null,
+    \"capabilities\": {
+      \"textDocument\": {
+        \"completion\": { },
+        \"definition\": { },
+        \"publishDiagnostics\": {
+          \"relatedInformation\": true
+        }
+      }
+    }
+  }
+}";;
+*)

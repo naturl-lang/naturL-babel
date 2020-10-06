@@ -2,7 +2,7 @@ open Types
 open Src.Utils
 open Src.Translation
 
-let definition oc id (params: DefinitionParams.t) =
+let definition callback id (params: DefinitionParams.t) =
   let uri = params.textDocument.uri in
   try
     let content = Environment.get_content uri in
@@ -23,19 +23,19 @@ let definition oc id (params: DefinitionParams.t) =
                 end_ = { line = line_infos.line - 1; character = get_line_length (line_infos.line - 1) content - 1 }
               }
             }
-            in Sender.send_response oc (Jsonrpc.Response.ok id (Location.yojson_of_t location)))
+            in Sender.send_response callback (Jsonrpc.Response.ok id (Location.yojson_of_t location)))
         ~on_failure: (function msg, line ->
-            Sender.send_response oc
+            Sender.send_response callback
               Jsonrpc.Response.(error id Jsonrpc.Response.Error.(make
                                                                    ~code:Code.InternalError
                                                                    ~message: ("Error at line " ^ (string_of_int line) ^ ": " ^ msg) ())))
-    with Not_found -> Sender.send_response oc
+    with Not_found -> Sender.send_response callback
                         Jsonrpc.Response.
                           (error id Jsonrpc.Response.Error.
                                       (make
                                          ~code:Code.InvalidParams
                                          ~message: ("Invalid position (line " ^ (string_of_int params.position.line) ^ ", character " ^ (string_of_int params.position.character) ^ ")") ()))
-  with Not_found -> Sender.send_response oc
+  with Not_found -> Sender.send_response callback
                       Jsonrpc.Response.(error id Jsonrpc.Response.Error.(make
                                                                            ~code:Code.InternalError
                                                                            ~message: ("Unknown uri " ^ params.textDocument.uri ^ ". Have you sent an open notification ?") ()))

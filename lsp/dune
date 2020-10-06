@@ -1,5 +1,5 @@
 (executable
   (name server)
-  (public_name server)
+  (modes js)
   (libraries unix yojson src internationalisation)
-  (preprocess (pps ppx_yojson_conv)))
+  (preprocess (pps ppx_yojson_conv ppx_regexp js_of_ocaml-ppx)))

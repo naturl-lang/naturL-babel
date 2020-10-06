@@ -1,11 +1,11 @@
 open Yojson
 
-exception NoNaturLPath
+exception No_naturL_path
 
 let () =
   Printexc.register_printer
     (function
-      | NoNaturLPath -> Some (Printf.sprintf ": no NATURLPATH environment variable is set on this computer")
+      | No_naturL_path -> Some (Printf.sprintf ": no NATURLPATH environment variable is set on this computer")
       | _ -> None (* for other exceptions *)
     )
 
@@ -160,14 +160,15 @@ let to_int = function
   | FirstMethod -> 65
   | Warning -> 66
   | MissingNaturlPackage -> 67
-  
 
-let json =let path =
-  try [Sys.getenv "NATURLPATH"; "internationalisation"; "translation.json"]
-                      |> List.fold_left (fun s -> fun elt -> Filename.concat s elt) ""
-  with Not_found -> raise NoNaturLPath
+
+let json () =
+  let path =
+    try [Sys.getenv "NATURLPATH"; "internationalisation"; "translation.json"]
+        |> List.fold_left (fun s -> fun elt -> Filename.concat s elt) ""
+    with Not_found -> raise No_naturL_path
   in
-    ref (Basic.from_file path)
+  Basic.from_file path
 
 
 let getLangID = function
@@ -176,9 +177,10 @@ let getLangID = function
 
 let get_member_from_JSON value =
   try
-    let high_member = Yojson.Basic.Util.member value !json in
+    let high_member = Yojson.Basic.Util.member value @@ json () in
     Yojson.Basic.Util.to_string (Yojson.Basic.Util.member (getLangID !lang) high_member)
   with Yojson.Basic.Util.Type_error _ -> failwith ("JSON error with key " ^ value)
+     | No_naturL_path -> ""
 
 let get_string key  =
    (*print_int(to_int key) ;*)
