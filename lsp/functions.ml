@@ -1,3 +1,4 @@
+open Js_of_ocaml
 open Types
 open Src.Utils
 open Src.Translation
@@ -107,3 +108,6 @@ let diagnostic oc =
          let json = PublishDiagnosticsParams.yojson_of_t params in
          Sender.send_notification oc Jsonrpc.Request.(make ~id:None ~params:(Some json) ~method_:"textDocument/publishDiagnostics"))
   with Not_found -> ()
+
+let transpile (callback: string -> unit) uri code =
+  Src.Translation.translate_code (Js.to_string uri) (Js.to_string code) |> callback
