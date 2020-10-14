@@ -100,7 +100,8 @@ let remove_comments string =
     | '/' :: t when comment_open -> __remove_comments false t
     | ('\n' :: t | '\r' :: '\n' :: t | '\r' :: t) when comment_open -> "\n" ^ __remove_comments true t
     | _ :: t when comment_open -> __remove_comments true t
-    | h :: t when h = '\\' -> __remove_comments true t
+    | '\\' :: t -> __remove_comments true t
+    | '\r' :: '\n' :: t | '\r' :: t -> "\n" ^ __remove_comments false t
     | h :: t -> (String.make 1 h) ^ __remove_comments false t
   in __remove_comments false (List.init (String.length string) (String.get string))
 

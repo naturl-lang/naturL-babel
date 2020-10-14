@@ -1,4 +1,3 @@
 (executable
   (name naturL)
-  (modes js)
   (libraries src internationalisation))
