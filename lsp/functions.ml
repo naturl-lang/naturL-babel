@@ -109,5 +109,12 @@ let diagnostic oc =
          Sender.send_notification oc Jsonrpc.Request.(make ~id:None ~params:(Some json) ~method_:"textDocument/publishDiagnostics"))
   with Not_found -> ()
 
-let transpile (callback: string -> unit) uri code =
-  Src.Translation.translate_code (Js.to_string uri) (Js.to_string code) |> callback
+let transpile callback error_callback uri code =
+  Src.Errors.try_execute
+    (fun () ->
+       Src.Translation.translate_code ~raise_errors: true
+         (Js.to_string uri)
+         (Js.to_string code)
+       |> Js.string)
+    ~on_success: callback
+    ~on_failure: (fun (msg, line) -> error_callback (Js.string msg) line)

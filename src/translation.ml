@@ -98,7 +98,7 @@ let remove_comments string =
   let rec __remove_comments comment_open = function
       [] -> ""
     | '/' :: t when comment_open -> __remove_comments false t
-    | '\n' :: t when comment_open -> "\n" ^ __remove_comments true t
+    | ('\n' :: t | '\r' :: '\n' :: t | '\r' :: t) when comment_open -> "\n" ^ __remove_comments true t
     | _ :: t when comment_open -> __remove_comments true t
     | h :: t when h = '\\' -> __remove_comments true t
     | h :: t -> (String.make 1 h) ^ __remove_comments false t
@@ -338,13 +338,13 @@ and eval_fonction context =
       get_type context.vars context.code (i + 2)
   in
   let name, index = get_word context.code (context.index + 9) in (* 9 = 8 + 1 *)
-  if name = "->" then 
+  if name = "->" then
     raise_syntax_error (get_string InvalidFunctionDefinition) ~line: line
   else
     let names, index, vars, types = get_param context index in
     let index, type_ = check_return_type index in
     let fx = `Function (types, type_) in
-    let vars, prev_vars = 
+    let vars, prev_vars =
       if is_method_context context.scopes then
         let class_name = get_current_class_name context in
         let f = add_class_attr class_name name fx true in
@@ -580,10 +580,11 @@ and control_keywords =
   ]
 
 
-and get_code_context ?(raise_errors = false) ?max_index filename code =
+and get_code_context ?(raise_errors = false) ?(error_out = stderr) ?max_index filename code =
   let code = format_code code in
   let context = { empty_context with filename; code; max_index } in
-  let _, context = try_catch ~raise_errors stderr (fun () -> eval_code context) in
+  let _, context = try_catch ~raise_errors error_out
+      (fun () -> eval_code context) in
   context
 
 and translate_code ?(raise_errors = false) ?max_index filename code =
