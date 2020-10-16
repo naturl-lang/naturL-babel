@@ -44,7 +44,9 @@ let get_line_first_char_data code index =
   in
   let first_char_index = _get_first_line_char_index index in
   let rec _get_first_column_index index =
-    if code.[index] = ' ' || code.[index] = '\t' then
+    if index <= 0 then
+      0
+    else if code.[index] = ' ' || code.[index] = '\t' then
       _get_first_column_index (index+1)
     else
       index
@@ -63,22 +65,29 @@ let get_line_last_char_data code index =
   in
   let last_char_index = _get_last_line_char_index (index+(int_of_bool (code.[index]='\n'))) in
   let rec _get_last_column_index index =
-    if code.[index] = ' ' || code.[index] = '\t' then
+    if index >= size then
+      index
+    else if code.[index] = ' ' || code.[index] = '\t' then
       _get_last_column_index (index-1)
     else
       index
   in last_char_index, (_get_last_column_index last_char_index)
 
 let get_line_column_data code index =
-  let first_char_index, first_column_index  = get_line_first_char_data code index
-  and _, last_column_index = get_line_last_char_data code index in
-  first_column_index - first_char_index + 1, last_column_index - first_char_index + 1
+  if index = String.length code then
+    let first_char_index, first_column_index  = get_line_first_char_data code (index-1)
+    and _, last_column_index = get_line_last_char_data code (index-1) in
+    first_column_index - first_char_index + 1, last_column_index - first_char_index + 1
+  else
+    let first_char_index, first_column_index  = get_line_first_char_data code index
+    and _, last_column_index = get_line_last_char_data code index in
+    first_column_index - first_char_index + 1, last_column_index - first_char_index + 1
 
 
 let get_current_line_location code index : Location.t =
   let line_no = get_line_no code index and column_start, column_end = get_line_column_data code index
   in
-  {
+  Location.{
     line = line_no;
     range = {
       start = column_start;
@@ -269,32 +278,3 @@ let rec get_imported_files_infos ?(prefix = "") ?(element = None) name =
       raise_import_error ((get_string CannotImportPackage) ^ prefix ^ name ^ (get_string MissingNaturlPackage))
   else
     raise_import_error ((get_string UnknownPackage) ^ prefix ^ name ^ "'");;
-
-let code =
-  "fonction somme(entier a, entier b) -> entier
-       debut
-        a <- b.c
-        b <- taille de a
-        si a alors
-         test()
-        sinon si b alors
-         test2()
-        sinon si b.c alors
-
-         test3()
-
-        sinon si vrai alors
-          test4()
-        sinon si faux alors
-          test5()
-        sinon si a alors
-          test6()
-        fin
-
-        pour i de 1 jusque a 3 faire
-
-
-        a <- 2
-        fin
-        fin
-";;
