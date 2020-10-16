@@ -5,17 +5,10 @@ open Errors
 open Structures
 open Internationalisation.Translation
 
-(* Special utility function for a magic trick*)
-let int_of_bool b =
-  if b then
-    1
-  else
-    0
-
 (* Returns the line number corresponding to the current index in the code *)
 let rec get_line_no code index =
   if index < 0 then
-    1
+    0
   else
     (if index < String.length code && code.[index] = '\n' then 1 else 0) + get_line_no code (index - 1)
 
@@ -32,66 +25,40 @@ let rec get_col_no code index =
 let get_last_line code =
   get_line_no code (String.length code - 1)
 
-let get_line_first_char_data code index =
-  let size = String.length code in
-  let rec _get_first_line_char_index index =
-    if index <= 0 then
-      0
-    else if code.[index] = '\n' && index + 1 != size then
-      index+1
-    else
-      _get_first_line_char_index (index-1)
-  in
-  let first_char_index = _get_first_line_char_index index in
-  let rec _get_first_column_index index =
-    if index <= 0 then
-      0
-    else if code.[index] = ' ' || code.[index] = '\t' then
-      _get_first_column_index (index+1)
-    else
-      index
-  in first_char_index, (_get_first_column_index first_char_index)
 
-
-let get_line_last_char_data code index =
-  let size = String.length code in
-  let rec _get_last_line_char_index index =
-    if index >= size then
-      size-1
-    else if code.[index] = '\n' && index + 1 != size then
-      index-1
-    else
-      _get_last_line_char_index (index+1)
-  in
-  let last_char_index = _get_last_line_char_index (index+(int_of_bool (code.[index]='\n'))) in
-  let rec _get_last_column_index index =
-    if index >= size then
-      index
-    else if code.[index] = ' ' || code.[index] = '\t' then
-      _get_last_column_index (index-1)
-    else
-      index
-  in last_char_index, (_get_last_column_index last_char_index)
-
-let get_line_column_data code index =
-  if index = String.length code then
-    let first_char_index, first_column_index  = get_line_first_char_data code (index-1)
-    and _, last_column_index = get_line_last_char_data code (index-1) in
-    first_column_index - first_char_index + 1, last_column_index - first_char_index + 1
+(* This function separates the code source in a list of lines and acceses the line_number'nth list
+   to get in a form of a tuple the starting column and the ending column*)
+let get_line_column_data code line_number =
+  let line_list = String.split_on_char '\n' code in
+  let line_string = List.nth line_list line_number  in
+  let size = String.length line_string in
+  if line_string = "" then
+    0, 0
   else
-    let first_char_index, first_column_index  = get_line_first_char_data code index
-    and _, last_column_index = get_line_last_char_data code index in
-    first_column_index - first_char_index + 1, last_column_index - first_char_index + 1
+    let rec _get_line_first_char_data index =
+      if index = size || line_string.[index] != ' ' then
+        index
+      else
+        _get_line_first_char_data (index+1)
+    in
+    let rec _get_line_last_char_data index =
+      if index = 0 || line_string.[index] != ' ' then
+        index
+      else
+        _get_line_last_char_data (index-1)
+    in
+    _get_line_first_char_data 0, _get_line_last_char_data (size-1)
+
 
 
 let get_current_line_location code index : Location.t =
-  let line_no = get_line_no code index and column_start, column_end = get_line_column_data code index
+  let line_no = get_line_no code index in let column_start_index, column_end_index = get_line_column_data code line_no
   in
   Location.{
-    line = line_no;
+    line = line_no+1;
     range = {
-      start = column_start;
-      end_ = column_end;
+      start = column_start_index + (if column_start_index = 0 then 0 else 1);
+      end_ = column_end_index + (if column_start_index = 0 then 0 else 1);
     }
   }
 
@@ -164,12 +131,18 @@ let get_expression code index terminator =
 
 let get_line code i =
   let len = String.length code in
+  let rec _continue_to_next_line index =
+    if index + 1 >= len || code.[index + 1] <> '\n' then
+      index
+    else
+      _continue_to_next_line (index + 1)
+  in
   let rec _get_line escaped i line =
     if i < len then
       match code.[i] with
         '\n' -> if escaped || String.trim line = "" then
           _get_line false (i + 1) line
-        else line, i + 1
+        else line, _continue_to_next_line (i + 1)
       | '|' -> _get_line true (i + 1) line
       | x -> if escaped && not (List.mem x [' '; '\t']) then
           raise_syntax_error ("Caractère '" ^ (String.make 1 x) ^ "' inattendu")

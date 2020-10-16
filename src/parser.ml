@@ -1,5 +1,4 @@
-#require "ppx_regexp";;
-open Src
+(*#require "ppx_regexp";;*)
 open Errors
 open Context
 open Expressions
@@ -14,7 +13,6 @@ let parse_body ctx =
       let code = context.code and index = context.index in
       let location = get_current_line_location context.code context.index in
       let line, index = get_line code index in
-      print_int index; print_string " ";
       if is_in_func_definition context then
         match%pcre line with
         | "^[ \t]*debut[ \t]*$" ->
@@ -169,4 +167,4 @@ let ctx =
 ";
     index = 0;
     scopes = [];
-  } in parse_body ctx ;;
+  };;
