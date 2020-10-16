@@ -1,7 +1,6 @@
 open Utils
 open Imports
 open Errors
-open Structures
 
 type builtin =
   {

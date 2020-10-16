@@ -1,9 +1,33 @@
 open Errors
 open Utils
 open Tokenizer
-open Structures
-open Builtins
 open Internationalisation.Translation
+
+
+module Expr = struct
+  type t =
+    | Plus of t * t              (* x + y *)
+    | Minus of t * t             (* x * y *)
+    | Neg of t                   (* -x *)
+    | Times of t * t             (* x * y *)
+    | Div of t * t               (* x / y *)
+    | Div_int of t * t           (* x div y *)
+    | Modulus of t * t           (* x mod y *)
+    | Pow of t * t               (* x ^ y *)
+    | Eq of t * t                (* x = y *)
+    | Gt of t * t                (* x > y *)
+    | Gt_eq of t * t             (* x >= y *)
+    | Lt of t * t                (* x < y *)
+    | Lt_eq of t * t             (* x <= y *)
+    | And of t * t               (* x et y *)
+    | Or of t * t                (* x ou y *)
+    | Not of t                   (* non x *)
+    | List of t list             (* [x, y, ...] *)
+    | Call of string * t list    (* <function-name>(x, y, ...) | <function-name> de <param> *)
+    | Access of t * string       (* <var>.<attr> *)
+    | Subscript of t * t         (* list[x] *)
+    | Value of Value.t           (* x *)
+end
 
 open (struct
   let binary_ops = [
@@ -27,6 +51,7 @@ open (struct
 
   let unary_ops = ["non"; "neg"]
 
+  (*
   let expr_to_op : Expr.t -> string = function
     | Plus _ -> "+"
     | Minus _ | Neg _ -> "-"
@@ -47,6 +72,7 @@ open (struct
     | Call (name, _) -> name
     | Subscript _ -> "get["
     | Value _ -> ""
+     *)
 
   let precedence = function
     | "" -> max_int
@@ -56,7 +82,7 @@ open (struct
     | "+" | "-" -> 4
     | "*" | "fois" | "/" | "div" | "neg" -> 5
     | "non" | "get[" -> 6
-    | "^" | "[" -> 7
+    | "^" | "[" | "de" | "." -> 7
     | _ -> 7 (* Function call *)
 
   let make_binary_op op e1 e2 : Expr.t =
@@ -94,6 +120,7 @@ open (struct
     | token :: t -> string_of_token token ^ string_of_tokens t
 
 
+  (*
   let is_type_accepted t (op: Expr.t) =
     match op with
       Plus _ -> List.exists (fun expected -> Type.is_compatible expected t) [`Int; `Float; `String]
@@ -107,67 +134,60 @@ open (struct
   let rec is_list_uniform vars = function
     | h1 :: h2 :: t -> Type.is_compatible h1 h2 && is_list_uniform vars (h2 :: t)
     | _ -> true
+     *)
 
-end)
-
-
-(*********** Exported function ************)
-
-
-let expr_of_string context str : Expr.t =
-  (*Expression simplification functions: *)
-  let is_var value =
-    match value with
-    | Value.Variable _ -> true
-    |_-> false
-  in
-  let perform_op (e1: Expr.t) (e2: Expr.t) op expr_ : Expr.t =
-    match op, e1, e2 with
-    | "+", Value (Int x1), Value (Int x2) -> Value (Int (x1 ++ x2))
-    | "+", Value (Float x1), Value (Float x2) -> Value (Float (x1 +. x2))
-    | "+", Value (String x1), Value (String x2) -> Value (String (x1 ^ x2))
-    | "+", Value (Int x1), Value (Float x2) -> Value(Float ((Big_int.float_of_big_int x1) +. x2))
-    | "+", Value (Float x1), Value (Int x2) -> Value(Float ((Big_int.float_of_big_int x2) +. x1))
-    | "+", Value (Char x1), Value (Char x2) -> Value (String ((Char.escaped x1) ^ (Char.escaped x2)))
-    | "+", Value (String x1), Value (Char x2) -> Value (String (x1 ^ (Char.escaped x2)))
-    | "+", Value (Char x1), Value (String x2) -> Value (String ((Char.escaped x1) ^ x2))
-    | "-", Value (Int x1), Value (Int x2) -> Value(Int (x1 -- x2))
-    | "-", Value (Float x1), Value (Float x2) -> Value (Float (x1 -. x2))
-    | "-", Value (Int x1), Value (Float x2) -> Value(Float ((Big_int.float_of_big_int x1) -. x2))
-    | "-", Value (Float x1), Value (Int x2) -> Value(Float ((Big_int.float_of_big_int x2) -. x1))
-    | ("*" | "fois"), Value (Int x1), Value (Int x2) -> Value (Int (x1 ** x2))
-    | ("*" | "fois"), Value (Float x1), Value (Float x2) -> Value (Float (x1 *. x2))
-    | ("*" | "fois"), Value (Int x1), Value (Float x2) -> Value(Float ((Big_int.float_of_big_int x1 ) *. x2))
-    | ("*" | "fois"), Value (Float x1), Value (Int x2) -> Value(Float ((Big_int.float_of_big_int x2 ) *. x1))
-    | "\\", Value (Float x1), Value (Float x2) -> Value (Float (x1 /. x2))
-    | "\\", Value (Int x1), Value (Float x2) -> Value(Float ((Big_int.float_of_big_int x1) /. x2))
-    | "\\", Value (Float x1), Value (Int x2) -> Value(Float (x1 /. (Big_int.float_of_big_int x2)))
-    | "div", Value (Int x1), Value (Int x2) -> Value (Int (x1 // x2))
-    | "%", Value (Int x1), Value (Int x2) -> Value (Int (x1 % x2))
-    | "=", Value v1, Value v2 when not (is_var v1 || is_var v2) -> Value (Bool Value.(to_string v1 = to_string v2))
-    | ">", Value (Int x1), Value (Int x2) -> Value (Bool (x1 >> x2))
-    | ">", Value (Float x1), Value (Float x2) -> Value (Bool (x1 > x2))
-    | ">=", Value (Int x1), Value (Int x2) -> Value (Bool (x1 >>= x2))
-    | ">=", Value (Float x1), Value (Float x2) -> Value (Bool (x1 >= x2))
-    | "<", Value (Int x1), Value (Int x2) -> Value (Bool (x1 << x2))
-    | "<", Value (Float x1), Value (Float x2) -> Value (Bool (x1 < x2))
-    | "<=", Value (Int x1), Value (Int x2) -> Value (Bool (x1 <<= x2))
-    | "<=", Value (Float x1), Value (Float x2) -> Value (Bool (x1 <= x2))
-    | "and", Value (Bool x1), Value (Bool x2) -> Value (Bool (x1 && x2))
-    | "and", Value (Bool false), _ | "and", _, Value (Bool false) -> Value (Bool false)
-    | "and", Value(Bool true), x -> x
-    | "and", x, Value(Bool true) -> x
-    | "or", Value (Bool x1), Value (Bool x2) -> Value (Bool (x1 || x2))
-    | "or", Value (Bool true), _ | "or", _ , Value (Bool true) -> Value (Bool true)
-    | "or", Value (Bool false), x -> x
-    | "or", x, Value (Bool false) -> x
-    | "not", Value (Bool x), _ -> Value (Bool (not x))
-    | "neg", Value (Int x), _ -> Value (Int (~--x))
-    | "neg", Value (Float x), _ -> Value (Float (-1.*. x))
-    | "get[", List l, Value (Int i) when i <= to_big (List.length l) -> List.nth l (of_big i)
-    | _-> expr_
-  in
   let rec _simplify (expr: Expr.t) =
+    let is_var value =
+      match value with
+      | Value.Variable _ -> true
+      |_-> false
+    in
+    let perform_op (e1: Expr.t) (e2: Expr.t) op expr_ : Expr.t =
+      match op, e1, e2 with
+      | "+", Value (Int x1), Value (Int x2) -> Value (Int (x1 ++ x2))
+      | "+", Value (Float x1), Value (Float x2) -> Value (Float (x1 +. x2))
+      | "+", Value (String x1), Value (String x2) -> Value (String (x1 ^ x2))
+      | "+", Value (Int x1), Value (Float x2) -> Value(Float ((Big_int.float_of_big_int x1) +. x2))
+      | "+", Value (Float x1), Value (Int x2) -> Value(Float ((Big_int.float_of_big_int x2) +. x1))
+      | "+", Value (Char x1), Value (Char x2) -> Value (String ((Char.escaped x1) ^ (Char.escaped x2)))
+      | "+", Value (String x1), Value (Char x2) -> Value (String (x1 ^ (Char.escaped x2)))
+      | "+", Value (Char x1), Value (String x2) -> Value (String ((Char.escaped x1) ^ x2))
+      | "-", Value (Int x1), Value (Int x2) -> Value(Int (x1 -- x2))
+      | "-", Value (Float x1), Value (Float x2) -> Value (Float (x1 -. x2))
+      | "-", Value (Int x1), Value (Float x2) -> Value(Float ((Big_int.float_of_big_int x1) -. x2))
+      | "-", Value (Float x1), Value (Int x2) -> Value(Float ((Big_int.float_of_big_int x2) -. x1))
+      | ("*" | "fois"), Value (Int x1), Value (Int x2) -> Value (Int (x1 ** x2))
+      | ("*" | "fois"), Value (Float x1), Value (Float x2) -> Value (Float (x1 *. x2))
+      | ("*" | "fois"), Value (Int x1), Value (Float x2) -> Value(Float ((Big_int.float_of_big_int x1 ) *. x2))
+      | ("*" | "fois"), Value (Float x1), Value (Int x2) -> Value(Float ((Big_int.float_of_big_int x2 ) *. x1))
+      | "\\", Value (Float x1), Value (Float x2) -> Value (Float (x1 /. x2))
+      | "\\", Value (Int x1), Value (Float x2) -> Value(Float ((Big_int.float_of_big_int x1) /. x2))
+      | "\\", Value (Float x1), Value (Int x2) -> Value(Float (x1 /. (Big_int.float_of_big_int x2)))
+      | "div", Value (Int x1), Value (Int x2) -> Value (Int (x1 // x2))
+      | "%", Value (Int x1), Value (Int x2) -> Value (Int (x1 % x2))
+      | "=", Value v1, Value v2 when not (is_var v1 || is_var v2) -> Value (Bool Value.(to_string v1 = to_string v2))
+      | ">", Value (Int x1), Value (Int x2) -> Value (Bool (x1 >> x2))
+      | ">", Value (Float x1), Value (Float x2) -> Value (Bool (x1 > x2))
+      | ">=", Value (Int x1), Value (Int x2) -> Value (Bool (x1 >>= x2))
+      | ">=", Value (Float x1), Value (Float x2) -> Value (Bool (x1 >= x2))
+      | "<", Value (Int x1), Value (Int x2) -> Value (Bool (x1 << x2))
+      | "<", Value (Float x1), Value (Float x2) -> Value (Bool (x1 < x2))
+      | "<=", Value (Int x1), Value (Int x2) -> Value (Bool (x1 <<= x2))
+      | "<=", Value (Float x1), Value (Float x2) -> Value (Bool (x1 <= x2))
+      | "and", Value (Bool x1), Value (Bool x2) -> Value (Bool (x1 && x2))
+      | "and", Value (Bool false), _ | "and", _, Value (Bool false) -> Value (Bool false)
+      | "and", Value(Bool true), x -> x
+      | "and", x, Value(Bool true) -> x
+      | "or", Value (Bool x1), Value (Bool x2) -> Value (Bool (x1 || x2))
+      | "or", Value (Bool true), _ | "or", _ , Value (Bool true) -> Value (Bool true)
+      | "or", Value (Bool false), x -> x
+      | "or", x, Value (Bool false) -> x
+      | "not", Value (Bool x), _ -> Value (Bool (not x))
+      | "neg", Value (Int x), _ -> Value (Int (~--x))
+      | "neg", Value (Float x), _ -> Value (Float (-1.*. x))
+      | "get[", List l, Value (Int i) when i <= to_big (List.length l) -> List.nth l (of_big i)
+      | _-> expr_
+    in
     match expr with
     | Plus (e1, e2) -> let e1,e2 = (_simplify e1, _simplify e2) in perform_op e1 e2 "+" (Plus (e1, e2))
     | Minus (e1, e2) -> let e1, e2 = (_simplify e1, _simplify e2) in perform_op e1 e2 "-" (Minus (e1, e2))
@@ -180,12 +200,19 @@ let expr_of_string context str : Expr.t =
     | Gt_eq (e1, e2) -> let e1,e2 = (_simplify e1, _simplify e2) in perform_op e1 e2 ">=" (Gt_eq (e1, e2))
     | Lt (e1, e2) -> let e1,e2 = (_simplify e1, _simplify e2) in perform_op e1 e2 "<" (Lt (e1, e2))
     | Lt_eq (e1, e2) -> let e1,e2 = (_simplify e1, _simplify e2) in perform_op e1 e2 "<=" (Lt_eq (e1, e2))
-    | And(e1,e2) -> let e1,e2 = (_simplify e1, _simplify e2) in perform_op e1 e2 "and" (And (e1, e2))
-    | Or(e1,e2) -> let e1,e2 = (_simplify e1, _simplify e2) in perform_op e1 e2 "or" (Or (e1, e2))
+    | And (e1,e2) -> let e1,e2 = (_simplify e1, _simplify e2) in perform_op e1 e2 "and" (And (e1, e2))
+    | Or (e1,e2) -> let e1,e2 = (_simplify e1, _simplify e2) in perform_op e1 e2 "or" (Or (e1, e2))
     | Not e -> let e = _simplify e in perform_op e e "not" (Not e)
     | Neg e -> let e = _simplify e in perform_op e e "neg" (Neg e)
     | _-> expr
-  in
+
+end)
+
+
+(*********** Exported function ************)
+
+
+let expr_of_string str : Expr.t =
   (*Core functions: *)
   let split_params list =
     let rec _split_params ?(current = []) ?(depth = 0) list =
@@ -196,7 +223,13 @@ let expr_of_string context str : Expr.t =
       | Coma :: t when depth = 0 -> (List.rev current) :: _split_params t ~depth
       | h :: t -> _split_params t ~current: (h :: current) ~depth
     in _split_params (List.tl list)
-  in let rec find_op ?(current = "") ?(min_prec = max_int) ?(left = Queue.create()) ?(right = Queue.create()) ?(prec = 0) tokens =
+  in let rec find_op
+      ?(current = "")
+      ?(min_prec = max_int)
+      ?(left = Queue.create())
+      ?(right = Queue.create())
+      ?(prec = 0)
+      tokens =
        match tokens with
        | [] -> current, left, right
        | (OpenP | OpenHook as token) :: t -> Queue.add token right;
@@ -217,9 +250,21 @@ let expr_of_string context str : Expr.t =
            in make_binary_op op left_expr right_expr
          else if List.mem op unary_ops then  (* All unary tokens are prefixes *)
            make_unary_op op (expr_of_tokens (list_of_queue right))
-         else if op = "[" then begin
+         else if op = "[" then
            let right = split_params (list_of_queue right) in
-           List (List.map expr_of_tokens right) end
+           List (List.map expr_of_tokens right)
+         else if op = "." then
+           let right = match list_of_queue right with
+             | Identifier id :: [] -> id
+             | _ -> raise_syntax_error "Expression invalide"
+           and left = expr_of_tokens (list_of_queue left)
+           in Access (left, right)
+         else if op = "de" then
+           let left = match list_of_queue left with
+             | Identifier id :: [] -> id
+             | _ -> raise_syntax_error ""
+           and right = expr_of_tokens (list_of_queue right)
+           in Call(left, [right])
          else (* Function call *)
            let right = split_params (list_of_queue right) |> List.map expr_of_tokens in
            if Queue.is_empty left then
@@ -227,11 +272,12 @@ let expr_of_string context str : Expr.t =
            else if Queue.length left = 1 && Queue.peek left = Identifier "instance" then
              Call ("instance " ^ op, right)
            else
-             raise_syntax_error (get_string InvalidExpression)
-  in _simplify (expr_of_tokens (tokenize str context.vars))
+             raise_syntax_error "Expression invalide"
+  in _simplify (expr_of_tokens (tokenize str))
 
 
 (* Returns the type of an expression *)
+    (*
 let rec type_of_expr context : Expr.t -> Type.t = function
   | Plus (Value (Char _), Value (Char _)) -> `String
   | Plus (Value (Variable name), Value (Char _)) when Value.get_type context (Value.Variable name) = `Char -> `String
@@ -289,9 +335,11 @@ let rec type_of_expr context : Expr.t -> Type.t = function
       | t -> raise_type_error ((get_string TheType) ^ (Type.to_string t) ^ (get_string NotSubscriptable))
     else raise_type_error (get_string ListIndicesIntegers)
   | Value v -> Value.get_type context v
+       *)
 
 
 (* Converts an expression to a string with parenthesis placed correctly *)
+    (*
 let string_of_expr context expr =
   let rec _string_of_expr ?parent (expr : Expr.t) =
     let str, op = match expr with
@@ -331,10 +379,11 @@ let string_of_expr context expr =
         (try let builtin = StringMap.find name Builtins.functions in
            builtin.translator translated_args, op
          with Not_found -> name ^  "(" ^ String.concat ", " translated_args ^ ")", op)
-      | Subscript (l, i) as op -> let index = (expr_of_string context) (_string_of_expr i ^ " - 1") in
+      | Subscript (l, i) as op -> let index = expr_of_string (_string_of_expr i ^ " - 1") in
         _string_of_expr ~parent: op l ^ "[" ^ (_string_of_expr index) ^ "]", op
       | Value v as op -> Value.to_string v, op
     in match parent with
     | Some parent when precedence (expr_to_op parent) > precedence (expr_to_op op) -> "(" ^ str ^ ")"
     | _ -> str
   in _string_of_expr expr
+*)

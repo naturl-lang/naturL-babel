@@ -1,10 +1,10 @@
 open Str
-open Syntax
 open Utils
 open Global
-open Structures
 open Errors
+open Structures
 open Internationalisation.Translation
+
 
 (* Returns the line number corresponding to the current index in the code *)
 let rec get_line_no code index =
@@ -13,8 +13,64 @@ let rec get_line_no code index =
   else
     (if index < String.length code && code.[index] = '\n' then 1 else 0) + get_line_no code (index - 1)
 
+let rec get_col_no code index =
+  if index <= 0 then
+    1
+  else if index >= String.length code then
+    get_col_no code (index - 1)
+  else if code.[index] = '\n' then
+    0
+  else
+    1 + get_col_no code (index - 1)
+
 let get_last_line code =
   get_line_no code (String.length code - 1)
+
+let get_last_col_no code line =
+  let length = String.length code in
+  let rec get_last_col line index col =
+    if index >= length then
+      col
+    else if code.[index] = '\n' then
+      if line = 0 then
+        col
+      else
+        get_last_col (line - 1) (index + 1) 0
+    else
+      get_last_col line (index + 1) (col + 1)
+  in get_last_col line 0 0
+
+let get_current_line_location code index : Location.t =
+  let line_no = get_line_no code index in
+  let rec get_first_col index length =
+    try
+      if index < 0 || code.[index] = '\n' then
+        length
+      else match code.[index] with
+        | ' ' | '\t' -> get_first_col (index - 1) (length + 1)
+        | _ -> get_first_col (index - 1) length
+    with Invalid_argument _ -> get_first_col (index - 1) length
+  in
+  {
+    line = line_no;
+    range = {
+      start = get_first_col index 0;
+      end_ = get_last_col_no code line_no;
+    }
+  }
+
+let get_last_line_location code =
+  get_current_line_location code (String.length code - 1)
+
+let get_location code start_index end_index : Location.t =
+  {
+    line = get_line_no code start_index;
+    range = {
+      start = get_col_no code start_index;
+      end_ = get_col_no code end_index
+    };
+  }
+
 
 let rec ignore_chrs code i =
   if i < (String.length code) then
@@ -22,7 +78,8 @@ let rec ignore_chrs code i =
       ' ' | '\n' | '\t' | '\r' | '(' | ')' | ',' -> ignore_chrs code (i + 1)
     | _-> i
   else
-    raise_syntax_error ~line: (get_last_line code) (get_string UnexpectedEOF)
+    raise_syntax_error (get_string UnexpectedEOF)
+      ~location:(get_last_line_location code)
 
 let rec ignore_spaces code i =
   if i < (String.length code) then
@@ -31,7 +88,8 @@ let rec ignore_spaces code i =
     else
       i
   else
-    raise_syntax_error ~line: (get_last_line code) (get_string UnexpectedEOF)
+    raise_syntax_error  (get_string UnexpectedEOF)
+      ~location:(get_last_line_location code)
 
 let get_word code i =
   let len = String.length code in
@@ -65,17 +123,20 @@ let get_expression code index terminator =
   if string_match (regexp ("\\(\\(.+ *| *\n\\)*[^\n]+\\)\\(" ^ terminator ^ "\\)")) code index then
     matched_group 1 code |> replace_string "|" "" |> replace_string "\n" "", group_end 3 + 1
   else
-    raise_syntax_error ~line: (get_line_no code index) ((get_string MissingKeyword) ^ terminator ^ "'")
+    raise_syntax_error ("Il manque le mot-clé '" ^ terminator ^ "'")
+      ~location:(get_last_line_location code)
 
 let get_line code i =
   let len = String.length code in
   let rec _get_line escaped i line =
     if i < len then
       match code.[i] with
-        '\n' -> if escaped then _get_line false (i + 1) line else line, i + 1
+        '\n' -> if escaped || String.trim line = "" then
+          _get_line false (i + 1) line
+        else line, i + 1
       | '|' -> _get_line true (i + 1) line
       | x -> if escaped && not (List.mem x [' '; '\t']) then
-          raise_syntax_error ((get_string UnexpectedChar) ^ (String.make 1 x) ^ (get_string AfterLineContinuation))
+          raise_syntax_error ("Caractère '" ^ (String.make 1 x) ^ "' inattendu")
         else
           _get_line escaped (i + 1) (line ^ (String.make 1 x))
     else
@@ -85,34 +146,7 @@ let get_line code i =
 (*Check if the specified type is a valid builtin or user-defined type, if that is the case, returns the right type *)
 let get_type vars code index =
   let t, i = get_word code index in
-  i, try_update_err (get_line_no code index) (fun () -> Type.of_string vars t)
-
-(*Gets the parameters of the function or the procedure*)
-let get_param context index =
-  let set_names names =
-    match context.scopes with
-      | Function_definition _ :: Methods _ :: _ when names = "" -> "self"
-      | Function_definition _ :: Methods _ :: _ -> "self, " ^ names
-      | _ -> names
-  in
-  let rec _get_params ?(is_first = false) vars names index ?(types = []) = function
-    | [] -> set_names names, index, vars, List.rev types
-    | h :: t -> let r = regexp {|^\(.*\)\ +\([a-zA-Z_][a-zA-Z_0-9]*\)$|} in
-      let _ = string_match r h 0 in
-      let type_ = Type.of_string vars (matched_group 1 h) in
-      let name = matched_group 2 h in
-      let i = match_end () in
-      let new_name = resolve_py_conficts name in
-      let sep = if is_first then "" else ", " in
-      _get_params (StringMap.add (String.trim name) type_ vars) (names ^ sep ^ new_name) (index + i + 1) ~types: (type_ :: types) t 
-    in
-  let r = regexp {| *\(.+ [A-Za-z_][A-Za-z0-9_]*\(, ?[^ ]+ [A-Za-z_][A-Za-z0-9_]*\)*\))|} in
-  if string_match r context.code index then
-    _get_params context.vars "" (index + 1) (split (regexp ",") (matched_group 1 context.code)) ~is_first: true
-  else if string_match (regexp {|\( *)\)|}) context.code index then
-    set_names "", match_end(), context.vars, []
-  else
-      raise_syntax_error ~line: (get_line_no context.code index) (get_string InvalidFunctionDefinition)
+  i, try_update_err (get_location code index i) (fun () -> Type.of_string vars t)
 
 let get_var name ?main_vars vars =
   let main_vars = Option.value main_vars ~default: vars in
