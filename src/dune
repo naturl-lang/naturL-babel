@@ -1,4 +1,4 @@
 (library
-  (name ast_src)
+  (name src)
   (libraries num str internationalisation)
   (preprocess (pps ppx_regexp)))

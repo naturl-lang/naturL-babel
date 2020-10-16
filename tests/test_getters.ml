@@ -1,5 +1,5 @@
 (*open Src.Utils*)
-open Src.Getters
+open Old_src.Getters
 (*open Src.Structures *);;
 
 print_string "Beginning getters.ml tests... " ;;

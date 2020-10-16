@@ -1,6 +1,6 @@
-open Src.Utils
-open Src.Translation
-open Src.Structures ;;
+open Old_src.Utils
+open Old_src.Translation
+open Old_src.Structures ;;
 
 print_string "Beginning translation.ml tests... " ;;
 

@@ -1,6 +1,6 @@
 open Types
-open Src.Utils
-open Src.Translation
+open Old_src.Utils
+open Old_src.Translation
 
 let definition oc id (params: DefinitionParams.t) =
   let uri = params.textDocument.uri in
@@ -8,12 +8,12 @@ let definition oc id (params: DefinitionParams.t) =
     let content = Environment.get_content uri in
     try
       let index = get_index_at params.position.line params.position.character content in
-      Src__Errors.try_execute (fun () -> get_code_context ~raise_errors:true ~max_index:index uri content)
+      Old_src__Errors.try_execute (fun () -> get_code_context ~raise_errors:true ~max_index:index uri content)
         ~on_success: (fun context ->
             let word = get_word_at_index index content in
             let line_infos = match context.defs |> StringMap.find_opt word with
               | Some value -> value
-              | None -> let open Src.Structures in
+              | None -> let open Old_src.Structures in
                 context.defs |> StringMap.find (get_current_class_name context ^ "." ^ word)
             in
             let location: Location.t = {
@@ -42,12 +42,12 @@ let definition oc id (params: DefinitionParams.t) =
 
 let completion oc id (params: CompletionParams.t) =
   let send_completion items =
-    let items = items @ Src__Builtins.accessible_keywords
+    let items = items @ Old_src__Builtins.accessible_keywords
                 |> List.map (function (name, type_) ->
                     let open CompletionItem in
                     {
                       label = name;
-                      detail = Some (Src.Structures.Type.to_string type_)
+                      detail = Some (Old_src.Structures.Type.to_string type_)
                     })
     in Sender.send_response oc (Jsonrpc.Response.ok id (`List (items |> List.map CompletionItem.yojson_of_t)))
     in
@@ -55,7 +55,7 @@ let completion oc id (params: CompletionParams.t) =
   try
     let content = Environment.get_content uri in
     let index = get_index_at params.position.line params.position.character content - 1 in
-    Src__Errors.try_execute (fun () -> get_code_context ~raise_errors:true ~max_index:index uri content)
+    Old_src__Errors.try_execute (fun () -> get_code_context ~raise_errors:true ~max_index:index uri content)
       ~on_success:(fun context -> send_completion (StringMap.bindings context.vars))
       ~on_failure:(fun _ -> send_completion [])  (* Even when there is an error, the builtin functions are sent *)
   with Not_found -> send_completion []
@@ -95,10 +95,10 @@ let diagnostic oc =
       !Environment.files |> Environment.UriMap.iter
       (fun uri -> fun  _ ->
          let content = Environment.get_content uri in
-         let context = { Src__Structures.empty_context with code = format_code content } in
-         let diagnostics = (Src__Errors.get_errors (fun () -> eval_code context ) |> List.map (to_diagnostic Error content)) in
+         let context = { Old_src__Structures.empty_context with code = format_code content } in
+         let diagnostics = (Old_src__Errors.get_errors (fun () -> eval_code context ) |> List.map (to_diagnostic Error content)) in
          let diagnostics = diagnostics @
-                           (Src__Warnings.get_warnings () |> List.map (to_diagnostic Warning content)) in
+                           (Old_src__Warnings.get_warnings () |> List.map (to_diagnostic Warning content)) in
          let params: PublishDiagnosticsParams.t = {
              uri;
              version = None;
