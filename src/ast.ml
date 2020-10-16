@@ -5,7 +5,7 @@ open Expressions
 
 (* The first parameter is always the line number *)
 type t =
-  | Body of Location.t * t list
+  | Body of t list
   | Expr of Location.t * Expr.t
   | Return of Location.t * Expr.t
   | Assign of Location.t * string * Expr.t
@@ -17,8 +17,8 @@ type t =
   | Func_definition of Location.t * string * (string * string) list * string * t
   | End
 
-let make_body ~children ~location =
-  Body (location, children)
+let make_body ~children =
+  Body children
 let make_expr ~expr ~context ~location =
   assert_not_in_func_def ~context;
   Expr (location, expr)
@@ -34,15 +34,15 @@ let make_assign ~target ~value ~context ~location =
   Assign (location, target, value)
 let make_if ~target ~body ~context ~location =
   assert_not_in_func_def ~context;
-  let rec extract_else body body_location = function
-    | [] -> make_body ~children:body ~location, None
+  let rec extract_else body = function
+    | [] -> make_body ~children:body, None
     | Else (_, else_body) :: [] ->
-      make_body ~children:body ~location:body_location, Some else_body
-    | child :: tail -> extract_else (child :: body) body_location tail
+      make_body ~children:body, Some else_body
+    | child :: tail -> extract_else (child :: body) tail
   in
   match body with
-  | Body (body_location, children) ->
-    let body, else_ = extract_else [] body_location children
+  | Body children ->
+    let body, else_ = extract_else [] children
     in If (location, target, body, else_)
   | node -> If (location, target, node, None)
 let make_else_if ~target ~body ~context ~location =

@@ -28,8 +28,7 @@ let get_last_line code =
 
 (* This function separates the code source in a list of lines and acceses the line_number'nth list
    to get in a form of a tuple the starting column and the ending column*)
-let get_line_column_data code line_number =
-  let line_list = String.split_on_char '\n' code in
+let get_line_column_data line_number line_list =
   let line_string = List.nth line_list line_number  in
   let size = String.length line_string in
   if line_string = "" then
@@ -51,8 +50,12 @@ let get_line_column_data code line_number =
 
 
 
-let get_current_line_location code index : Location.t =
-  let line_no = get_line_no code index in let column_start_index, column_end_index = get_line_column_data code line_no
+let get_current_line_location ?line_list code index : Location.t =
+  let line_no = get_line_no code index in
+  let line_list = match line_list with
+    | Some list -> list
+    | None -> String.split_on_char '\n' code in
+  let column_start_index, column_end_index = get_line_column_data line_no line_list
   in
   Location.{
     line = line_no+1;
