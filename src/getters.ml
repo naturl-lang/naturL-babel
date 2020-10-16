@@ -5,6 +5,12 @@ open Errors
 open Structures
 open Internationalisation.Translation
 
+(* Special utility function for a magic trick*)
+let int_of_bool b =
+  if b then
+    1
+  else
+    0
 
 (* Returns the line number corresponding to the current index in the code *)
 let rec get_line_no code index =
@@ -26,36 +32,57 @@ let rec get_col_no code index =
 let get_last_line code =
   get_line_no code (String.length code - 1)
 
-let get_last_col_no code line =
-  let length = String.length code in
-  let rec get_last_col line index col =
-    if index >= length then
-      col
-    else if code.[index] = '\n' then
-      if line = 0 then
-        col
-      else
-        get_last_col (line - 1) (index + 1) 0
+let get_line_first_char_data code index =
+  let size = String.length code in
+  let rec _get_first_line_char_index index =
+    if index <= 0 then
+      0
+    else if code.[index] = '\n' && index + 1 != size then
+      index+1
     else
-      get_last_col line (index + 1) (col + 1)
-  in get_last_col line 0 0
+      _get_first_line_char_index (index-1)
+  in
+  let first_char_index = _get_first_line_char_index index in
+  let rec _get_first_column_index index =
+    if code.[index] = ' ' || code.[index] = '\t' then
+      _get_first_column_index (index+1)
+    else
+      index
+  in first_char_index, (_get_first_column_index first_char_index)
+
+
+let get_line_last_char_data code index =
+  let size = String.length code in
+  let rec _get_last_line_char_index index =
+    if index >= size then
+      size-1
+    else if code.[index] = '\n' && index + 1 != size then
+      index-1
+    else
+      _get_last_line_char_index (index+1)
+  in
+  let last_char_index = _get_last_line_char_index (index+(int_of_bool (code.[index]='\n'))) in
+  let rec _get_last_column_index index =
+    if code.[index] = ' ' || code.[index] = '\t' then
+      _get_last_column_index (index-1)
+    else
+      index
+  in last_char_index, (_get_last_column_index last_char_index)
+
+let get_line_column_data code index =
+  let first_char_index, first_column_index  = get_line_first_char_data code index
+  and last_char_index, last_column_index = get_line_last_char_data code index in
+  first_column_index - first_char_index + 1, last_column_index - first_char_index + 1
+
 
 let get_current_line_location code index : Location.t =
-  let line_no = get_line_no code index in
-  let rec get_first_col index length =
-    try
-      if index < 0 || code.[index] = '\n' then
-        length
-      else match code.[index] with
-        | ' ' | '\t' -> get_first_col (index - 1) (length + 1)
-        | _ -> get_first_col (index - 1) length
-    with Invalid_argument _ -> get_first_col (index - 1) length
+  let line_no = get_line_no code index and column_start, column_end = get_line_column_data code index
   in
   {
     line = line_no;
     range = {
-      start = get_first_col index 0;
-      end_ = get_last_col_no code line_no;
+      start = column_start;
+      end_ = column_end;
     }
   }
 
@@ -241,4 +268,33 @@ let rec get_imported_files_infos ?(prefix = "") ?(element = None) name =
     else
       raise_import_error ((get_string CannotImportPackage) ^ prefix ^ name ^ (get_string MissingNaturlPackage))
   else
-    raise_import_error ((get_string UnknownPackage) ^ prefix ^ name ^ "'")
+    raise_import_error ((get_string UnknownPackage) ^ prefix ^ name ^ "'");;
+
+let code =
+  "fonction somme(entier a, entier b) -> entier
+       debut
+        a <- b.c
+        b <- taille de a
+        si a alors
+         test()
+        sinon si b alors
+         test2()
+        sinon si b.c alors
+
+         test3()
+
+        sinon si vrai alors
+          test4()
+        sinon si faux alors
+          test5()
+        sinon si a alors
+          test6()
+        fin
+
+        pour i de 1 jusque a 3 faire
+
+
+        a <- 2
+        fin
+        fin
+";;

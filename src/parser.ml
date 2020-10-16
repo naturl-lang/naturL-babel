@@ -1,4 +1,3 @@
-(*ppx_regexp*)
 open Errors
 open Context
 open Expressions
@@ -145,8 +144,7 @@ let ctx =
          test()
         sinon si b alors
          test2()
-
-sinon si b.c alors
+        sinon si b.c alors
 
          test3()
 
@@ -167,4 +165,4 @@ sinon si b.c alors
 ";
     index = 0;
     scopes = [];
-  } ;;
+  } in parse_body ctx;;
