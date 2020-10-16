@@ -71,7 +71,7 @@ let get_line_last_char_data code index =
 
 let get_line_column_data code index =
   let first_char_index, first_column_index  = get_line_first_char_data code index
-  and last_char_index, last_column_index = get_line_last_char_data code index in
+  and _, last_column_index = get_line_last_char_data code index in
   first_column_index - first_char_index + 1, last_column_index - first_char_index + 1
 
 
