@@ -60,8 +60,8 @@ let get_current_line_location ?line_list code index : Location.t =
   Location.{
     line = line_no+1;
     range = {
-      start = column_start_index + (if column_start_index = 0 then 0 else 1);
-      end_ = column_end_index + (if column_start_index = 0 then 0 else 1);
+      start = column_start_index + (if column_start_index + column_end_index = 0 then 0 else 1);
+      end_ = column_end_index + (if column_start_index + column_end_index = 0 then 0 else 1);
     }
   }
 
