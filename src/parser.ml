@@ -1,25 +1,23 @@
-(*ppx_regexp*)
+(*#require "ppx_regexp";;*)
 open Errors
 open Context
 open Expressions
 open Getters
 
-
 let parse_body ctx =
-
+  let line_list = String.split_on_char '\n' ctx.code in
   (* Mutually recursive parsing functions. They need to be mutually recursive because each of them calls prse_body and parse_body calls each of them *)
   let rec parse_body ?(terminators = [""]) context =
-    let start_location = get_current_line_location context.code context.index in
     let rec parse_body terminators body context =
       let code = context.code and index = context.index in
-      let location = get_current_line_location context.code context.index in
+      let location = get_current_line_location ~line_list context.code context.index in
       let line, index = get_line code index in
       if is_in_func_definition context then
         match%pcre line with
         | "^[ \t]*debut[ \t]*$" ->
           parse_body ["fin"; "fin fonction"] body (mark_func_defined { context with index })
         | _ -> raise_syntax_error
-                 ~location:(get_current_line_location context.code context.index)
+                 ~location
                  "Le mot-clé 'début' est attendu après la définition d'une fonction"
       else
         let node, index =
@@ -70,7 +68,7 @@ let parse_body ctx =
           | _ -> assert false
         in match node with
         | End ->
-          Ast.make_body ~children:(List.rev body) ~location:start_location, index
+          Ast.make_body ~children:(List.rev body), index
         | _ -> parse_body terminators (node :: body) { context with index }
     in parse_body terminators [] context
 
@@ -145,8 +143,7 @@ let ctx =
          test()
         sinon si b alors
          test2()
-
-sinon si b.c alors
+        sinon si b.c alors
 
          test3()
 
@@ -162,9 +159,11 @@ sinon si b.c alors
 
 
         a <- 2
+
+
         fin
         fin
 ";
     index = 0;
     scopes = [];
-  } ;;
+  };;
