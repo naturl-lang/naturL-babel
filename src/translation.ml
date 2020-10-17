@@ -342,7 +342,7 @@ and eval_fonction context =
   if name = "->" then
     raise_syntax_error (get_string InvalidFunctionDefinition) ~line: line
   else
-    let names, index, vars, types = get_param context index in
+    let names, index, vars, types = try_update_err line (fun () -> get_param context index) in
     let index, type_ = check_return_type index in
     let fx = `Function (types, type_) in
     let vars, prev_vars =
@@ -544,7 +544,7 @@ and eval_constructor context =
   let name, index = get_word context.code (context.index + 9) in (* 9 = 8 + 1 *)
   let name = if name <> "nouveau" then raise_syntax_error ((get_string FirstMethod) ^ name) else "nouveau" in
   let prev_vars = context.vars in
-  let names, index, vars, types = get_param context index in
+  let names, index, vars, types = try_update_err line (fun () -> get_param context index) in
   let index = check_return_type index in
   let fx = `Function (types, `Custom class_name) in
   let vars = StringMap.add name fx vars in
