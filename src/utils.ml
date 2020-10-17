@@ -192,6 +192,9 @@ let get_last_position text =
       get_last_position (index + 1) line (character + 1)
   in get_last_position 0 0 0
 
+let is_alphanum string =
+  Str.string_match (Str.regexp {|^[A-Za-z_][A-Za-z_0-9]*$|}) string 0
+
 let (++) = Big_int.add_big_int
 let (--) = Big_int.sub_big_int
 let (~--) = Big_int.minus_big_int

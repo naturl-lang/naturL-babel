@@ -1,5 +1,6 @@
 (*#require "ppx_regexp";;*)
 open Errors
+open Variables
 open Context
 open Expressions
 open Getters
@@ -42,6 +43,7 @@ let parse_body ctx =
             parse_while condition { context with index } location
           (*Assignment*)
           | {|^[ \t]*(?<target>[^\s]+?)[ \t]*<-[ \t]*(?<value>.+?)[ \t]*$|} ->
+            declare_variable target location;
             let value = expr_of_string value in
             Ast.make_assign ~target ~value ~context ~location, index
           (*Function*)
@@ -112,15 +114,8 @@ let parse_body ctx =
     Ast.make_while ~test ~body ~context ~location, index
 
   and parse_func_definition name args_list ret_type context location =
-    let split_arg = function%pcre
-      | {|^[ \t]*(?<type_>.+)[ \t]+(?<name>[_a-zA-Z][_a-zA-Z0-9]*)[ \t]*$|} ->
-        type_, name
-      | _ -> raise_syntax_error ~location "Arguments mal formés"
-    in
-    let args = if args_list = "" then []
-      else
-        String.split_on_char ',' args_list |> List.map split_arg in
-    let body, index = parse_body ~terminators:["debut"]
+    let args = String.split_on_char ',' args_list
+    and body, index = parse_body ~terminators:["debut"]
         { context with scopes = Func false :: context.scopes }
     in Ast.make_func_definition ~name ~args ~ret_type ~body ~context ~location, index
 
@@ -129,16 +124,15 @@ let parse_body ctx =
 
   in let ast, _ = parse_body ctx in ast
 
-
-
-
 let ctx =
   {
     code =
-      "fonction somme(entier a, entier b) -> entier
+      "fonction somme(a, b, d) -> entier
        debut
         a <- b.c
         b <- taille de a
+        c <- b
+        a.d[1] = 3
         si a alors
          test()
         sinon si b alors
