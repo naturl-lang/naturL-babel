@@ -1,7 +1,9 @@
 open Js_of_ocaml
 
 let send_to_lsp_server callback message =
-  Listener.receive callback @@ Js.to_string message
+  Listener.receive
+    (fun s1 -> fun s2 -> callback (Js.string s1) (Js.string s2))
+  @@ Js.to_string message
 
 let transpile = Functions.transpile
 
