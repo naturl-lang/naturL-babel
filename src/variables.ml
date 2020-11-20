@@ -14,7 +14,7 @@ module VarSet = Set.Make (
   end)
 
 (* Map of all declared variables (initialized during the parsing process) *)
-let declared_variables: VarSet.t ref = ref VarSet.empty
+let declared_variables = ref VarSet.empty
 
 let is_var_declared searched_name =
   !declared_variables
@@ -53,3 +53,21 @@ let print_declared_variables () =
       print_declared_variable t
     | _ -> ()
   in print_declared_variable (VarSet.elements !declared_variables)
+
+(*********************************)
+
+module LocationMap = Map.Make (
+  struct
+    type t = Location.t
+    let compare = compare
+  end)
+
+let locale_variables = ref LocationMap.empty
+
+let add_locale_variables location (map: Type.t StringMap.t) =
+  locale_variables := !locale_variables |> LocationMap.add location map
+
+let get_locale_variables location =
+  !locale_variables
+  |> LocationMap.find_opt location
+  |> Option.value ~default: StringMap.empty

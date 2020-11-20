@@ -9,6 +9,14 @@ end)
 
 
 let check_semantic ast =
+  let add_locale_variables location variables =
+    variables
+    |> StringMap.mapi (fun name -> fun location ->
+        !Variables.declared_variables
+        |> Variables.var_type_opt name location
+        |> Option.value ~default: Type.Any)
+    |> Variables.add_locale_variables location
+  in
   (*Semantic analysis. Returns the current variables and if there is a return *)
   let rec check_semantic ~current_func variables ast =
     match ast with
@@ -25,6 +33,7 @@ let check_semantic ast =
       let expr_type = try_update_err location (fun () -> type_of_expr expr variables) in
       if expr_type <> Type.None then
         Warnings.add_warning ~location "La valeur de retour de cette expression n'est pas utilisée" 0;
+      add_locale_variables location variables;
       variables, false
     | Return (location, expr) ->
       let ret_type = try_update_err location (fun () -> type_of_expr expr variables) in
@@ -42,6 +51,7 @@ let check_semantic ast =
           ("Le type de retour de la fonction '" ^ func_name ^
            "' est '" ^ (Type.to_string func_type)
            ^ "'. Cette expression est néanmoins de type '" ^ (Type.to_string ret_type) ^ "'");
+      add_locale_variables location variables;
       variables, true
     | Assign (location, name, expr) ->
       (*If the variable is already decared, get its location and its type, else declare it*)
@@ -57,7 +67,8 @@ let check_semantic ast =
           Variables.declare_variable name location;
           location, Any
       in
-      let expr_type = try_update_err location (fun () -> type_of_expr ~desired_type expr variables) in
+      let expr_type = try_update_err location
+          (fun () -> type_of_expr ~desired_type expr variables) in
       if desired_type = Any then
         Variables.update_type name location expr_type
       else if not @@ Type.equal expr_type desired_type then
@@ -66,6 +77,7 @@ let check_semantic ast =
           "' mais la variable '" ^ name ^ "' est de type '" ^
           (Type.to_string desired_type) ^ "'. Ces deux types sont incompatibles.");
       let variables = variables |> StringMap.add name declare_location in
+      add_locale_variables location variables;
       variables, false
     | If (location, condition, body, else_) ->
       let condition_type = try_update_err location
@@ -82,15 +94,18 @@ let check_semantic ast =
       let new_variables, returns = check_semantic ~current_func variables body in
       let variables = new_variables |> StringMap.union merger variables in
       let variables, returns = match else_ with
-        | Some body -> let new_variables, new_returns = check_semantic ~current_func variables body in
+        | Some body ->
+          let new_variables, new_returns = check_semantic ~current_func variables body in
           new_variables |> StringMap.union merger variables, returns && new_returns
         | None -> variables, false
       in
+      add_locale_variables location variables;
       variables, returns
-    | Else (_, body) ->
+    | Else (location, body) ->
       let new_variables, returns = check_semantic ~current_func variables body in
-      new_variables |> StringMap.union (fun _ -> fun _ -> fun s -> Some s) variables,
-      returns
+      let variables = new_variables |> StringMap.union (fun _ -> fun _ -> fun s -> Some s) variables in
+      add_locale_variables location variables;
+      variables, returns
     | For (location, var_name, start, end_, body) ->
       let start_type = try_update_err location
           (fun () -> type_of_expr ~desired_type:Int start variables)
@@ -131,8 +146,9 @@ let check_semantic ast =
           | Value (Int start_i), Value (Int end_i) -> start_i <<= end_i
           | _ -> false
       in
-      new_variables |> StringMap.union (fun _ -> fun _ -> fun s -> Some s) variables,
-      returns
+      let variables = new_variables |> StringMap.union (fun _ -> fun _ -> fun s -> Some s) variables in
+      add_locale_variables location variables;
+      variables, returns
     | For_each (location, name, iterable, body) ->
       let iterable_type = try_update_err location
           (fun () -> type_of_expr iterable variables) in
@@ -169,8 +185,9 @@ let check_semantic ast =
         | List (_ :: _) | Value (String _) -> true
         | _ -> false
       in
-      new_variables |> StringMap.union (fun _ -> fun _ -> fun s -> Some s) variables,
-      returns
+      let variables = new_variables |> StringMap.union (fun _ -> fun _ -> fun s -> Some s) variables in
+      add_locale_variables location variables;
+      variables, returns
     | While (location, condition, body) ->
       check_semantic ~current_func variables @@ If (location, condition, body, None)
     | Func_definition (location, name, args, return, body) ->
@@ -193,7 +210,8 @@ let check_semantic ast =
       let _, returns = check_semantic ~current_func:(Some (name, location)) local_variables body in
       if not returns then
         raise_syntax_error ~location
-           "Il existe des cas pour lesquels cette fonction ne retourne pas de valeur";
+          "Il existe des cas pour lesquels cette fonction ne retourne pas de valeur";
+      add_locale_variables location variables;
       variables, false
     | End -> variables, false
   in let _ = check_semantic ~current_func:None (StringMap.empty) ast
