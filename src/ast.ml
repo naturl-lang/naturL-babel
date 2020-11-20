@@ -1,6 +1,5 @@
 open Errors
 open Structures
-open Variables
 open Context
 open Expressions
 
@@ -15,7 +14,7 @@ type t =
   | For of Location.t * string * Expr.t * Expr.t * t
   | For_each of Location.t * string * Expr.t * t
   | While of Location.t * Expr.t * t
-  | Func_definition of Location.t * string * string list * string * t
+  | Func_definition of Location.t * string * (string * string) list * string * t
   | End
 
 let make_body ~children =
@@ -62,6 +61,8 @@ let make_else ~body ~context ~location =
       "Un bloc 'sinon' doit être précédé d'un bloc 'si' ou 'sinon_si'"
 let make_for ~target ~start ~end_ ~body ~context ~location =
   assert_not_in_func_def ~context;
+  if not @@ Variables.is_var_declared target then
+    ();
   For (location, target, start, end_, body)
 let make_for_each ~target ~iter ~body ~context ~location =
   assert_not_in_func_def ~context;
@@ -71,7 +72,5 @@ let make_while ~test ~body ~context ~location =
   While (location, test, body)
 let make_func_definition ~name ~args ~ret_type ~body ~context ~location =
   assert_not_in_func_def ~context;
-  declare_variable name location;
-  args |> List.iter (fun name -> declare_variable name location) ;
   Func_definition (location, name, args, ret_type, body)
 let make_end () = End

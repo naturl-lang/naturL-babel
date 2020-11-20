@@ -123,16 +123,16 @@ open (struct
   (*
   let is_type_accepted t (op: Expr.t) =
     match op with
-      Plus _ -> List.exists (fun expected -> Type.is_compatible expected t) [`Int; `Float; `String]
-    | Minus _ | Times _ | Neg _ | Pow _ -> List.exists (fun expected -> Type.is_compatible expected t) [`Int; `Float]
-    | Div_int _ | Modulus _ -> Type.is_compatible `Int t
-    | Div _ -> Type.is_compatible `Float t
+      Plus _ -> List.exists (fun expected -> Type.equal expected t) [`Int; `Float; `String]
+    | Minus _ | Times _ | Neg _ | Pow _ -> List.exists (fun expected -> Type.equal expected t) [`Int; `Float]
+    | Div_int _ | Modulus _ -> Type.equal `Int t
+    | Div _ -> Type.equal `Float t
     | Eq _ | Gt _ | Gt_eq _ | Lt _ | Lt_eq _ -> true
-    | And _ | Or _ | Not _ -> Type.is_compatible `Bool t
+    | And _ | Or _ | Not _ -> Type.equal `Bool t
     | List _ | Call _ | Subscript _ | Value _ -> assert false
 
   let rec is_list_uniform vars = function
-    | h1 :: h2 :: t -> Type.is_compatible h1 h2 && is_list_uniform vars (h2 :: t)
+    | h1 :: h2 :: t -> Type.equal h1 h2 && is_list_uniform vars (h2 :: t)
     | _ -> true
      *)
 
@@ -186,6 +186,7 @@ open (struct
       | "neg", Value (Int x), _ -> Value (Int (~--x))
       | "neg", Value (Float x), _ -> Value (Float (-1.*. x))
       | "get[", List l, Value (Int i) when i <= to_big (List.length l) -> List.nth l (of_big i)
+      | "get[", Value (String s), Value (Int i) when i <= to_big (String.length s) -> Value (Char s.[of_big i])
       | _-> expr_
     in
     match expr with
@@ -204,7 +205,18 @@ open (struct
     | Or (e1,e2) -> let e1,e2 = (_simplify e1, _simplify e2) in perform_op e1 e2 "or" (Or (e1, e2))
     | Not e -> let e = _simplify e in perform_op e e "not" (Not e)
     | Neg e -> let e = _simplify e in perform_op e e "neg" (Neg e)
+    | Subscript (e1, e2) as expr -> let e1, e2 = _simplify e1, _simplify e2 in perform_op e1 e2 "get[" expr
     | _-> expr
+
+  let is_type_accepted t (op: Expr.t) =
+    match op with
+      Plus _ -> List.exists (Type.equal t) [Int; Float; String]
+    | Minus _ | Times _ | Neg _ | Pow _ -> List.exists (Type.equal t) [Int; Float]
+    | Div_int _ | Modulus _ -> Type.equal Int t
+    | Div _ -> Type.equal Float t
+    | Eq _ | Gt _ | Gt_eq _ | Lt _ | Lt_eq _ -> true
+    | And _ | Or _ | Not _ -> Type.equal Bool t
+    | List _ | Call _ | Subscript _ | Value _ | Access _ -> assert false
 
 end)
 
@@ -276,6 +288,136 @@ let expr_of_string str : Expr.t =
   in _simplify (expr_of_tokens (tokenize str))
 
 
+let type_of_expr ?(desired_type = Type.Any) expr vars =
+  let check_params_type name expected actual =
+    let rec check_params_type index expected actual =
+      match expected, actual with
+      | [], [] -> []
+      | _, [] -> raise_type_error ("Il manque des arguments à la fonction '" ^ name ^ "'")
+      | [], _ -> raise_type_error ("Trop d'arguments sont passés à la fonction '" ^ name ^ "'")
+      | Type.Any :: t1, h :: t2 -> h :: check_params_type (index + 1) t1 t2
+      | h1 :: t1, h2 :: t2 ->
+        if Type.equal h1 h2 then
+          h1 :: check_params_type (index + 1) t1 t2
+        else
+          raise_type_error (
+          "Le " ^ (string_of_int index) ^ "e paramètre de la fonction '" ^
+          name ^  "'" ^ "est de type '" ^ (Type.to_string h1)
+          ^ "', et non '" ^ (Type.to_string h2) ^ "'")
+    in check_params_type 0 expected actual
+  in
+  let rec type_of_bin_expr ~desired_type e1 e2 =
+    let t1 = type_of_expr ~desired_type e1
+    and t2 = type_of_expr ~desired_type e2 in
+    let t1, t2 = match t1, t2 with
+      | Any, Any -> Type.Any, Type.Any
+      | Any, t2 -> type_of_expr ~desired_type:t2 e1, t2
+      | t1, Any -> t1, type_of_expr ~desired_type:t1 e2
+      | _ -> t1, t2
+    in if Type.equal t1 t2 then
+      t1
+    else
+      raise_type_error (
+        "Les types '" ^
+        (Type.to_string t1) ^ "' et '" ^ (Type.to_string t2) ^
+        "' sont incompatibles.")
+  and type_of_expr ~desired_type : Expr.t -> Type.t = function
+    | Plus (l, r) | Minus (l, r) | Times (l, r)
+    | Div (l, r) | Div_int (l, r) | Modulus (l, r)
+    | Pow (l, r) | And (l, r) | Or (l, r) as expr ->
+      let t = type_of_bin_expr ~desired_type l r
+      in if is_type_accepted t expr then
+        t
+      else
+        raise_type_error (
+          "Le type '" ^ (Type.to_string t) ^
+          "' n'est pas supporté par cet opérateur")
+    | Not e as expr-> let t = type_of_expr ~desired_type:Bool e in
+      if is_type_accepted t expr then
+        Bool
+      else
+        raise_unexpected_type_error (Type.to_string Bool) (Type.to_string t)
+    | Neg e as expr -> let t = type_of_expr ~desired_type e in
+      if is_type_accepted t expr then
+        t
+      else
+        raise_type_error (
+          "Le type '" ^ (Type.to_string t) ^
+          "' n'est pas supporté par cet opérateur")
+    | Eq (l, r) | Gt (l, r) | Gt_eq (l, r)
+    | Lt (l, r) | Lt_eq (l, r) ->
+      let _ = type_of_bin_expr ~desired_type:Any l r in
+      Bool
+    | List [] -> List Any
+    | List l ->
+      let types = l |> List.map @@ type_of_expr ~desired_type:Any in
+      let fixed = types |> List.filter @@ (<>) Type.Any in
+      begin
+        match fixed with
+        | h :: t ->
+          if t |> List.for_all @@ Type.equal h then
+            (* Update the types that can be updated *)
+            let _ = l |> List.map @@ type_of_expr ~desired_type:h in
+            List h
+          else
+            raise_type_error "Tous les éléments d'une liste doivent être du même type"
+        | [] -> List Any
+      end
+    | Subscript (list, index) ->
+      let index_type = type_of_expr ~desired_type:Int index in
+      if Type.equal Int index_type then
+        match type_of_expr ~desired_type:(List Any) list with
+        | String -> Char
+        | List t -> t
+        | t -> raise_type_error
+                 ("Le type '" ^ (Type.to_string t) ^ "' n'est pas indexable")
+      else
+        raise_type_error
+          ("Cette expression est de type '"  ^ (Type.to_string index_type) ^
+           "' mais un index doit être un entier")
+    | Access _ -> assert false
+    | Call (name, params) ->
+      (* Get the definition location in the current context *)
+      let def_location = (match StringMap.find_opt name vars with
+          | Some location -> location
+          | None -> raise_name_error ("La fonction '" ^ name ^ "' n'est pas définie")) in
+      (* Get the parameters and return type as declared by the function *)
+      let declared_params, return =
+        match Variables.var_type_opt name def_location !Variables.declared_variables with
+        | Some (Function (p, r)) -> p, r
+        | Some _ -> raise_type_error ("La variable '" ^ name ^ "' ne correspond pas à une fonction")
+        | _ -> assert false
+      in
+      let params_type = List.map (type_of_expr ~desired_type:Any) params in
+      let corrected_types = check_params_type name params_type declared_params in
+      let return =
+        if return = Any then
+          desired_type
+        else
+          return
+      in
+      Variables.update_type name def_location (Type.Function (corrected_types, return));
+      return
+    | Value (Variable name) ->
+      let location = (match StringMap.find_opt name vars with
+          | Some location -> location
+          | None -> raise_name_error ("La variable '" ^ name ^ "' n'est pas définie")) in
+      let var_type =
+        match Variables.var_type_opt name location !Variables.declared_variables with
+        | Some t -> t
+        | None -> Any
+      in
+      (*Define the variable type if it needs to be and if the context allows it to be*)
+      if var_type = Any then
+        begin
+          Variables.update_type name location desired_type;
+          desired_type
+        end
+      else
+        var_type
+    | Value value -> Value.get_type value
+  in type_of_expr ~desired_type expr
+
 (* Returns the type of an expression *)
     (*
 let rec type_of_expr context : Expr.t -> Type.t = function
@@ -286,8 +428,8 @@ let rec type_of_expr context : Expr.t -> Type.t = function
          (Value.get_type context (Value.Variable name2) = `Char) -> `String
   | Plus (l, r) | Minus (l, r) | Times (l, r) | Div (l, r) | Div_int (l, r) | Modulus (l, r) | Pow (l, r) | And (l, r) | Or (l, r) as e ->
     let l_type = type_of_expr context l and r_type = type_of_expr context r in
-    if Type.is_compatible l_type r_type && is_type_accepted l_type e then l_type
-    else if Type.is_compatible r_type l_type && is_type_accepted r_type e then r_type
+    if Type.equal l_type r_type && is_type_accepted l_type e then l_type
+    else if Type.equal r_type l_type && is_type_accepted r_type e then r_type
     else
       raise_type_error ((get_string InvalidOperation) ^ (Type.to_string l_type) ^ (get_string AndType) ^ (Type.to_string r_type) ^ "'")
   | Not arg | Neg arg as e -> let arg_type = type_of_expr context arg in if is_type_accepted arg_type e then arg_type else
@@ -311,7 +453,7 @@ let rec type_of_expr context : Expr.t -> Type.t = function
       | s -> s in
     (try (match s with
          | Some (`Function (p, return)) -> let f = Option.get s in
-           if List.length p = List.length params && List.for_all2 Type.is_compatible p params_types then  (* Despite the fact that it is not safe, function calls are covariant in argument types *)
+           if List.length p = List.length params && List.for_all2 Type.equal p params_types then  (* Despite the fact that it is not safe, function calls are covariant in argument types *)
              return
            else
              raise_unexpected_type_error_with_name name (Type.to_string f) (Type.to_string (`Function (params_types, return)))
@@ -319,7 +461,7 @@ let rec type_of_expr context : Expr.t -> Type.t = function
            raise_type_error ((get_string VariablesOfType) ^ (Type.to_string t) ^ (get_string NotCallable))
          | None -> (match Value.get_unknown_variable context name (fun () -> raise Not_found) with
              | `Function (p, return) as f ->
-               if List.length p = List.length params && List.for_all2 Type.is_compatible params_types p then
+               if List.length p = List.length params && List.for_all2 Type.equal params_types p then
                  return
                else
                  raise_unexpected_type_error_with_name name (Type.to_string f) (Type.to_string (`Function (params_types, return)))

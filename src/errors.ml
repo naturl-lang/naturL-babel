@@ -12,11 +12,18 @@ let name_error message location oc = _error "Erreur de dénomination" message lo
 
 let import_error message location oc = _error "Erreur d'importation" message location oc
 
+let bug code oc =
+  Printf.fprintf oc
+    "Un bug a été détecté, merci de le rapporter aux développeurs. Code d'erreur: %s.\n"
+    code;
+  exit 2
+
 type error_arg = string * Location.t option
 exception SyntaxError of error_arg
 exception TypeError of error_arg
 exception NameError of error_arg
 exception ImportError of error_arg
+exception Bug of string
 
 
 let raise_syntax_error ?(location) message =
@@ -27,6 +34,8 @@ let raise_type_error ?(location) message =
   raise (TypeError (message, location))
 let raise_import_error ?(location) message =
   raise (ImportError (message, location))
+let raise_bug code =
+  raise (Bug code)
 
 let raise_unexpected_type_error ?(location) expected found =
   let message = "Une expression de type '" ^ expected ^ "' est attendue au lieu de '" ^ found ^ "'" in
@@ -47,7 +56,6 @@ let try_update_err location func =
   | TypeError (msg, None) -> raise (TypeError (msg, Some location))
   | NameError (msg, None) -> raise (NameError (msg, Some location))
   | ImportError (msg, None) -> raise (ImportError (msg, Some location))
-  | SyntaxError _ | TypeError _ | NameError _ | ImportError _ as error -> raise error
 
 let try_catch ?raise_errors oc func =
   let raise_error = raise_errors = Some true in
@@ -57,11 +65,15 @@ let try_catch ?raise_errors oc func =
   | TypeError (msg, Some location) -> type_error msg location oc
   | NameError (msg, Some location) -> name_error msg location oc
   | ImportError (msg, Some location) -> import_error msg location oc
+  | Bug code -> bug code oc
 
 let try_execute func ~on_success ~on_failure =
   try let value = func () in on_success value with
   | SyntaxError (msg, Some location) | TypeError (msg, Some location)
   | NameError (msg, Some location) | ImportError (msg, Some location) -> on_failure (msg, location)
+  | Bug code -> on_failure
+                  ("Un bug a été détecté, merci de le rapporter aux développeurs. Code d'erreur: " ^ code ^ ".",
+                  { line = -1; range = { start = -1; end_ = -1 } })
 
 (* Get a list of (msg, location) corresponding to errors got by executing the function *)
 let get_errors func =

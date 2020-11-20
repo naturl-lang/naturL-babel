@@ -156,31 +156,9 @@ let get_line code i =
   in _get_line false i ""
 
 (*Check if the specified type is a valid builtin or user-defined type, if that is the case, returns the right type *)
-let get_type vars code index =
+let get_type code index =
   let t, i = get_word code index in
-  i, try_update_err (get_location code index i) (fun () -> Type.of_string vars t)
-
-let get_var name ?main_vars vars =
-  let main_vars = Option.value main_vars ~default: vars in
-  let name = String.trim name
-  and r = regexp {|\([a-zA-Z_][a-zA-Z_0-9]*\)\(\.[a-zA-Z_][a-zA-Z_0-9]*\)+|} in
-  let name, vars = if string_match r name 0 then
-      let var_name = matched_group 1 name in
-      let attr_name = matched_group 2 name in
-      let attr_name = String.sub attr_name 1 (String.length attr_name - 1) in
-      match StringMap.find_opt var_name vars with
-      | Some `Custom class_name -> (match StringMap.find_opt class_name main_vars with
-          | Some `Class (attrs, _) -> attr_name, attrs
-          | None -> attr_name, vars   (* We are already inside the class *)
-          | _ -> assert false)
-      | Some t -> raise_name_error ((get_string TheType) ^ (Type.to_string t) ^ (get_string HasNoAttribute) ^ attr_name)
-      | None -> raise_name_error (get_string UnknownVariable ^ var_name ^ "'")
-    else
-      name, vars
-  in
-  try StringMap.find name vars
-  with Not_found -> raise_name_error ((get_string UnknownVariable) ^ name ^ "'")
-
+  i, try_update_err (get_location code index i) (fun () -> Type.of_string t)
 
 (* Returns information about the files that need to be imported : *)
 (* A list of tuples (file_content, cwdir, namespace, name, element) *)

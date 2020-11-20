@@ -44,3 +44,13 @@ let of_string = function str ->
     raise_syntax_error "Une opérande est attendue"
   else
     raise_syntax_error "Expression invalide"
+
+let get_type = function
+    Int _ -> Type.Int
+  | Float _ -> Type.Float
+  | Char _ -> Type.Char
+  | String _ -> Type.String
+  | Bool _ -> Type.Bool
+  | Variable _ -> assert false
+  | Instance _ -> raise_type_error "Not supported yet"
+  | None -> Type.None

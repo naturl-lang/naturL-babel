@@ -1,6 +1,11 @@
 module StringMap = Map.Make(String)
 module StringSet = Set.Make(String)
 
+let find_in_set_opt (type elt) (type t)
+    (module S: Set.S with type elt = elt and type t = t)
+    (predicate: elt -> bool)
+    (set: t) =
+  set |> S.filter predicate |> S.choose_opt
 
 let read_file name =
   let chan = open_in name in

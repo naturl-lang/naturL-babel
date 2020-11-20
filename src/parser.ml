@@ -1,12 +1,11 @@
 (*#require "ppx_regexp";;*)
 open Errors
-open Variables
 open Context
 open Expressions
 open Getters
 
-let parse_body ctx =
-  let line_list = String.split_on_char '\n' ctx.code in
+let parse_body code =
+  let line_list = String.split_on_char '\n' code in
   (* Mutually recursive parsing functions. They need to be mutually recursive because each of them calls prse_body and parse_body calls each of them *)
   let rec parse_body ?(terminators = [""]) context =
     let rec parse_body terminators body context =
@@ -33,7 +32,7 @@ let parse_body ctx =
           | {|^[ \t]*sinon[ \t]*$|} ->
             parse_else { context with index } location
           (*For*)
-          | {|^[ \t]*pour[ \t]+(?<var>[A-Za-z_]\w*)[ \t]+de[ \t]+(?<start>.+?)[ \t]+jusqu(e |_)a[ \t](?<end_>.+?)[ \t]faire[ \t]*$|} ->
+          | {|^[ \t]*pour[ \t]+(?<var>[A-Za-z_]\w*)[ \t]+de[ \t]+(?<start>.+?)[ \t]+jusqu(e |_|')a[ \t](?<end_>.+?)[ \t]faire[ \t]*$|} ->
             parse_for var start end_ { context with index } location
           (*For each*)
           | {|^[ \t]*pour(_| )chaque[ \t]+(?<var>[A-Za-z_]\w*)[ \t]+dans[ \t]+(?<iter>.+?)[ \t]*faire[ \t]*$|} ->
@@ -43,7 +42,6 @@ let parse_body ctx =
             parse_while condition { context with index } location
           (*Assignment*)
           | {|^[ \t]*(?<target>[^\s]+?)[ \t]*<-[ \t]*(?<value>.+?)[ \t]*$|} ->
-            declare_variable target location;
             let value = expr_of_string value in
             Ast.make_assign ~target ~value ~context ~location, index
           (*Function*)
@@ -53,9 +51,9 @@ let parse_body ctx =
           | {|^[ \t]*procedure[ \t]*(?<name>[A-Za-z_]\w*)[ \t]*\((?<args>.*)\)[ \t]*$|} ->
             parse_proc_definition name args { context with index } location
           (*Return*)
-          | "retourner[ \t]*" ->
+          | "^[ \t]*retourner[ \t]*$" ->
             Ast.make_return ~expr:(Value None) ~context ~location, index
-          | "retourner[ \t]+(?<value>.+)" ->
+          | "^[ \t]*retourner[ \t]+(?<value>.+)[ \t]*$" ->
             let expr = expr_of_string value in
             Ast.make_return ~expr ~context ~location, index
           | "[ \t]*(?<s>.*)[ \t]*" ->
@@ -65,7 +63,7 @@ let parse_body ctx =
               raise_syntax_error ~location
                 ("Mot-clé '" ^ (List.hd terminators) ^ "' attendu")
             else
-              let expr = expr_of_string s in
+              let expr = try_update_err location (fun () -> expr_of_string s) in
               Ast.make_expr ~expr ~context ~location, index
           | _ -> assert false
         in match node with
@@ -114,7 +112,20 @@ let parse_body ctx =
     Ast.make_while ~test ~body ~context ~location, index
 
   and parse_func_definition name args_list ret_type context location =
-    let args = String.split_on_char ',' args_list
+    let split_arg arg =
+      let rec split_arg = function
+        | [] ->
+          raise_syntax_error ~location
+            "Peut-être faut_il supprimer une virgule ?"
+        | name :: [] ->
+          raise_syntax_error ~location
+            ("Un type est attendu pour l'argument '" ^ name ^ "'")
+        | type_ :: name :: [] -> type_, name
+        | h :: t -> let type_, name = split_arg t in
+          h ^ " " ^ type_, name
+      in String.split_on_char ' ' arg |> split_arg
+    in
+    let args = String.split_on_char ',' args_list |> List.map split_arg
     and body, index = parse_body ~terminators:["debut"]
         { context with scopes = Func false :: context.scopes }
     in Ast.make_func_definition ~name ~args ~ret_type ~body ~context ~location, index
@@ -122,7 +133,7 @@ let parse_body ctx =
   and parse_proc_definition name args_list context location =
     parse_func_definition name args_list "rien" context location
 
-  in let ast, _ = parse_body ctx in ast
+  in let ast, _ = parse_body { code; index = 0; scopes = [] } in ast
 
 let ctx =
   {
