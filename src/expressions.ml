@@ -29,6 +29,40 @@ module Expr = struct
     | Value of Value.t           (* x *)
 end
 
+let precedence = function
+  | "" -> max_int
+  | "ou" -> 1
+  | "et" -> 2
+  | ">" | ">=" | "<" | "<=" | "=" -> 3
+  | "+" | "-" -> 4
+  | "*" | "fois" | "/" | "div" | "neg" -> 5
+  | "non" | "get[" -> 6
+  | "^" | "[" | "de" | "." -> 7
+  | _ -> 7 (* Function call *)
+
+let expr_to_op : Expr.t -> string = function
+  | Plus _ -> "+"
+  | Minus _ | Neg _ -> "-"
+  | Times _ -> "*"
+  | Div _ -> "/"
+  | Div_int _ -> "div"
+  | Modulus _ -> "mod"
+  | Pow _ -> "^"
+  | Eq _ -> "="
+  | Gt _ -> ">"
+  | Gt_eq _ -> ">="
+  | Lt _ -> "<"
+  | Lt_eq _ -> "<="
+  | And _ -> "et"
+  | Or _ -> "or"
+  | Not _ -> "non"
+  | List _ -> "["
+  | Call (name, _) -> name
+  | Subscript _ -> "get["
+  | Value _ -> ""
+  | Access _ -> "."
+
+
 open (struct
   let binary_ops = [
     "+";
@@ -50,40 +84,6 @@ open (struct
   ] ;;
 
   let unary_ops = ["non"; "neg"]
-
-  (*
-  let expr_to_op : Expr.t -> string = function
-    | Plus _ -> "+"
-    | Minus _ | Neg _ -> "-"
-    | Times _ -> "*"
-    | Div _ -> "/"
-    | Div_int _ -> "div"
-    | Modulus _ -> "mod"
-    | Pow _ -> "^"
-    | Eq _ -> "="
-    | Gt _ -> ">"
-    | Gt_eq _ -> ">="
-    | Lt _ -> "<"
-    | Lt_eq _ -> "<="
-    | And _ -> "et"
-    | Or _ -> "or"
-    | Not _ -> "non"
-    | List _ -> "["
-    | Call (name, _) -> name
-    | Subscript _ -> "get["
-    | Value _ -> ""
-     *)
-
-  let precedence = function
-    | "" -> max_int
-    | "ou" -> 1
-    | "et" -> 2
-    | ">" | ">=" | "<" | "<=" | "=" -> 3
-    | "+" | "-" -> 4
-    | "*" | "fois" | "/" | "div" | "neg" -> 5
-    | "non" | "get[" -> 6
-    | "^" | "[" | "de" | "." -> 7
-    | _ -> 7 (* Function call *)
 
   let make_binary_op op e1 e2 : Expr.t =
     match op with

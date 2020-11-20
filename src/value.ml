@@ -16,10 +16,10 @@ let to_string = function
   | Float f -> string_of_float f
   | Char c -> "'" ^ String.make 1 c ^ "'"
   | String s -> {|"|} ^ s ^ {|"|}
-  | Bool b -> if b then "True" else "False"
+  | Bool b -> if b then "vrai" else "faux"
   | Variable name -> resolve_py_conficts name
   | Instance (type_def, name) -> resolve_py_conficts type_def ^ "." ^ (resolve_py_conficts name)
-  | None -> "None"
+  | None -> "rien"
 
 let of_string = function str ->
   let str = String.trim str
