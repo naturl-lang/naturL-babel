@@ -93,7 +93,7 @@ let parse_body code =
   and parse_for var start end_ context location =
     let target = var
     and start = expr_of_string start
-    and end_ = expr_of_string end_
+    and end_ = expr_of_string (end_ ^ " + 1")
     and body, index = parse_body ~terminators:["fin"; "pour"]
         { context with scopes = For :: context.scopes } in
     Ast.make_for ~target ~start ~end_ ~body ~context ~location, index

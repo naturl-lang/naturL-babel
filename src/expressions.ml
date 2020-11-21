@@ -101,7 +101,7 @@ open (struct
     | "<=" -> Lt_eq (e1, e2)
     | "et" -> And (e1, e2)
     | "ou" -> Or (e1, e2)
-    | "get[" -> Subscript (e1, e2)
+    | "get[" -> Subscript (e1, Minus (e2, Value (Int (Big_int.big_int_of_int 1))))
     | op -> raise_syntax_error ((get_string UnknownOperator) ^ op ^ "'")
 
   let make_unary_op op arg : Expr.t =
@@ -185,8 +185,9 @@ open (struct
       | "not", Value (Bool x), _ -> Value (Bool (not x))
       | "neg", Value (Int x), _ -> Value (Int (~--x))
       | "neg", Value (Float x), _ -> Value (Float (-1.*. x))
-      | "get[", List l, Value (Int i) when i <= to_big (List.length l) -> List.nth l (of_big i)
-      | "get[", Value (String s), Value (Int i) when i <= to_big (String.length s) -> Value (Char s.[of_big i])
+      | "get[", List l, Value (Int i) when i >>= to_big 0 && i <<= to_big (List.length l) -> List.nth l (of_big i)
+      | "get[", Value (String s), Value (Int i) when i >>= to_big 0 && i <<= to_big (String.length s) -> Value (Char s.[of_big i])
+      | "get[", expr1, expr2 -> Subscript (_simplify expr1, _simplify expr2)
       | _-> expr_
     in
     match expr with
@@ -206,6 +207,8 @@ open (struct
     | Not e -> let e = _simplify e in perform_op e e "not" (Not e)
     | Neg e -> let e = _simplify e in perform_op e e "neg" (Neg e)
     | Subscript (e1, e2) as expr -> let e1, e2 = _simplify e1, _simplify e2 in perform_op e1 e2 "get[" expr
+    | List l -> List (List.map _simplify l)
+    | Call (name, args) -> Call(name, args |> List.map _simplify)
     | _-> expr
 
   let is_type_accepted t (op: Expr.t) =
