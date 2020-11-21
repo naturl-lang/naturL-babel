@@ -9,6 +9,11 @@ type builtin =
     import: unit -> unit
   }
 
+let raise_function_error name args user_args =
+  raise_function_error name
+    (args |> List.map (function s, t -> s, Type.to_string t))
+    (user_args |> List.map Type.to_string)
+
 let functions =
   let assoc = [
     (* Basic functions *)
@@ -21,9 +26,7 @@ let functions =
     "taille", {
       typer = (function
             List _ :: [] -> Int
-          | t -> raise_unexpected_type_error_with_name "taille"
-                   (Type.to_string (Function ([List Any], Int)))
-                   (Type.to_string (Function (t, Int))));
+          | t -> raise_function_error "taille" ["liste", List Any] t);
       translator = (function
             l :: [] -> "len(" ^ l ^ ")"
           | _ -> assert false);
@@ -32,9 +35,7 @@ let functions =
     "supprimer", {
       typer = (function
             List t :: Int :: [] -> t
-          | t -> raise_unexpected_type_error_with_name "supprimer"
-                   (Type.to_string (Function ([List Any], Any)))
-                   (Type.to_string (Function (t, Any))));
+          | t -> raise_function_error "supprimer" ["liste", List Any; "élément", Int] t);
       translator = (function
             l :: x :: [] -> l ^ ".pop(" ^ (string_of_int (int_of_string x - 1)) ^ ")"
           | _ -> assert false);
@@ -43,9 +44,7 @@ let functions =
     "ajouter", {
       typer = (function
             List t1 :: t2 :: [] when Type.equal t1 t2 -> None
-          | t -> raise_unexpected_type_error_with_name "ajouter"
-                   (Type.to_string (Function ([List Any; Any], None)))
-                   (Type.to_string (Function (t, None))));
+          | t -> raise_function_error "ajouter" ["liste", List Any; "élément", Any] t);
       translator = (function
           | l :: x :: [] -> l ^ ".append(" ^ x ^ ")"
           | _ -> assert false);
@@ -54,82 +53,67 @@ let functions =
     (* Math functions *)
     "min", {
       typer = (function
-            Float :: Float :: [] -> Float
-          | t -> raise_unexpected_type_error_with_name "min"
-                   (Type.to_string (Function ([Float; Float], Float)))
-                   (Type.to_string (Function (t, Float))));
+          | Float :: Float :: [] -> Float
+          | Int :: Int :: [] -> Int
+          | t -> raise_function_error "min" ["a", Union [Int; Float]; "b", Union [Int; Float]] t);
       translator = (fun s -> "min(" ^ (List.hd s) ^ ", " ^ (List.hd (List.tl s)) ^ ")");
       import = (fun () -> ())
     };
     "max", {
       typer = (function
-            Float :: Float :: [] -> Float
-          | t -> raise_unexpected_type_error_with_name "max"
-                   (Type.to_string (Function ([Float; Float], Float)))
-                   (Type.to_string (Function (t, Float))));
+          | Float :: Float :: [] -> Float
+          | Int :: Int :: [] -> Int
+          | t -> raise_function_error "max" ["a", Union [Int; Float]; "b", Union [Int; Float]] t);
       translator = (fun s -> "max(" ^ (List.hd s) ^ ", " ^ (List.hd (List.tl s)) ^ ")");
       import = (fun () -> ())
     };
     "abs", {
       typer = (function
-            Float :: [] -> Float
-          | t -> raise_unexpected_type_error_with_name "abs"
-                   (Type.to_string (Function ([Float], Float)))
-                   (Type.to_string (Function (t, Float))));
+          | Int :: [] -> Int
+          | Float :: [] -> Float
+          | t -> raise_function_error "abs" ["x", Union [Int; Float]] t);
       translator = (fun s -> "abs(" ^ (List.hd s) ^ ")");
       import = (fun () -> ())
     };
     "cos", {
       typer = (function
             Float :: [] -> Float
-          | t -> raise_unexpected_type_error_with_name "cos"
-                   (Type.to_string (Function ([Float], Float)))
-                   (Type.to_string (Function (t, Float))));
+          | t -> raise_function_error "cos" ["x", Float] t);
       translator = (fun s -> "math.cos(" ^ (List.hd s) ^ ")");
       import = (fun () ->  Imports.add_import "math" None)
     };
     "sin", {
       typer = (function
             Float :: [] -> Float
-          | t -> raise_unexpected_type_error_with_name "sin"
-                   (Type.to_string (Function ([Float], Float)))
-                   (Type.to_string (Function (t, Float))));
+          | t -> raise_function_error "sin" ["x", Float] t);
       translator = (fun s -> "math.sin(" ^ (List.hd s) ^ ")");
       import = (fun () ->  Imports.add_import "math" None)
     };
     "arccos", {
       typer = (function
             Float :: [] -> Float
-          | t -> raise_unexpected_type_error_with_name "arccos"
-                   (Type.to_string (Function ([Float], Float)))
-                   (Type.to_string (Function (t, Float))));
+          | t -> raise_function_error "arccos" ["x", Float] t);
       translator = (fun s -> "math.acos(" ^ (List.hd s) ^ ")");
       import = (fun () ->  Imports.add_import "math" None)
     };
     "arcsin", {
       typer = (function
             Float :: [] -> Float
-          | t -> raise_unexpected_type_error_with_name "arcsin"
-                   (Type.to_string (Function ([Float], Float)))
-                   (Type.to_string (Function (t, Float))));
+          | t -> raise_function_error "arcsin" ["x", Float] t);
       translator = (fun s -> "math.asin(" ^ (List.hd s) ^ ")");
       import = (fun () ->  Imports.add_import "math" None)
     };
     "arctan", {
       typer = (function
             Float :: [] -> Float
-          | t -> raise_unexpected_type_error_with_name "arcsin"
-                   (Type.to_string (Function ([Float], Float)))
-                   (Type.to_string (Function (t, Float))));
+          | t -> raise_function_error "arcsin" ["x", Float] t);
       translator = (fun s -> "math.atan(" ^ (List.hd s) ^ ")");
       import = (fun () ->  Imports.add_import "math" None)
     };
     "racine", {
       typer = (function
             Float :: [] -> Float
-          | t -> raise_unexpected_type_error_with_name "racine"
-                   (Type.to_string (Function ([Float], Float)))
-                   (Type.to_string (Function (t, Float))));
+          | t -> raise_function_error "racine" ["x", Float] t);
       translator = (fun s -> "math.sqrt(" ^ (List.hd s) ^ ")");
       import = (fun () ->  Imports.add_import "math" None)
     };
@@ -137,37 +121,31 @@ let functions =
     "chaine", {
       typer = (function
             _ :: [] -> String
-          | t -> raise_unexpected_type_error_with_name "chaine"
-                   (Type.to_string (Function ([Any], String)))
-                   (Type.to_string (Function (t, String))));
+          | t -> raise_function_error "chaine" ["x", Any] t);
       translator = (fun s -> "str(" ^ (List.hd s) ^ ")");
       import = (fun () -> ())
     };
-    "reel", {
+    "réel", {
       typer = (function
-            _ :: [] -> Float
-          | t -> raise_unexpected_type_error_with_name "reel"
-                   (Type.to_string (Function ([Any], Float)))
-                   (Type.to_string (Function (t, Float))));
+          | Int :: [] -> Float
+          | String :: [] -> Float
+          | t -> raise_function_error "réel" ["x", Union [Int; String]] t);
       translator = (fun s -> "float(" ^ (List.hd s) ^ ")");
       import = (fun () -> ())
     };
     "entier", {
       typer = (function
-            _ :: [] -> Int
-          | t -> raise_unexpected_type_error_with_name "reel"
-                   (Type.to_string (Function ([Any], Int)))
-                   (Type.to_string (Function (t, Int))));
+          | Float :: [] -> Int
+          | String :: [] -> Int
+          | t -> raise_function_error "entier" ["x", Union [Float; String]] t);
       translator = (fun s -> "int(" ^ (List.hd s) ^ ")");
       import = (fun () -> ())
     };
-    "decimal", {
+    "décimal", {
       typer = (function
             Int :: [] -> Float
           | Float :: [] -> Float
-          | t -> raise_unexpected_type_error_with_name "decimal"
-                   (Type.to_string (Function ([Int], Float)))
-                   (Type.to_string (Function (t, Float))));
+          | t -> raise_function_error "décimal" ["x", Union [Int; Float]] t);
       translator = (fun s -> "Decimal(" ^ (List.hd s) ^ ")");
       import = (fun () -> add_import "decimal" (Some "Decimal"))
     };
@@ -480,21 +458,22 @@ let functions =
 
 let accessible_keywords: (string * Type.t) list = [
   "afficher", Function ([Any], None);
-  "taille", Function ([List Any], Any);
+  "taille", Function ([List Any], Int);
   "supprimer", Function ([List Any; Int], Any);
   "ajouter", Function ([List Any; Any], None);
-  "min", Function ([Float; Float], Float);
-  "max", Function ([Float; Float], Float);
-  "abs", Function ([Float], Float);
-  "cos", Function ([Float], Float);
-  "sin", Function ([Float], Float);
-  "arccos", Function ([Float], Float);
-  "arcsin", Function ([Float], Float);
-  "arctan", Function ([Float], Float);
-  "racine", Function ([Float], Float);
+  "min", Function ([Union [Int; Float]; Union [Int; Float]], Union [Int; Float]);
+  "max", Function ([Union [Int; Float]; Union [Int; Float]], Union [Int; Float]);
+  "abs", Function ([Union [Int; Float]], Union [Int; Float]);
+  "cos", Function ([Union [Int; Float]], Union [Int; Float]);
+  "sin", Function ([Union [Int; Float]], Union [Int; Float]);
+  "arccos", Function ([Union [Int; Float]], Union [Int; Float]);
+  "arcsin", Function ([Union [Int; Float]], Union [Int; Float]);
+  "arctan", Function ([Union [Int; Float]], Union [Int; Float]);
+  "racine", Function ([Union [Int; Float]], Union [Int; Float]);
   "chaine", Function ([Any], String);
-  "entier", Function ([Any], Int);
-  "reel", Function ([Any], Int)
+  "entier", Function ([Union [Float]; String], Int);
+  "réel", Function ([Union [Int; String]], Float);
+  "décimal", Function ([Union [Int; Float]], Float)
 ]
 
 let add_builtins map =

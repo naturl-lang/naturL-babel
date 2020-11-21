@@ -20,10 +20,11 @@ let py_type: Type.t -> string option = function
   | Any -> None
   | Class _ -> None        (*TODO: Fix this by importing typing*)
   | Custom class_name -> Some class_name
+  | Union _ -> None        (*TODO: Fix this by importing typing*)
 
 (********************* Expression *********************)
 
-let py_expr =
+let py_expr variables =
   let rec py_expr (parent: Expr.t option) (expression: Expr.t) =
     let string, expr = match expression with
     | Plus (left, right) as expr -> binary_op " + " expr left right, expr
@@ -45,7 +46,13 @@ let py_expr =
     | List l as expr ->
       "[" ^ String.concat ", " (List.map (py_expr None) l) ^ "]", expr
     | Call (name, args) as expr ->
-      name ^ "(" ^ String.concat ", " (List.map (py_expr None) args) ^ ")", expr
+      let args = List.map (py_expr None) args in
+      (* If the function is defined by the user *)
+      if StringMap.mem name variables then
+        name ^ "(" ^ String.concat ", " args ^ ")", expr
+      else
+        let builtin = StringMap.find name Builtins.functions in
+        builtin.translator args, expr
     | Subscript (arg, index) as expr ->
       py_expr (Some expr) arg ^ "[" ^ py_expr None index ^ "]", expr
     | Value value as expr ->
@@ -72,16 +79,36 @@ let py_expr =
 
 let naturl_to_python ~annotate ~code =
   let indent depth = String.make (4 * depth) ' ' in
-  let rec ast_to_python ~depth = function
+  let rec ast_to_python ~depth ast =
+    match ast with
+    | Body [] -> indent depth ^ "pass"
     | Body body ->
-      body
-      |> List.map
-        (function ast -> ast_to_python ~depth ast ^ "\n")
-      |> String.concat "\n"
-    | Expr (_, expression) ->
-      indent depth ^ py_expr expression
-    | Return (_, expression) ->
-      let expression = py_expr expression in
+      let _, blocks = body
+      |> List.fold_left_map
+        (fun parent -> fun ast ->
+           let leading_space, trailing_space = match ast with
+             | Func_definition _ ->
+               begin
+                 match parent with
+                 | Func_definition _ -> ""
+                 | _ -> "\n\n"
+               end, "\n\n"
+             | _ ->
+               begin
+                 match parent with
+                 | While _ | For _ | For_each _ -> "\n", ""
+                 | _ -> "", ""
+               end
+           in ast,
+              leading_space ^ ast_to_python ~depth ast ^ trailing_space)
+        End
+      in String.concat "\n" blocks
+    | Expr (location, expression) ->
+      let variables = Variables.get_locale_variables location in
+      indent depth ^ py_expr variables expression
+    | Return (location, expression) ->
+      let variables = Variables.get_locale_variables location in
+      let expression = py_expr variables expression in
       indent depth ^ "return " ^ expression
     | Assign (location, name, expr) ->
       let variables = Variables.get_locale_variables location in
@@ -93,10 +120,11 @@ let naturl_to_python ~annotate ~code =
           | Some s -> ": " ^ s
           | None -> ""
       in
-      indent depth ^ name ^ annotation ^ " = " ^ py_expr expr
-    | If (_, condition, body, else_) ->
+      indent depth ^ name ^ annotation ^ " = " ^ py_expr variables expr
+    | If (location, condition, body, else_) ->
+      let variables = Variables.get_locale_variables location in
       let body = ast_to_python ~depth:(depth + 1) body in
-      let condition = py_expr condition in
+      let condition = py_expr variables condition in
       let else_ = match else_ with
         | Some body -> indent depth ^ "else:\n" ^ (ast_to_python ~depth:(depth + 1) body)
         | None -> ""
@@ -105,20 +133,28 @@ let naturl_to_python ~annotate ~code =
     | Else (_, body) ->
       let body = ast_to_python ~depth:(depth + 1) body in
       indent depth ^ "else:\n" ^ body
-    | For (_, var, start, end_, body) ->
+    | For (location, var, start, end_, body) ->
+      let variables = Variables.get_locale_variables location in
       let body = ast_to_python ~depth:(depth + 1) body
-      and start = py_expr start
-      and end_ = py_expr end_ in
+      and start = py_expr variables start
+      and end_ = py_expr variables end_ in
       indent depth ^ "for " ^ var ^ " in range(" ^ start ^ ", " ^ end_ ^ "):\n" ^ body
-    | For_each (_, var, iterable, body) ->
+    | For_each (location, var, iterable, body) ->
+      let variables = Variables.get_locale_variables location in
       let body = ast_to_python ~depth:(depth + 1) body
-      and iterable = py_expr iterable in
+      and iterable = py_expr variables iterable in
       indent depth ^ "for " ^ var ^ " in " ^ iterable ^ ":\n" ^ body
-    | While (_, condition, body) ->
+    | While (location, condition, body) ->
+      let variables = Variables.get_locale_variables location in
       let body = ast_to_python ~depth:(depth + 1) body
-      and condition = py_expr condition in
+      and condition = py_expr variables condition in
       indent depth ^ "while " ^ condition ^ ":\n" ^ body
-    | Func_definition (_, name, args, return, body) ->
+    | Func_definition (location, name, args, return, body) ->
+      let variables = Variables.get_locale_variables location in
+      (* If the function is already defined above, add a warning *)
+      if StringMap.mem name variables then
+        Warnings.add_warning ("Cette redéfinition de la fonction '" ^
+                              name ^ "' écrase la définition précédente") 0 ;
       let body = ast_to_python ~depth:(depth + 1) body
       and types, args = List.split args in
       let args = List.map2 (fun arg -> fun type_ ->
@@ -136,8 +172,9 @@ let naturl_to_python ~annotate ~code =
         else ""
       in
       indent depth ^ "def " ^ name ^
-      "(" ^ (String.concat ", " args) ^ ")" ^ return ^ "\n" ^ body
+      "(" ^ (String.concat ", " args) ^ ")" ^ return ^ ":\n" ^ body
     | End -> "\n"
   in let ast = try_catch stderr (fun () -> parse_body code)
   in try_catch stderr (fun () -> check_semantic ast);
+  Warnings.print_warnings ~severity:0;
   String.trim (ast_to_python ~depth:0 ast) ^ "\n"

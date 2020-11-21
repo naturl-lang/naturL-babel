@@ -165,7 +165,7 @@ let check_semantic ast =
              | Some var_location -> (* If it has already been declared, check the type *)
                begin
                  match Variables.var_type_opt name var_location !Variables.declared_variables with
-                 | Some t -> print_endline @@ Type.to_string iter_type;
+                 | Some t ->
                    if not @@ Type.equal t iter_type then
                      raise_type_error ~location
                        ("La variable '" ^ name ^ "' doit être de type '" ^ (Type.to_string iter_type) ^
@@ -208,7 +208,7 @@ let check_semantic ast =
       Variables.declare_variable name location;
       Variables.update_type name location @@ Function (arg_types, ret_type);
       let _, returns = check_semantic ~current_func:(Some (name, location)) local_variables body in
-      if not returns then
+      if not returns && ret_type <> None then
         raise_syntax_error ~location
           "Il existe des cas pour lesquels cette fonction ne retourne pas de valeur";
       add_locale_variables location variables;

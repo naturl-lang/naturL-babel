@@ -71,3 +71,8 @@ let get_locale_variables location =
   !locale_variables
   |> LocationMap.find_opt location
   |> Option.value ~default: StringMap.empty
+
+
+let reset_variables () =
+  declared_variables := VarSet.empty;
+  locale_variables := LocationMap.empty

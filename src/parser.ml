@@ -6,7 +6,8 @@ open Getters
 
 let parse_body code =
   let line_list = String.split_on_char '\n' code in
-  (* Mutually recursive parsing functions. They need to be mutually recursive because each of them calls prse_body and parse_body calls each of them *)
+  (* Mutually recursive parsing functions. *)
+  (* They need to be mutually recursive because each of them calls parse_body and parse_body calls each of them *)
   let rec parse_body ?(terminators = [""]) context =
     let rec parse_body terminators body context =
       let code = context.code and index = context.index in
@@ -125,7 +126,8 @@ let parse_body code =
           h ^ " " ^ type_, name
       in String.split_on_char ' ' arg |> split_arg
     in
-    let args = String.split_on_char ',' args_list |> List.map split_arg
+    let args = if String.trim args_list = "" then []
+      else String.split_on_char ',' args_list |> List.map split_arg
     and body, index = parse_body ~terminators:["debut"]
         { context with scopes = Func false :: context.scopes }
     in Ast.make_func_definition ~name ~args ~ret_type ~body ~context ~location, index
@@ -134,41 +136,3 @@ let parse_body code =
     parse_func_definition name args_list "rien" context location
 
   in let ast, _ = parse_body { code; index = 0; scopes = [] } in ast
-
-let ctx =
-  {
-    code =
-      "fonction somme(a, b, d) -> entier
-       debut
-        a <- b.c
-        b <- taille de a
-        c <- b
-        a.d[1] = 3
-        si a alors
-         test()
-        sinon si b alors
-         test2()
-        sinon si b.c alors
-
-         test3()
-
-        sinon si vrai alors
-          test4()
-        sinon si faux alors
-          test5()
-        sinon si a alors
-          test6()
-        fin
-
-        pour i de 1 jusque a 3 faire
-
-
-        a <- 2
-
-
-        fin
-        fin
-";
-    index = 0;
-    scopes = [];
-  };;

@@ -48,6 +48,44 @@ let raise_unexpected_type_error_with_name ?(location) name expected found =
   | Some location -> raise_type_error message ~location
   | None -> raise_type_error message
 
+let raise_function_error ?location name args user_args =
+  let n = List.length args in
+  let m = List.length user_args in
+  let dash = if n > 1 then "- " else "" in
+  let arg (name, type_) =
+    dash ^ name ^ ", de type '" ^ type_ ^ "'"
+  in
+  let user_arg type_ =
+    "'" ^ type_ ^ "'"
+  in
+  let rec args_list = function
+    | [] -> ""
+    | h :: [] -> arg h
+    | h :: t -> arg h ^ "\n" ^ args_list t
+  in
+  let rec user_args_list = function
+    | [] -> ""
+    | t :: [] -> user_arg t
+    | t1 :: t2 :: [] -> user_arg t1 ^ " et " ^ user_arg t2
+    | h :: t -> user_arg h ^ ", " ^ user_args_list t
+  in
+  (* User prototype *)
+  let error = if m = 0 then
+      "La fonction '" ^ name ^ "' est appelée sans arguments.\n"
+    else
+      let param = if m > 1 then " arguments de types " else " argument de type " in
+      "La fonction '" ^ name ^ "' est appelée avec " ^ string_of_int m ^ param ^ user_args_list user_args ^ ".\n"
+  in
+  (* Expected prototype *)
+  let error = error ^ if n = 0 then
+      "Elle n'attend d'arguments"
+    else
+      let param = if n > 1 then " arguments :\n" else " argument : " in
+      "Elle attend " ^ string_of_int n ^ param ^ args_list args
+  in match location with
+  | Some location -> raise_type_error ~location error
+  | None -> raise_type_error error
+
 (* Executes a function. *)
 (* If an error is raised with no location, raises the same error with a location *)
 let try_update_err location func =

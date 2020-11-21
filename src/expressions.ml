@@ -304,8 +304,10 @@ let type_of_expr ?(desired_type = Type.Any) expr vars =
           h1 :: check_params_type (index + 1) t1 t2
         else
           raise_type_error (
-          "Le " ^ (string_of_int index) ^ "e paramètre de la fonction '" ^
-          name ^  "'" ^ "est de type '" ^ (Type.to_string h1)
+            "Le " ^ (string_of_int (index + 1)) ^
+            (if index = 0 then "er" else "ème") ^
+            " paramètre de la fonction '" ^
+          name ^  "' est de type '" ^ (Type.to_string h1)
           ^ "', et non '" ^ (Type.to_string h2) ^ "'")
     in check_params_type 0 expected actual
   in
@@ -380,27 +382,33 @@ let type_of_expr ?(desired_type = Type.Any) expr vars =
            "' mais un index doit être un entier")
     | Access _ -> assert false
     | Call (name, params) ->
-      (* Get the definition location in the current context *)
-      let def_location = (match StringMap.find_opt name vars with
-          | Some location -> location
-          | None -> raise_name_error ("La fonction '" ^ name ^ "' n'est pas définie")) in
-      (* Get the parameters and return type as declared by the function *)
-      let declared_params, return =
-        match Variables.var_type_opt name def_location !Variables.declared_variables with
-        | Some (Function (p, r)) -> p, r
-        | Some _ -> raise_type_error ("La variable '" ^ name ^ "' ne correspond pas à une fonction")
-        | _ -> assert false
-      in
-      let params_type = List.map (type_of_expr ~desired_type:Any) params in
-      let corrected_types = check_params_type name params_type declared_params in
-      let return =
-        if return = Any then
-          desired_type
-        else
+      let params_types = List.map (type_of_expr ~desired_type:Any) params in
+      begin
+        (* Get the definition location in the current context *)
+        match StringMap.find_opt name vars with
+        | Some def_location ->
+          (* Get the parameters and return type as declared by the function *)
+          let declared_params, return =
+            match Variables.var_type_opt name def_location !Variables.declared_variables with
+            | Some (Function (p, r)) -> p, r
+            | Some _ -> raise_type_error ("La variable '" ^ name ^ "' ne correspond pas à une fonction")
+            | _ -> raise_bug "18520211814"
+          in
+          let corrected_types = check_params_type name params_types declared_params in
+          let return =
+            if return = Any then
+              desired_type
+            else
+              return
+          in
+          Variables.update_type name def_location (Type.Function (corrected_types, return));
           return
-      in
-      Variables.update_type name def_location (Type.Function (corrected_types, return));
-      return
+        | None ->
+          (* Look for the function in the builtin function *)
+          match Builtins.functions |> StringMap.find_opt name with
+          | Some builtin -> builtin.typer params_types
+          | None -> raise_name_error ("La fonction '" ^ name ^ "' n'est pas définie")
+      end
     | Value (Variable name) ->
       let location = (match StringMap.find_opt name vars with
           | Some location -> location

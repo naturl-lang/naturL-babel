@@ -23,6 +23,7 @@ let rec csharp_type: Type.t -> string = function
   | Any -> "object"
   | Class _ -> "object"
   | Custom class_name -> class_name
+  | Union _ -> raise_syntax_error "Les unions de type ne sont pas supportées en C#"
 
 (********************* Expression *********************)
 
@@ -95,7 +96,7 @@ let naturl_to_csharp ~code =
       let type_ = variables
                   |> StringMap.map (fun _ -> location)
                   |> type_of_expr expr
-                  |> csharp_type
+                  |> try_update_err location (fun () -> csharp_type)
       in
       indent depth ^ type_ ^ " " ^ name ^ " = " ^ csharp_expr expr ^ ";"
     | If (_, condition, body, else_) ->
@@ -122,7 +123,7 @@ let naturl_to_csharp ~code =
       and iterable_type = variables
                           |> StringMap.map (fun _ -> location)
                           |> type_of_expr iterable
-                          |> csharp_type
+                          |> try_update_err location (fun () -> csharp_type)
       in
       indent depth ^ "foreach (" ^ iterable_type ^ " " ^ var ^
       " in " ^ iterable ^ ")\n" ^ body
@@ -130,15 +131,15 @@ let naturl_to_csharp ~code =
       let body = ast_to_csharp ~depth:(depth + 1) body
       and condition = csharp_expr condition in
       indent depth ^ "while (" ^ condition ^ ")\n" ^ body
-    | Func_definition (_, name, args, return, body) ->
+    | Func_definition (location, name, args, return, body) ->
       let name = String.capitalize_ascii name
       and body = ast_to_csharp ~depth:(depth + 1) body
       and types, args = List.split args in
       let args = List.map2
-          (fun arg -> fun type_ -> (Type.of_string type_ |> csharp_type) ^ " " ^ arg)
+          (fun arg -> fun type_ -> (Type.of_string type_ |> try_update_err location (fun () -> csharp_type)) ^ " " ^ arg)
           args types
       in
-      let return = Type.of_string return |> csharp_type in
+      let return = Type.of_string return |> try_update_err location (fun () -> csharp_type) in
       indent depth ^ "private static " ^ return ^ " " ^ name ^
       "(" ^ (String.concat ", " args) ^ ")\n" ^ body
     | End -> "\n"
