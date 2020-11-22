@@ -115,13 +115,21 @@ let try_execute func ~on_success ~on_failure =
                   { line = -1; range = { start = -1; end_ = -1 } })
 
 (* Allow a function to raise multiple exceptions *)
+type error = {
+  header: string;
+  message: string;
+  location: Location.t;
+}
+
 let errors = Queue.create ()
 
 let clear_errors () =
   Queue.clear errors
 
 let get_errors () =
-  Utils.list_of_queue errors
+  errors
+  |> Utils.list_of_queue
+  |> List.map (function { header = _; message; location } -> message, location)
 
 let make_error_header = function
   | SyntaxError (_, Some location) -> "Erreur de syntaxe à la " ^ Location.to_string_fr location
@@ -134,12 +142,14 @@ let try_add_error func ~default =
   try func () with
   | SyntaxError (msg, Some location) | TypeError (msg, Some location)
   | NameError (msg, Some location) | ImportError (msg, Some location) as e ->
-    let msg = make_error_header e ^ " : " ^ msg in
-    Queue.add (msg, location) errors;
+    let header = make_error_header e ^ " : "
+    and message = msg in
+    Queue.add { header; message; location } errors;
     default
 
 let try_print_errors () =
-  errors |> Queue.iter (function (msg, _) ->
-      prerr_endline msg);
+  errors
+  |> Queue.iter (function { header; message; location = _ } ->
+      prerr_endline (header ^ message));
   if not @@ Queue.is_empty errors then
     exit 2
