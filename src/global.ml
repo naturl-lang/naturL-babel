@@ -14,4 +14,7 @@ let set_import_mode mode =
     | "overwrite" -> Overwrite
     | _ -> assert false
 
-let naturL_path = Sys.getenv_opt "NATURLPATH"
+let naturL_path =
+  match Sys.getenv_opt "NATURLPATH" with
+  | Some _ as s -> s
+  | None -> prerr_endline "The variable NATURLPATH is not defined"; None

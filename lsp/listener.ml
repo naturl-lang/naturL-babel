@@ -13,10 +13,7 @@ let handle_notification callback : Client_notification.t -> unit = function
 
 let handle_request oc id : Request.t -> unit = function
   | Shutdown -> Environment.shutdown (); Sender.send_response oc Jsonrpc.(Response.ok id `Null)
-  | Initialize params -> Environment.set_client_capabilities params.capabilities; Sender.initialize oc id ;
-    (match params.initializationOptions with
-       Some lang -> Internationalisation__Translation.set_lang_of_string lang
-     | None -> ())
+  | Initialize params -> Environment.set_client_capabilities params.capabilities; Sender.initialize oc id
   | TextDocumentDefinition params -> Functions.definition oc id params
   | TextDocumentCompletion params -> Functions.completion oc id params
   | TextDocumentFormat params -> Functions.reformat oc id params

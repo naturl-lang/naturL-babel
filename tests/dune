@@ -1,5 +1,0 @@
-(library
- (libraries src)
- (name naturL)
- (inline_tests)
- (preprocess (pps ppx_expect ppx_inline_test)))

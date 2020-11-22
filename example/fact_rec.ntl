@@ -3,6 +3,6 @@ debut
   si n = 0 alors
     retourner 1
   sinon
-    retourner n * factorielle(n - 1)
+    retourner n * factorielle de (n - 1)
   fin
 fin

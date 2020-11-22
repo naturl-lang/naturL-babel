@@ -1,7 +1,4 @@
-open Utils
 open Errors
-open Structures
-open Internationalisation.Translation
 
 type token =
   | Litteral of string
@@ -27,14 +24,13 @@ let print_token token =
 
 let print_tokens tokens = List.iter print_token tokens;;
 
-let tokenize input (vars: Type.t StringMap.t) =
+let tokenize input =
   let _tokenize input =
     let reg_identifier = Str.regexp "[a-zA-Z_][a-zA-Z_0-9]*"
-    and reg_mod_identifier = Str.regexp {|\([a-zA-Z_][\.a-Za-z_0-9]*\)\.[a-zA-Z_0-9][a-zA-Z_0-9]*|}
     and reg_instance_access_identifier = Str.regexp ("instance +" ^ {|\([a-zA-Z_][\.a-Za-z_0-9]*\.[a-zA-Z_0-9][a-zA-Z_0-9]*\)|})
     and reg_boolean = Str.regexp "vrai\\|faux"
     and reg_number = Str.regexp "[0-9]+\\.?[0-9]*"
-    and reg_operator = Str.regexp {|ou\|et\|non\|=\|!=\|<=\|>=\|<\|>\|*\|fois\|+\|-\|/\|div\|mod\|\^|}
+    and reg_operator = Str.regexp {|ou\|et\|non\|=\|!=\|<=\|>=\|<\|>\|*\|fois\|+\|-\|/\|div\|mod\|\^\|\.\|de|}
     and reg_string = Str.regexp  {|"\([^"]\)*"|}
     and reg_char = Str.regexp "'[\x00-\xff]'"
     and reg_openp = Str.regexp "("
@@ -61,19 +57,10 @@ let tokenize input (vars: Type.t StringMap.t) =
         let identifier = Str.matched_group 1 input in
         let token = Str.matched_group 0 input in
         (Identifier "instance") :: (Identifier identifier) :: _tokenize input (index + String.length token)
-      else if Str.string_match reg_mod_identifier input index then
-        let left = Str.matched_group 1 input in
-        let token = Str.matched_group 0 input in
-        if List.mem token Syntax.keywords then
-          raise_syntax_error ((get_string InvalidTokenExpression) ^ token ^ (get_string ReservedKeyword))
-        else if StringMap.mem left vars || Imports.is_namespace_imported left then
-          (Identifier token) :: _tokenize input (index + (String.length token))
-        else
-          raise_name_error ("(get_string CannotResolveName) '" ^ left ^ "'")
       else if Str.string_match reg_identifier input index then
         let token = Str.matched_string input in
         if List.mem token Syntax.keywords then
-          raise_syntax_error ((get_string InvalidTokenExpression) ^ token ^ (get_string ReservedKeyword))
+          raise_syntax_error ("Impossible de comprendre cette expression")
         else
           (Identifier token) :: _tokenize input (index + (String.length token))
       else if Str.string_match reg_openp input index then
@@ -87,21 +74,21 @@ let tokenize input (vars: Type.t StringMap.t) =
       else if Str.string_match reg_closehook input index then
         CloseHook :: _tokenize input (index+1)
       else
-        raise_syntax_error (get_string TokenCapture)
+        raise_syntax_error ("Imposible de lire l'expression: " ^ String.sub input index (String.length input - index))
     in _tokenize input 0
   in
   let improve_tokens tokens =
     let rec _improve_tokens ?previous ?(par_count = 0) ?(hook_count = 0) = function
-      | [] -> if par_count > 0 then raise_syntax_error (get_string MissingClosingParenthesis)
-        else if hook_count > 0 then raise_syntax_error (get_string MissingClosingBracket)
+      | [] -> if par_count > 0 then raise_syntax_error "Il manque une parenthèse fermante"
+        else if hook_count > 0 then raise_syntax_error "Il manque un crochet fermant"
         else []
       | OpenP :: t -> OpenP :: _improve_tokens t ~previous: OpenP ~par_count: (par_count + 1) ~hook_count
-      | CloseP :: t -> if par_count = 0 then raise_syntax_error (get_string UnexpectedParenthesis)
+      | CloseP :: t -> if par_count = 0 then raise_syntax_error "Une parenth_se fermante est non ouverte"
           else CloseP :: _improve_tokens t ~previous: CloseP ~par_count: (par_count - 1) ~hook_count
       | OpenHook :: t -> (match previous with
           | None | Some (Operator _ | OpenP | OpenHook | Coma) -> Operator "[" :: OpenHook :: _improve_tokens t ~previous: OpenHook ~par_count ~hook_count: (hook_count + 1)
           | _ -> Operator "get[" :: OpenHook :: _improve_tokens t ~previous: OpenHook ~par_count ~hook_count: (hook_count + 1))
-      | CloseHook :: t -> if hook_count = 0 then raise_syntax_error (get_string UnexpectedBracket)
+      | CloseHook :: t -> if hook_count = 0 then raise_syntax_error "Un crochet fermant est non ouvert"
           else CloseHook :: _improve_tokens t ~previous: CloseHook ~par_count ~hook_count: (hook_count - 1)
       | Identifier name :: OpenP :: t -> Operator name :: _improve_tokens (OpenP :: t) ~previous: (Operator name) ~par_count ~hook_count
       | Operator "-" :: t -> let op = match previous with

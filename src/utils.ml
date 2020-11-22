@@ -1,6 +1,12 @@
+module IntMap = Map.Make(Int)
 module StringMap = Map.Make(String)
 module StringSet = Set.Make(String)
 
+let find_in_set_opt (type elt) (type t)
+    (module S: Set.S with type elt = elt and type t = t)
+    (predicate: elt -> bool)
+    (set: t) =
+  set |> S.filter predicate |> S.choose_opt
 
 let read_file name =
   let chan = open_in name in
@@ -191,6 +197,9 @@ let get_last_position text =
     else
       get_last_position (index + 1) line (character + 1)
   in get_last_position 0 0 0
+
+let is_alphanum string =
+  Str.string_match (Str.regexp {|^[A-Za-z_][A-Za-z_0-9]*$|}) string 0
 
 let (++) = Big_int.add_big_int
 let (--) = Big_int.sub_big_int
