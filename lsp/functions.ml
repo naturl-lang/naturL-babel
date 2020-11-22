@@ -135,6 +135,7 @@ let transpile callback error_callback _ code =
   Src.Errors.try_execute
     (fun () ->
        Src.Python.naturl_to_python
+         ~raise_exception:false
          ~annotate:true
          ~code
        |> Js.string)

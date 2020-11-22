@@ -85,7 +85,7 @@ let py_expr variables =
 
 (******************************************************)
 
-let naturl_to_python ~annotate ~code =
+let naturl_to_python ?(raise_exception = false) ~annotate ~code =
   let indent depth = String.make (4 * depth) ' ' in
   let find_declare_location variable (variables: Structures.Location.t StringMap.t) =
     let open Structures.Location in
@@ -187,8 +187,11 @@ let naturl_to_python ~annotate ~code =
     | End -> "\n"
   in let ast = try_catch stderr (fun () -> parse_body code)
   in try_add_error (fun () -> check_semantic ast) ~default:();
-  Warnings.print_warnings ~severity:0;
-  try_print_errors ();
+  if raise_exception then
+    begin
+      try_print_errors ();
+      Warnings.print_warnings ~severity:0;
+    end;
   String.trim (Imports.get_imports () ^
                "\n\n" ^
                ast_to_python ~depth:0 ast)
