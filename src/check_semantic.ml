@@ -28,6 +28,7 @@ let check_semantic ast =
       let expr_type = try_update_err location (fun () -> type_of_expr expr variables) in
       if expr_type <> Type.None then
         Warnings.add_warning ~location "La valeur de retour de cette expression n'est pas utilisée" 0;
+      add_locale_variables location.line variables;
       variables, false
     | Return (location, expr) ->
       let ret_type = try_update_err location (fun () -> type_of_expr expr variables) in

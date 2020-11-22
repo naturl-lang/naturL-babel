@@ -124,7 +124,7 @@ let parse_body code =
         | type_ :: name :: [] -> type_, name
         | h :: t -> let type_, name = split_arg t in
           h ^ " " ^ type_, name
-      in String.split_on_char ' ' arg |> split_arg
+      in arg |> String.trim |> String.split_on_char ' ' |> split_arg
     in
     let args = if String.trim args_list = "" then []
       else String.split_on_char ',' args_list |> List.map split_arg

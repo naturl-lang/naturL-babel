@@ -8,19 +8,27 @@ open Errors
 
 (********************* Type *********************)
 
-let py_type: Type.t -> string option = function
-  | Int -> Some "int"
-  | Float -> Some "float"
-  | Char -> Some "str"
-  | String -> Some "str"
-  | Bool -> Some "bool"
-  | List _ -> Some "list"  (*TODO: Fix this by importing typing*)
-  | Function _ -> None     (*TODO: Fix this by importing typing*)
-  | None -> Some "None"
-  | Any -> None
-  | Class _ -> None        (*TODO: Fix this by importing typing*)
-  | Custom class_name -> Some class_name
-  | Union _ -> None        (*TODO: Fix this by importing typing*)
+let rec py_type: Type.t -> string = function
+  | Int -> "int"
+  | Float -> "float"
+  | Char -> "str"
+  | String -> "str"
+  | Bool -> "bool"
+  | List t ->
+    Imports.add_import "typing" (Some "List");
+    "List[" ^ py_type t ^ "]"
+  | Function (args, return) ->
+    Imports.add_import "typing" (Some "Callable");
+    "Callable[[" ^ (args |> List.map py_type |> String.concat ", ") ^
+    "], "^ py_type return ^ "]"
+  | None -> "None"
+  | Any -> Imports.add_import "typing" (Some "Any"); "Any"
+  | Class _ ->
+    Imports.add_import "typing" (Some "Type"); "Type"
+  | Custom class_name -> class_name
+  | Union types ->
+    Imports.add_import "typing" (Some "Union");
+    "Union[" ^ (types |> List.map py_type |> String.concat ", ") ^ "]"
 
 (********************* Expression *********************)
 
@@ -125,9 +133,7 @@ let naturl_to_python ~annotate ~code =
     | Assign (location, name, expr) ->
       let variables = Variables.get_locale_variables location.line in
       let annotation = if not annotate || find_declare_location name variables <> location then ""
-        else match variables |> type_of_expr expr |> py_type with
-          | Some s -> ": " ^ s
-          | None -> ""
+        else ": " ^ (variables |> type_of_expr expr |> py_type)
       in
       indent depth ^ name ^ annotation ^ " = " ^ py_expr variables expr
     | If (location, condition, body, else_) ->
@@ -168,16 +174,12 @@ let naturl_to_python ~annotate ~code =
       and types, args = List.split args in
       let args = List.map2 (fun arg -> fun type_ ->
           let annotation = if annotate then
-              match Type.of_string type_ |> py_type with
-              | Some s -> ": " ^ s
-              | None -> ""
+              ": " ^ (Type.of_string type_ |> py_type)
             else ""
           in arg ^ annotation) args types
       in
       let return = if annotate then
-          match Type.of_string return |> py_type with
-          | Some s -> " -> " ^ s
-          | None -> ""
+          " -> " ^ (Type.of_string return |> py_type)
         else ""
       in
       indent depth ^ "def " ^ name ^
@@ -186,4 +188,5 @@ let naturl_to_python ~annotate ~code =
   in let ast = try_catch stderr (fun () -> parse_body code)
   in try_catch stderr (fun () -> check_semantic ast);
   Warnings.print_warnings ~severity:0;
+  Imports.get_imports () ^ "\n\n" ^
   String.trim (ast_to_python ~depth:0 ast) ^ "\n"

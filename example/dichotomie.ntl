@@ -14,5 +14,8 @@ fin
 
 fonction rechercher(liste l, ? x) -> booleen
 debut
-    retourner __rechercher(l, x, 1, taille(l))
+    retourner __rechercher(l, x, 1, taille de l)
 fin
+
+a <- [1, 2, 3, 4, 5, 6, 8, 9]
+afficher(rechercher(a, 2))
