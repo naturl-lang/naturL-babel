@@ -17,7 +17,7 @@ let read_input chan_name =
 
 let write_translation chan_name code =
   let chan = map_option chan_name (fun name -> open_out name) (fun () -> stdout) in
-  Printf.fprintf chan "%s" (naturl_to_python ~annotate:true ~code)
+  Printf.fprintf chan "%s" (naturl_to_python ~raise_exception:true ~annotate:true ~code)
 
 
 let input_name = ref ""
