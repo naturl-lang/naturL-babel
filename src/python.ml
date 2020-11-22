@@ -185,8 +185,8 @@ let naturl_to_python ?(raise_exception = false) ~annotate ~code =
       indent depth ^ "def " ^ name ^
       "(" ^ (String.concat ", " args) ^ ")" ^ return ^ ":\n" ^ body
     | End -> "\n"
-  in let ast = try_catch stderr (fun () -> parse_body code) ~raise_errors:raise_exception
-  in try_add_error (fun () -> check_semantic ast) ~default:();
+  in let ast = try_add_error (fun () -> parse_body code) ~default:End
+  in if ast <> End then try_add_error (fun () -> check_semantic ast) ~default:();
   if raise_exception then
     begin
       try_print_errors ();
