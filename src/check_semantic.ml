@@ -37,7 +37,7 @@ let check_semantic ast =
       in
       (* Get the function type to check if the expression type matches *)
       let func_type =
-        match Variables.var_type_opt func_name func_location @@ !Variables.declared_variables with
+        match Variables.var_type_opt func_name func_location @@ !Variables.defined_variables with
         | Some (Type.Function (_, func_type)) -> func_type
         | _ -> raise_bug "18520211814"  (* A function should have been defined *)
       in if not @@ Type.equal ret_type func_type then
@@ -48,17 +48,17 @@ let check_semantic ast =
       add_locale_variables location.line variables;
       variables, true
     | Assign (location, name, expr) ->
-      (*If the variable is already decared, get its location and its type, else declare it*)
-      let declare_location, desired_type =
+      (*If the variable is already decared, get its location and its type, else define it*)
+      let define_location, desired_type =
         match variables |> StringMap.find_opt name with
         | Some location ->
           location, begin
-            match Variables.var_type_opt name location !Variables.declared_variables with
+            match Variables.var_type_opt name location !Variables.defined_variables with
             | Some t -> t
             | None -> Any
           end
         | None ->
-          Variables.declare_variable name location;
+          Variables.define_variable name location;
           location, Any
       in
       let expr_type = try_update_err location
@@ -70,7 +70,7 @@ let check_semantic ast =
           "Cette expression est de type '" ^ (Type.to_string expr_type) ^
           "' mais la variable '" ^ name ^ "' est de type '" ^
           (Type.to_string desired_type) ^ "'. Ces deux types sont incompatibles.");
-      let variables = variables |> StringMap.add name declare_location in
+      let variables = variables |> StringMap.add name define_location in
       add_locale_variables location.line variables;
       variables, false
     | If (location, condition, body, else_) ->
@@ -115,15 +115,15 @@ let check_semantic ast =
             raise_type_error ~location
               ("La borne supérieure d'une boucle for doit être un entier, et non de type '" ^
                (Type.to_string start_type) ^ "'"));
-      (*If the variable has already been defined, make sure it is of type integer, else declare it*)
+      (*If the variable has already been defined, make sure it is of type integer, else define it*)
       let variables = match StringMap.find_opt var_name variables with
         | None ->
-          Variables.declare_variable var_name location;
+          Variables.define_variable var_name location;
           Variables.update_type var_name location Int;
           variables |> StringMap.add var_name location
         | Some var_location ->
           begin
-            match Variables.var_type_opt var_name var_location !Variables.declared_variables with
+            match Variables.var_type_opt var_name var_location !Variables.defined_variables with
             | Some t ->
               if not @@ Type.equal t Int then
                 raise_type_error ~location
@@ -152,13 +152,13 @@ let check_semantic ast =
          | Some iter_type -> (*If the type is iterable, check the variable type*)
            begin
              match StringMap.find_opt name variables with
-             | None ->  (* If it hasn't been declared yet, declare it with the appropriate type *)
-               Variables.declare_variable name location;
+             | None ->  (* If it hasn't been defined yet, define it with the appropriate type *)
+               Variables.define_variable name location;
                Variables.update_type name location iter_type;
                variables |> StringMap.add name location
-             | Some var_location -> (* If it has already been declared, check the type *)
+             | Some var_location -> (* If it has already been defined, check the type *)
                begin
-                 match Variables.var_type_opt name var_location !Variables.declared_variables with
+                 match Variables.var_type_opt name var_location !Variables.defined_variables with
                  | Some t ->
                    if not @@ Type.equal t iter_type then
                      raise_type_error ~location
@@ -189,7 +189,7 @@ let check_semantic ast =
       let arg_types, ret_type = try_update_err location (fun () ->
           args |> List.map (function type_s, arg_name ->
               let arg_type = try_update_err location (fun () -> Type.of_string type_s) in
-              Variables.declare_variable arg_name location;
+              Variables.define_variable arg_name location;
               Variables.update_type arg_name location arg_type;
               arg_type),
           Type.of_string return) in
@@ -199,7 +199,7 @@ let check_semantic ast =
         |> List.fold_left
           (fun map -> function _, arg -> map |> StringMap.add arg location)
           variables in
-      Variables.declare_variable name location;
+      Variables.define_variable name location;
       Variables.update_type name location @@ Function (arg_types, ret_type);
       let _, returns = check_semantic ~current_func:(Some (name, location)) local_variables body in
       if not returns && ret_type <> None then

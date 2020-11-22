@@ -61,7 +61,7 @@ let make_else ~body ~context ~location =
       "Un bloc 'sinon' doit être précédé d'un bloc 'si' ou 'sinon_si'"
 let make_for ~target ~start ~end_ ~body ~context ~location =
   assert_not_in_func_def ~context;
-  if not @@ Variables.is_var_declared target then
+  if not @@ Variables.is_var_defined target then
     ();
   For (location, target, start, end_, body)
 let make_for_each ~target ~iter ~body ~context ~location =

@@ -68,7 +68,7 @@ let completion oc id (params: CompletionParams.t) =
                              |> IntMap.find_last (fun l -> l <= params.position.line + 1)
           in let variables = variables
                              |> StringMap.mapi (fun name -> fun location ->
-                                 !Variables.declared_variables
+                                 !Variables.defined_variables
                                  |> Variables.var_type_opt name location
                                  |> Option.value ~default:Src.Type.Any)
                            |> StringMap.bindings

@@ -386,14 +386,14 @@ let type_of_expr ?(desired_type = Type.Any) expr vars =
         (* Get the definition location in the current context *)
         match StringMap.find_opt name vars with
         | Some def_location ->
-          (* Get the parameters and return type as declared by the function *)
-          let declared_params, return =
-            match Variables.var_type_opt name def_location !Variables.declared_variables with
+          (* Get the parameters and return type as defined by the function *)
+          let defined_params, return =
+            match Variables.var_type_opt name def_location !Variables.defined_variables with
             | Some (Function (p, r)) -> p, r
             | Some _ -> raise_type_error ("La variable '" ^ name ^ "' ne correspond pas à une fonction")
             | _ -> raise_bug "18520211814"
           in
-          let corrected_types = check_params_type name params_types declared_params in
+          let corrected_types = check_params_type name params_types defined_params in
           let return =
             if return = Any then
               desired_type
@@ -413,7 +413,7 @@ let type_of_expr ?(desired_type = Type.Any) expr vars =
           | Some location -> location
           | None -> raise_name_error ("La variable '" ^ name ^ "' n'est pas définie")) in
       let var_type =
-        match Variables.var_type_opt name location !Variables.declared_variables with
+        match Variables.var_type_opt name location !Variables.defined_variables with
         | Some t -> t
         | None -> Any
       in

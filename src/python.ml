@@ -79,6 +79,18 @@ let py_expr variables =
 
 let naturl_to_python ~annotate ~code =
   let indent depth = String.make (4 * depth) ' ' in
+  let find_declare_location variable (variables: Structures.Location.t StringMap.t) =
+    let open Structures.Location in
+    let rec find_declare_location = function
+      | [], location -> location
+      | (name, loc) :: t, location when name = variable ->
+        let location = match location with
+          | Some location -> if loc.line < location.line then loc else location
+          | None -> loc
+        in find_declare_location (t, Some location)
+      | _ :: t, location -> find_declare_location (t, location)
+    in find_declare_location (StringMap.bindings variables, None) |> Option.get
+  in
   let rec ast_to_python ~depth ast =
     match ast with
     | Body [] -> indent depth ^ "pass"
@@ -112,11 +124,8 @@ let naturl_to_python ~annotate ~code =
       indent depth ^ "return " ^ expression
     | Assign (location, name, expr) ->
       let variables = Variables.get_locale_variables location.line in
-      let annotation = if not annotate then "" else
-          match variables
-                |> StringMap.map (fun _ -> location)
-                |> type_of_expr expr
-                |> py_type with
+      let annotation = if not annotate || find_declare_location name variables <> location then ""
+        else match variables |> type_of_expr expr |> py_type with
           | Some s -> ": " ^ s
           | None -> ""
       in

@@ -13,11 +13,11 @@ module VarSet = Set.Make (
     let compare = compare
   end)
 
-(* Map of all declared variables (initialized during the parsing process) *)
-let declared_variables = ref VarSet.empty
+(* Map of all defined variables (initialized during the parsing process) *)
+let defined_variables = ref VarSet.empty
 
-let is_var_declared searched_name =
-  !declared_variables
+let is_var_defined searched_name =
+  !defined_variables
   |> VarSet.exists (fun { name; location = _; type_ = _  } -> name = searched_name)
 
 let var_type_opt searched_name searched_location vars =
@@ -28,31 +28,32 @@ let var_type_opt searched_name searched_location vars =
          name = searched_name && location = searched_location)
   in var.type_
 
-let declare_variable name location =
+let define_variable name location =
+  (* If the variable is not declared, *)
   let name = String.trim name in
-  declared_variables :=
-    !declared_variables
+  defined_variables :=
+    !defined_variables
     |> VarSet.add { name; location; type_ = None }
 
 let update_type searched_name searched_location type_ =
   let searched_name = String.trim searched_name
   and type_ = Some type_ in
-  declared_variables :=
-    !declared_variables
+  defined_variables :=
+    !defined_variables
     |> VarSet.map (function { name; location; type_ = _ } as var ->
         if name = searched_name && location = searched_location then
           { var with type_ }
         else
           var)
 
-let print_declared_variables () =
-  let rec print_declared_variable = function
+let print_defined_variables () =
+  let rec print_defined_variable = function
     | { name; location; type_ = _  } :: t ->
       Printf.printf "\tVariable %s defined at line %d, columns %d-%d\n"
         name location.line location.range.start location.range.end_;
-      print_declared_variable t
+      print_defined_variable t
     | _ -> ()
-  in print_declared_variable (VarSet.elements !declared_variables)
+  in print_defined_variable (VarSet.elements !defined_variables)
 
 (*********************************)
 
@@ -69,5 +70,5 @@ let get_locale_variables location =
 
 
 let reset_variables () =
-  declared_variables := VarSet.empty;
+  defined_variables := VarSet.empty;
   locale_variables := IntMap.empty
