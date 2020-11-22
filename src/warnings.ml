@@ -9,6 +9,9 @@ type warning = {
 let final = Queue.create()
 let staged  = Queue.create()
 
+let clear_warnings () =
+  Queue.clear final;
+  Queue.clear staged
 
 let add_warning ?location message severity =
   let warning = { message; severity; location } in

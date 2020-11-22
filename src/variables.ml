@@ -68,7 +68,8 @@ let get_locale_variables location =
   |> IntMap.find_opt location
   |> Option.value ~default: StringMap.empty
 
+(*****************************************************************)
 
-let reset_variables () =
+let reset () =
   defined_variables := VarSet.empty;
   locale_variables := IntMap.empty

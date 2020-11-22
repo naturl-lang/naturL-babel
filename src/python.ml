@@ -186,7 +186,8 @@ let naturl_to_python ~annotate ~code =
       "(" ^ (String.concat ", " args) ^ ")" ^ return ^ ":\n" ^ body
     | End -> "\n"
   in let ast = try_catch stderr (fun () -> parse_body code)
-  in try_catch stderr (fun () -> check_semantic ast);
+  in try_add_error (fun () -> check_semantic ast) ~default:();
   Warnings.print_warnings ~severity:0;
+  try_print_errors ();
   Imports.get_imports () ^ "\n\n" ^
   String.trim (ast_to_python ~depth:0 ast) ^ "\n"
