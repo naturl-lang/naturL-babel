@@ -104,14 +104,14 @@ let naturl_to_python ~annotate ~code =
         End
       in String.concat "\n" blocks
     | Expr (location, expression) ->
-      let variables = Variables.get_locale_variables location in
+      let variables = Variables.get_locale_variables location.line in
       indent depth ^ py_expr variables expression
     | Return (location, expression) ->
-      let variables = Variables.get_locale_variables location in
+      let variables = Variables.get_locale_variables location.line in
       let expression = py_expr variables expression in
       indent depth ^ "return " ^ expression
     | Assign (location, name, expr) ->
-      let variables = Variables.get_locale_variables location in
+      let variables = Variables.get_locale_variables location.line in
       let annotation = if not annotate then "" else
           match variables
                 |> StringMap.map (fun _ -> location)
@@ -122,11 +122,11 @@ let naturl_to_python ~annotate ~code =
       in
       indent depth ^ name ^ annotation ^ " = " ^ py_expr variables expr
     | If (location, condition, body, else_) ->
-      let variables = Variables.get_locale_variables location in
+      let variables = Variables.get_locale_variables location.line in
       let body = ast_to_python ~depth:(depth + 1) body in
       let condition = py_expr variables condition in
       let else_ = match else_ with
-        | Some body -> indent depth ^ "else:\n" ^ (ast_to_python ~depth:(depth + 1) body)
+        | Some body -> "\n" ^ indent depth ^ "else:\n" ^ ast_to_python ~depth:(depth + 1) body
         | None -> ""
       in
       indent depth ^ "if " ^ condition ^ ":\n" ^ body ^ else_
@@ -134,23 +134,23 @@ let naturl_to_python ~annotate ~code =
       let body = ast_to_python ~depth:(depth + 1) body in
       indent depth ^ "else:\n" ^ body
     | For (location, var, start, end_, body) ->
-      let variables = Variables.get_locale_variables location in
+      let variables = Variables.get_locale_variables location.line in
       let body = ast_to_python ~depth:(depth + 1) body
       and start = py_expr variables start
       and end_ = py_expr variables end_ in
       indent depth ^ "for " ^ var ^ " in range(" ^ start ^ ", " ^ end_ ^ "):\n" ^ body
     | For_each (location, var, iterable, body) ->
-      let variables = Variables.get_locale_variables location in
+      let variables = Variables.get_locale_variables location.line in
       let body = ast_to_python ~depth:(depth + 1) body
       and iterable = py_expr variables iterable in
       indent depth ^ "for " ^ var ^ " in " ^ iterable ^ ":\n" ^ body
     | While (location, condition, body) ->
-      let variables = Variables.get_locale_variables location in
+      let variables = Variables.get_locale_variables location.line in
       let body = ast_to_python ~depth:(depth + 1) body
       and condition = py_expr variables condition in
       indent depth ^ "while " ^ condition ^ ":\n" ^ body
     | Func_definition (location, name, args, return, body) ->
-      let variables = Variables.get_locale_variables location in
+      let variables = Variables.get_locale_variables location.line in
       (* If the function is already defined above, add a warning *)
       if StringMap.mem name variables then
         Warnings.add_warning ("Cette redéfinition de la fonction '" ^

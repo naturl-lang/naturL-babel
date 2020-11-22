@@ -1,7 +1,6 @@
 open Errors
 open Utils
 open Tokenizer
-open Internationalisation.Translation
 
 
 module Expr = struct
@@ -102,13 +101,13 @@ open (struct
     | "et" -> And (e1, e2)
     | "ou" -> Or (e1, e2)
     | "get[" -> Subscript (e1, Minus (e2, Value (Int (Big_int.big_int_of_int 1))))
-    | op -> raise_syntax_error ((get_string UnknownOperator) ^ op ^ "'")
+    | op -> raise_syntax_error ("L'opérateur '" ^ op ^ "' n'existe pas")
 
   let make_unary_op op arg : Expr.t =
     match op with
     | "neg" -> Neg arg
     | "non" -> Not arg
-    | op -> raise_syntax_error ((get_string UnknownOperator) ^ op ^ "'")
+    | op -> raise_syntax_error ("L'opérateur '" ^ op ^ "' n'existe pas")
 
   let string_of_token = function
     | Operator str | Identifier str | Litteral str -> str ^ " "

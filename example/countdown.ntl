@@ -1,8 +1,6 @@
 procedure countdown(entier n)
-variables
-  entier i
 debut
-  pour i de 0 jusqu_a n faire
+  pour i de 0 jusqu'a n faire
     afficher(n - i)
   fin
 fin

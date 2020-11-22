@@ -92,7 +92,7 @@ let naturl_to_csharp ~code =
       let expression = csharp_expr expression in
       indent depth ^ "return " ^ expression ^ ";"
     | Assign (location, name, expr) ->
-      let variables = Variables.get_locale_variables location in
+      let variables = Variables.get_locale_variables location.line in
       let type_ = variables
                   |> StringMap.map (fun _ -> location)
                   |> type_of_expr expr
@@ -117,7 +117,7 @@ let naturl_to_csharp ~code =
       indent depth ^ "for (int " ^ var ^ " = " ^ start ^ "; " ^
       var ^ " < " ^ end_ ^ "; " ^ var ^ "++)\n" ^ body
     | For_each (location, var, iterable, body) ->
-      let variables = Variables.get_locale_variables location in
+      let variables = Variables.get_locale_variables location.line in
       let body = ast_to_csharp ~depth:(depth + 1) body
       and iterable = csharp_expr iterable
       and iterable_type = variables

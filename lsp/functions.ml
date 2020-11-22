@@ -1,6 +1,8 @@
 open Types
-open Old_src.Utils
-open Old_src.Translation
+open Src.Utils
+open Src.Parser
+open Src.Check_semantic
+module Variables = Src.Variables
 
 let definition oc id (params: DefinitionParams.t) =
   let uri = params.textDocument.uri in
@@ -8,55 +10,70 @@ let definition oc id (params: DefinitionParams.t) =
     let content = Environment.get_content uri in
     try
       let index = get_index_at params.position.line params.position.character content in
-      Old_src__Errors.try_execute (fun () -> get_code_context ~raise_errors:true ~max_index:index uri content)
-        ~on_success: (fun context ->
-            let word = get_word_at_index index content in
-            let line_infos = match context.defs |> StringMap.find_opt word with
-              | Some value -> value
-              | None -> let open Old_src.Structures in
-                context.defs |> StringMap.find (get_current_class_name context ^ "." ^ word)
+      Src.Errors.try_execute (fun () -> content |> parse_body |> check_semantic)
+        ~on_success: (fun () ->
+            let word = get_word_at_index index content
+            and _, variables = !Variables.locale_variables
+                               |> IntMap.find_last (fun l -> l <= params.position.line + 1)
+            in
+            let location = StringMap.find word variables
             in
             let location: Location.t = {
               uri;
               range = {
-                start = { line = line_infos.line - 1; character = 0};
-                end_ = { line = line_infos.line - 1; character = get_line_length (line_infos.line - 1) content - 1 }
+                start = { line = location.line - 1; character = location.range.start - 1};
+                end_ = { line = location.line - 1; character = location.range.end_ - 1}
               }
             }
             in Sender.send_response oc (Jsonrpc.Response.ok id (Location.yojson_of_t location)))
-        ~on_failure: (function msg, line ->
+        ~on_failure: (function msg, location ->
             Sender.send_response oc
-              Jsonrpc.Response.(error id Jsonrpc.Response.Error.(make
-                                                                   ~code:Code.InternalError
-                                                                   ~message: ("Error at line " ^ (string_of_int line) ^ ": " ^ msg) ())))
+              Jsonrpc.Response.
+                (error id Jsonrpc.Response.Error.
+                            (make
+                               ~code:Code.InternalError
+                               ~message: ("Error at line " ^ (string_of_int location.line) ^ ": " ^ msg) ())))
     with Not_found -> Sender.send_response oc
                         Jsonrpc.Response.
                           (error id Jsonrpc.Response.Error.
                                       (make
                                          ~code:Code.InvalidParams
-                                         ~message: ("Invalid position (line " ^ (string_of_int params.position.line) ^ ", character " ^ (string_of_int params.position.character) ^ ")") ()))
+                                         ~message: ("Invalid position (line " ^ (string_of_int params.position.line) ^
+                                                    ", character " ^ (string_of_int params.position.character) ^ ")") ()))
   with Not_found -> Sender.send_response oc
-                      Jsonrpc.Response.(error id Jsonrpc.Response.Error.(make
-                                                                           ~code:Code.InternalError
-                                                                           ~message: ("Unknown uri " ^ params.textDocument.uri ^ ". Have you sent an open notification ?") ()))
+                      Jsonrpc.Response.
+                        (error id
+                           Jsonrpc.Response.Error.
+                             (make
+                                ~code:Code.InternalError
+                                ~message: ("Unknown uri " ^ params.textDocument.uri ^ ". Have you sent an open notification ?") ()))
 
 let completion oc id (params: CompletionParams.t) =
   let send_completion items =
-    let items = items @ Old_src__Builtins.accessible_keywords
+    let items = items @ Src.Builtins.accessible_keywords
                 |> List.map (function (name, type_) ->
                     let open CompletionItem in
                     {
                       label = name;
-                      detail = Some (Old_src.Structures.Type.to_string type_)
+                      detail = Some (Src.Type.to_string type_)
                     })
     in Sender.send_response oc (Jsonrpc.Response.ok id (`List (items |> List.map CompletionItem.yojson_of_t)))
     in
   let uri = params.textDocument.uri in
   try
     let content = Environment.get_content uri in
-    let index = get_index_at params.position.line params.position.character content - 1 in
-    Old_src__Errors.try_execute (fun () -> get_code_context ~raise_errors:true ~max_index:index uri content)
-      ~on_success:(fun context -> send_completion (StringMap.bindings context.vars))
+    Src.Errors.try_execute (fun () -> content |> parse_body |> check_semantic)
+      ~on_success:(fun () ->
+          let _, variables = !Variables.locale_variables
+                             |> IntMap.find_last (fun l -> l <= params.position.line + 1)
+          in let variables = variables
+                             |> StringMap.mapi (fun name -> fun location ->
+                                 !Variables.declared_variables
+                                 |> Variables.var_type_opt name location
+                                 |> Option.value ~default:Src.Type.Any)
+                           |> StringMap.bindings
+          in
+          send_completion variables)
       ~on_failure:(fun _ -> send_completion [])  (* Even when there is an error, the builtin functions are sent *)
   with Not_found -> send_completion []
 
@@ -77,15 +94,16 @@ let reformat oc id (params: DocumentFormattingParams.t) =
                        Jsonrpc.Response.(error id Jsonrpc.Response.Error.(
                            make
                              ~code:Code.InternalError
-                             ~message: ("Unknown uri " ^ params.textDocument.uri ^ ". Have you sent an open notification ?") ()))
+                             ~message: ("Unknown uri " ^ params.textDocument.uri ^
+                                        ". Have you sent an open notification ?") ()))
 
 let diagnostic oc =
   (* Convert a couple (message, line) to a diagnostic *)
-  let to_diagnostic severity content (message, line) : Diagnostic.t =
+  let to_diagnostic severity (message, (location: Src.Structures.Location.t))  : Diagnostic.t =
     {
       range = {
-        start = { line = line - 1; character = 0 };
-        end_ = { line = line - 1; character = get_line_length (line - 1) content - 1 }
+        start = { line = location.line - 1; character = location.range.start - 1 };
+        end_ = { line = location.line - 1; character = location.range.end_ - 1 }
       };
       severity = Some severity;
       message
@@ -94,16 +112,19 @@ let diagnostic oc =
   try
       !Environment.files |> Environment.UriMap.iter
       (fun uri -> fun  _ ->
-         let content = Environment.get_content uri in
-         let context = { Old_src__Structures.empty_context with code = format_code content } in
-         let diagnostics = (Old_src__Errors.get_errors (fun () -> eval_code context ) |> List.map (to_diagnostic Error content)) in
-         let diagnostics = diagnostics @
-                           (Old_src__Warnings.get_warnings () |> List.map (to_diagnostic Warning content)) in
-         let params: PublishDiagnosticsParams.t = {
-             uri;
-             version = None;
-             diagnostics
-           } in
-         let json = PublishDiagnosticsParams.yojson_of_t params in
-         Sender.send_notification oc Jsonrpc.Request.(make ~id:None ~params:(Some json) ~method_:"textDocument/publishDiagnostics"))
+        let diagnostics =
+          ((fun () -> Environment.get_content uri |> parse_body |> check_semantic)
+           |> Src.Errors.get_errors
+           |> List.map @@ to_diagnostic Error)
+          @
+          (Src.Warnings.get_warnings ()
+           |> List.map @@ to_diagnostic Warning) in
+        let params: PublishDiagnosticsParams.t = {
+          uri;
+          version = None;
+          diagnostics
+        } in
+        let json = PublishDiagnosticsParams.yojson_of_t params in
+        Sender.send_notification
+           oc Jsonrpc.Request.(make ~id:None ~params:(Some json) ~method_:"textDocument/publishDiagnostics"))
   with Not_found -> ()

@@ -27,8 +27,7 @@ let get_warnings () =
 
 let print_warning min_severity = function
     { message; severity; location = Some location} when severity >= min_severity ->
-    prerr_endline (Internationalisation.Translation.get_string
-                     Warning ^ (Location.to_string location) ^ " : " ^ message)
+    prerr_endline ("Avertissement, " ^ (Location.to_string_fr location) ^ " : " ^ message)
   | _ -> ()
 
 let print_warnings ~severity =

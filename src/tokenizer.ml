@@ -1,5 +1,4 @@
 open Errors
-open Internationalisation.Translation
 
 type token =
   | Litteral of string
@@ -61,7 +60,7 @@ let tokenize input =
       else if Str.string_match reg_identifier input index then
         let token = Str.matched_string input in
         if List.mem token Syntax.keywords then
-          raise_syntax_error ((get_string InvalidTokenExpression) ^ token ^ (get_string ReservedKeyword))
+          raise_syntax_error ("Impossible de comprendre cette expression")
         else
           (Identifier token) :: _tokenize input (index + (String.length token))
       else if Str.string_match reg_openp input index then
@@ -80,16 +79,16 @@ let tokenize input =
   in
   let improve_tokens tokens =
     let rec _improve_tokens ?previous ?(par_count = 0) ?(hook_count = 0) = function
-      | [] -> if par_count > 0 then raise_syntax_error (get_string MissingClosingParenthesis)
-        else if hook_count > 0 then raise_syntax_error (get_string MissingClosingBracket)
+      | [] -> if par_count > 0 then raise_syntax_error "Il manque une parenthèse fermante"
+        else if hook_count > 0 then raise_syntax_error "Il manque un crochet fermant"
         else []
       | OpenP :: t -> OpenP :: _improve_tokens t ~previous: OpenP ~par_count: (par_count + 1) ~hook_count
-      | CloseP :: t -> if par_count = 0 then raise_syntax_error (get_string UnexpectedParenthesis)
+      | CloseP :: t -> if par_count = 0 then raise_syntax_error "Une parenth_se fermante est non ouverte"
           else CloseP :: _improve_tokens t ~previous: CloseP ~par_count: (par_count - 1) ~hook_count
       | OpenHook :: t -> (match previous with
           | None | Some (Operator _ | OpenP | OpenHook | Coma) -> Operator "[" :: OpenHook :: _improve_tokens t ~previous: OpenHook ~par_count ~hook_count: (hook_count + 1)
           | _ -> Operator "get[" :: OpenHook :: _improve_tokens t ~previous: OpenHook ~par_count ~hook_count: (hook_count + 1))
-      | CloseHook :: t -> if hook_count = 0 then raise_syntax_error (get_string UnexpectedBracket)
+      | CloseHook :: t -> if hook_count = 0 then raise_syntax_error "Un crochet fermant est non ouvert"
           else CloseHook :: _improve_tokens t ~previous: CloseHook ~par_count ~hook_count: (hook_count - 1)
       | Identifier name :: OpenP :: t -> Operator name :: _improve_tokens (OpenP :: t) ~previous: (Operator name) ~par_count ~hook_count
       | Operator "-" :: t -> let op = match previous with

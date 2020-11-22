@@ -1,9 +1,7 @@
 open Str
 open Utils
-open Global
 open Errors
 open Structures
-open Internationalisation.Translation
 
 (* Returns the line number corresponding to the current index in the code *)
 let rec get_line_no code index =
@@ -84,7 +82,7 @@ let rec ignore_chrs code i =
       ' ' | '\n' | '\t' | '\r' | '(' | ')' | ',' -> ignore_chrs code (i + 1)
     | _-> i
   else
-    raise_syntax_error (get_string UnexpectedEOF)
+    raise_syntax_error "La lecture s'est arrêtée puisque la fin du fichier a été atteinte"
       ~location:(get_last_line_location code)
 
 let rec ignore_spaces code i =
@@ -94,7 +92,7 @@ let rec ignore_spaces code i =
     else
       i
   else
-    raise_syntax_error  (get_string UnexpectedEOF)
+    raise_syntax_error "La lecture s'est arrêtée puisque la fin du fichier a été atteinte"
       ~location:(get_last_line_location code)
 
 let get_word code i =
@@ -159,76 +157,3 @@ let get_line code i =
 let get_type code index =
   let t, i = get_word code index in
   i, try_update_err (get_location code index i) (fun () -> Type.of_string t)
-
-(* Returns information about the files that need to be imported : *)
-(* A list of tuples (file_content, cwdir, namespace, name, element) *)
-(* where cwdir is the absolute path of the file's parent directory *)
-(* and element is an option indicating the imported element *)
-let rec get_imported_files_infos ?(prefix = "") ?(element = None) name =
-  (* Generate an __init__.py file corresponding to the given path *)
-  let generate__init__py () =
-    if !import_mode = Overwrite || !import_mode = Moderated && not (Sys.file_exists "__init__.py") then
-      let content = ref "" in
-      Sys.readdir "." |> Array.iter (function file ->
-          if Sys.is_directory file then
-            content := !content ^ "from ." ^ file ^ " import *\n"
-          else if Filename.extension file = ".ntl" then
-            content := !content ^ "from ." ^ (Filename.remove_extension file) ^ " import *\n");
-      write_file "__init__.py" !content
-  in
-  let id_reg = "[a-zA-Z_][a-zA-Z0-9_]*" in
-  let r = "\\(" ^ id_reg ^ "\\)\\(\\(\\." ^ id_reg ^ "\\)" in
-  if Str.string_match (Str.regexp (r ^ "+\\)$")) name 0 then  (* pack.mod *)
-    let dir =  Str.matched_group 1 name in
-    let name = Str.matched_group 2 name in
-    let name = String.sub name 1 (String.length name - 1) in
-    if Sys.file_exists dir && Sys.is_directory dir then
-      begin
-        if dir = "std" && naturL_path <> None then
-          Sys.chdir (Filename.concat (Option.get naturL_path) "std")
-        else
-          Sys.chdir dir;
-        let infos = get_imported_files_infos name ~prefix: (prefix ^ dir ^ ".")  ~element  in
-        Sys.chdir "..";
-        infos
-      end
-    else if dir = "std" && naturL_path <> None then
-      begin
-        Sys.chdir (Filename.concat (Option.get naturL_path) "std");
-        let infos = get_imported_files_infos name ~prefix: (prefix ^ dir ^ ".")  ~element  in
-        Sys.chdir "..";
-        infos
-      end
-    else
-      raise_import_error ((get_string UnknownPackage) ^ dir ^ "'")
-  else if Str.string_match (Str.regexp (r ^ "*\\)\\.\\*$")) name 0 then (* pack.* *)
-    let name = matched_group 1 name ^ (matched_group 2 name) in
-    get_imported_files_infos ~element: (Some "*") name
-  else if Sys.file_exists (name ^ ".ntl") && not (Sys.is_directory (name ^ ".ntl")) then (* mod *)
-    let content = read_file (name ^ ".ntl")
-    and cwdir = Sys.getcwd ()
-    and namespace = prefix ^ name
-    and filename = Filename.concat (Sys.getcwd ()) name in
-    [content, cwdir, namespace, filename, element]
-  else if Sys.file_exists name && Sys.is_directory name || (name = "std" && naturL_path <> None) then
-    let naturl_package = Filename.concat name "naturl-package" in
-    if name = "std" && naturL_path <> None then Sys.chdir (Option.get naturL_path);
-    if Sys.file_exists naturl_package && not (Sys.is_directory naturl_package) then
-      let dir = name in
-      let namespace = prefix ^ dir in
-      Sys.chdir dir;
-      generate__init__py ();
-      let imports = ref [] in
-      let infos = read_lines "naturl-package"
-                  |> List.filter (fun name -> String.trim name <> "")
-                  |> List.map (fun name ->
-                      get_imported_files_infos name ~prefix: (prefix ^ dir ^ ".") ~element
-                      |> List.map (function content, cwdir, _, filename, element ->
-                          imports := namespace :: !imports;content, cwdir, namespace, filename, element))
-                  |> List.concat in
-      Sys.chdir "..";
-      infos
-    else
-      raise_import_error ((get_string CannotImportPackage) ^ prefix ^ name ^ (get_string MissingNaturlPackage))
-  else
-    raise_import_error ((get_string UnknownPackage) ^ prefix ^ name ^ "'");;

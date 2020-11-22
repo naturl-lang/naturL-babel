@@ -1,7 +1,7 @@
 open Structures
 
-let _error name message (location: Location.t) oc =
-  Printf.fprintf oc "%s à la ligne %d: %s\n" name location.line message;
+let _error name message location oc =
+  Printf.fprintf oc "%s à la %s: %s\n" name (Location.to_string_fr location) message;
   exit 2
 
 let syntax_error message location oc = _error "Erreur de syntaxe"  message location oc

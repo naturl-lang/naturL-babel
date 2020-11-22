@@ -1,6 +1,4 @@
 fonction __rechercher(liste l, ? x, entier g, entier d) -> booleen
-  variables
-    entier m
 debut
     si d < g alors
         retourner faux
@@ -8,7 +6,7 @@ debut
     m <- (g + d) div 2
     si x < l[m] alors
         retourner __rechercher(l, x, g, m - 1)
-    sinon_si x > l[m] alors
+    sinon si x > l[m] alors
         retourner __rechercher(l, x, m + 1, d)
     fin
     retourner vrai
@@ -16,6 +14,5 @@ fin
 
 fonction rechercher(liste l, ? x) -> booleen
 debut
-    retourner __rechercher(l, x, 1, taille(l)) 
+    retourner __rechercher(l, x, 1, taille(l))
 fin
-

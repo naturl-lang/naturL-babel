@@ -1,5 +1,5 @@
 (executable
   (name server)
   (public_name server)
-  (libraries unix yojson old_src internationalisation)
+  (libraries unix yojson src)
   (preprocess (pps ppx_yojson_conv)))

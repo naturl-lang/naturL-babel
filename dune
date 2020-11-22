@@ -1,4 +1,4 @@
 (executable
   (name naturL)
   (public_name naturL)
-  (libraries old_src internationalisation))
+  (libraries src))

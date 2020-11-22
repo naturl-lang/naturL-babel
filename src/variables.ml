@@ -56,23 +56,18 @@ let print_declared_variables () =
 
 (*********************************)
 
-module LocationMap = Map.Make (
-  struct
-    type t = Location.t
-    let compare = compare
-  end)
+(* Associate to each line the variables that are defined *)
+let locale_variables = ref IntMap.empty
 
-let locale_variables = ref LocationMap.empty
-
-let add_locale_variables location (map: Type.t StringMap.t) =
-  locale_variables := !locale_variables |> LocationMap.add location map
+let add_locale_variables location (map: Location.t StringMap.t) =
+  locale_variables := !locale_variables |> IntMap.add location map
 
 let get_locale_variables location =
   !locale_variables
-  |> LocationMap.find_opt location
+  |> IntMap.find_opt location
   |> Option.value ~default: StringMap.empty
 
 
 let reset_variables () =
   declared_variables := VarSet.empty;
-  locale_variables := LocationMap.empty
+  locale_variables := IntMap.empty

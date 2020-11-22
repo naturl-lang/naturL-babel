@@ -1,3 +1,0 @@
-(library
-  (name old_src)
-  (libraries num str internationalisation))

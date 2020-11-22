@@ -14,3 +14,5 @@ let () =
   let port = 9131
   and address = Unix.inet_addr_loopback in
   setup_server Listener.start address port
+
+(* On Linux it is possible to test with a client using `nc localhost 9131` *)
