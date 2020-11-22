@@ -1,5 +1,6 @@
 open Types
 open Src.Utils
+open Src.Errors
 open Src.Parser
 open Src.Check_semantic
 module Variables = Src.Variables
@@ -10,7 +11,8 @@ let definition oc id (params: DefinitionParams.t) =
     let content = Environment.get_content uri in
     try
       let index = get_index_at params.position.line params.position.character content in
-      Src.Errors.try_execute (fun () -> content |> parse_body |> check_semantic)
+      Src.Errors.try_execute (fun () ->
+          try_add_error (fun () -> content |> parse_body |> check_semantic) ~default:())
         ~on_success: (fun () ->
             let word = get_word_at_index index content
             and _, variables = !Variables.locale_variables
@@ -62,7 +64,8 @@ let completion oc id (params: CompletionParams.t) =
   let uri = params.textDocument.uri in
   try
     let content = Environment.get_content uri in
-    Src.Errors.try_execute (fun () -> content |> parse_body |> check_semantic)
+    Src.Errors.try_execute (fun () ->
+        try_add_error (fun () -> content |> parse_body |> check_semantic) ~default:())
       ~on_success:(fun () ->
           let _, variables = !Variables.locale_variables
                              |> IntMap.find_last (fun l -> l <= params.position.line + 1)
@@ -113,7 +116,9 @@ let diagnostic oc =
       !Environment.files |> Environment.UriMap.iter
       (fun uri -> fun  _ ->
         let diagnostics =
-          (Environment.get_content uri |> parse_body |> check_semantic;
+          (try_add_error
+             (fun () -> Environment.get_content uri |> parse_body |> check_semantic)
+             ~default:();
            Src.Errors.get_errors ()
            |> List.map @@ to_diagnostic Error)
           @
