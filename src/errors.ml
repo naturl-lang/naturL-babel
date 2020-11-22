@@ -110,11 +110,36 @@ let try_execute func ~on_success ~on_failure =
   | SyntaxError (msg, Some location) | TypeError (msg, Some location)
   | NameError (msg, Some location) | ImportError (msg, Some location) -> on_failure (msg, location)
   | Bug code -> on_failure
-                  ("Un bug a été détecté, merci de le rapporter aux développeurs. Code d'erreur: " ^ code ^ ".",
+                  ("Un bug a été détecté, merci de le rapporter aux développeurs. Code d'erreur: " ^
+                   code ^ ".",
                   { line = -1; range = { start = -1; end_ = -1 } })
 
-(* Get a list of (msg, location) corresponding to errors got by executing the function *)
-let get_errors func =
-  try let _ = func () in []  with
+(* Allow a function to raise multiple exceptions *)
+let errors = Queue.create ()
+
+let clear_errors () =
+  Queue.clear errors
+
+let get_errors () =
+  Utils.list_of_queue errors
+
+let make_error_header = function
+  | SyntaxError (_, Some location) -> "Erreur de syntaxe à la " ^ Location.to_string_fr location
+  | TypeError (_, Some location) -> "Erreur de type à la " ^ Location.to_string_fr location
+  | NameError (_, Some location) -> "Erreur de nommage à la " ^ Location.to_string_fr location
+  | ImportError (_, Some location) -> "Erreur d'importation à la " ^ Location.to_string_fr location
+  | _ -> assert false
+
+let try_add_error func ~default =
+  try func () with
   | SyntaxError (msg, Some location) | TypeError (msg, Some location)
-  | NameError (msg, Some location) | ImportError (msg, Some location) -> [ msg, location ]
+  | NameError (msg, Some location) | ImportError (msg, Some location) as e ->
+    let msg = make_error_header e ^ " : " ^ msg in
+    Queue.add (msg, location) errors;
+    default
+
+let try_print_errors () =
+  errors |> Queue.iter (function (msg, _) ->
+      prerr_endline msg);
+  if not @@ Queue.is_empty errors then
+    exit 2

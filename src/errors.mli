@@ -13,4 +13,7 @@ val try_update_err: Location.t -> (unit -> 'a) -> 'a
 val try_catch: ?raise_errors:bool -> out_channel -> (unit -> 'a) -> 'a
 val try_execute: (unit -> 'a) -> on_success:('a -> unit) -> on_failure:(string * Location.t -> unit) -> unit
 
-val get_errors: (unit -> 'a) -> (string * Location.t) list
+val clear_errors: unit -> unit
+val get_errors: unit -> (string * Location.t) list
+val try_add_error: (unit -> 'a) -> default:'a -> 'a
+val try_print_errors: unit -> unit

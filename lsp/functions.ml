@@ -113,8 +113,8 @@ let diagnostic oc =
       !Environment.files |> Environment.UriMap.iter
       (fun uri -> fun  _ ->
         let diagnostics =
-          ((fun () -> Environment.get_content uri |> parse_body |> check_semantic)
-           |> Src.Errors.get_errors
+          (Environment.get_content uri |> parse_body |> check_semantic;
+           Src.Errors.get_errors ()
            |> List.map @@ to_diagnostic Error)
           @
           (Src.Warnings.get_warnings ()

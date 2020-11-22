@@ -1,5 +1,6 @@
 open Utils
 open Errors
+open Warnings
 open Expressions
 
 
@@ -16,18 +17,20 @@ let check_semantic ast =
   let rec check_semantic ~current_func variables ast =
     match ast with
     | Ast.Body children ->
-      let (variables, returns), _ = List.fold_left_map
-          (function variables, returns -> fun ast ->
-              let variables, new_returns = check_semantic ~current_func variables ast
-              in (variables, returns || new_returns), ())
-          (variables, false)
-          children
-      in variables, returns
+      try_add_error (fun () ->
+          let (variables, returns), _ = List.fold_left_map
+              (function variables, returns -> fun ast ->
+                  let variables, new_returns = check_semantic ~current_func variables ast
+                  in (variables, returns || new_returns), ())
+              (variables, false)
+              children
+          in variables, returns)
+        ~default:(variables, false)
     | Expr (location, expr) ->
       (*Evaluate the expression's type to check for semantic error in it and update the types of variables*)
       let expr_type = try_update_err location (fun () -> type_of_expr expr variables) in
       if expr_type <> Type.None then
-        Warnings.add_warning ~location "La valeur de retour de cette expression n'est pas utilisée" 0;
+        add_warning ~location "La valeur de retour de cette expression n'est pas utilisée" 0;
       add_locale_variables location.line variables;
       variables, false
     | Return (location, expr) ->
@@ -82,9 +85,9 @@ let check_semantic ast =
           ("Cette expression est de type '" ^ (Type.to_string condition_type) ^
            "' alors qu'une condition doit être un booléen.");
       if condition = Value (Bool true) then
-        Warnings.add_warning ~location "La condition est toujours vraie" 0
+        add_warning ~location "La condition est toujours vraie" 0
       else if condition = Value (Bool false) then
-        Warnings.add_warning ~location "La condition est toujours fausse" 0;
+        add_warning ~location "La condition est toujours fausse" 0;
       let merger = fun _ -> fun _ -> fun second -> Some second in
       let new_variables, returns = check_semantic ~current_func variables body in
       let variables = new_variables |> StringMap.union merger variables in
@@ -210,5 +213,8 @@ let check_semantic ast =
       variables, false
     | End -> variables, false
   in
+  Variables.reset ();
+  clear_errors ();
+  clear_warnings ();
   let _ = check_semantic ~current_func:None (StringMap.empty) ast
   in ()
