@@ -130,6 +130,13 @@ let diagnostic callback =
            Jsonrpc.Request.(make ~id:None ~params:(Some json) ~method_:"textDocument/publishDiagnostics"))
   with Not_found -> ()
 
-let transpile (callback: string -> unit) _ code =
+let transpile callback error_callback _ code =
   let code = Js.to_string code in
-  Src.Python.naturl_to_python ~annotate:true ~code |> callback
+  Src.Errors.try_execute
+    (fun () ->
+       Src.Python.naturl_to_python
+         ~annotate:true
+         ~code
+       |> Js.string)
+    ~on_success: callback
+    ~on_failure: (fun (msg, line) -> error_callback (Js.string msg) line)
