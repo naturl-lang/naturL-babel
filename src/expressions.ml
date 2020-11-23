@@ -306,8 +306,8 @@ let type_of_expr ?(desired_type = Type.Any) expr vars =
             "Le " ^ (string_of_int (index + 1)) ^
             (if index = 0 then "er" else "ème") ^
             " paramètre de la fonction '" ^
-          name ^  "' est de type '" ^ (Type.to_string h1)
-          ^ "', et non '" ^ (Type.to_string h2) ^ "'")
+          name ^  "' est de type '" ^ (Type.to_string h2)
+          ^ "', et non '" ^ (Type.to_string h1) ^ "'")
     in check_params_type 0 expected actual
   in
   let rec type_of_bin_expr ~desired_type e1 e2 =

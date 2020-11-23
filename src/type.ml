@@ -17,15 +17,25 @@ type t =
 
 let rec to_string : t -> string = function
   | Int -> "entier"
-  | Float -> "reel"
-  | Char -> "caractere"
-  | String -> "chaine"
-  | Bool -> "booleen"
+  | Float -> "réel"
+  | Char -> "caractère"
+  | String -> "chaîne"
+  | Bool -> "booléen"
   | List Any -> "liste"
-  | List t -> "liste de " ^ to_string t
+  | List t ->
+    let str = to_string t in
+    let de = match str.[0] with
+      | 'a' | 'e' | 'i' | 'o' | 'u' -> " d'"
+      | _ -> " de "
+    in
+    let s = match t with
+      | Union _ | Custom _ | List _ -> ""
+      | _ -> "s"
+    in
+    "liste" ^ de ^ str ^ s
   | Function (params, return) -> (match return with
-        None -> if params = [] then "procedure"
-        else "procedure: " ^ String.concat " x " (List.map (fun t -> "(" ^ (to_string t) ^ ")" ) params)
+        None -> if params = [] then "procédure"
+        else "procédure: " ^ String.concat " x " (List.map (fun t -> "(" ^ (to_string t) ^ ")" ) params)
       | _ -> "fonction: " ^ (if params = [] then "_" else String.concat " x " (List.map to_string params)) ^ " -> " ^ to_string return)
   | None -> "Ø"
   | Any -> "indéterminé"
@@ -48,25 +58,28 @@ let rec of_string str : t =
         (String.split_on_char ' ' str) in
     match List.flatten splitted with
     | "entier" :: [] -> Int
-    | "reel" :: [] -> Float
-    | "caractere" :: [] -> Char
-    | "chaine" :: [] -> String
-    | "booleen" :: [] -> Bool
+    | ("réel" | "reel") :: [] -> Float
+    | ("caractere" | "caractère") :: [] -> Char
+    | ("chaine" | "chaîne") :: [] -> String
+    | ("booleen" | "booléen") :: [] -> Bool
     | "liste" :: [] -> List Any
     | "liste" :: "de" :: t -> List (of_string (String.concat " " t))
-    | ("procedure:" | "procedure") :: [] -> Function ([], None)
-    | "procedure:" :: tail -> Function (String.split_on_char 'x' (String.concat " " tail)
-                                        |> List.map (fun s -> let s = String.trim s in
-                                                      of_string (String.sub s 1 (String.length s - 2))),
-                                        None)
-    | "fonction:" :: tail -> (match Str.split (Str.regexp " -> ") (String.concat " " tail) with
-          params :: return :: [] -> Function ((if String.trim params = "_" then []
-                                               else
-                                                 (String.split_on_char 'x' params)
-                                                 |> List.map (fun s -> let s = String.trim s in
-                                                               of_string (String.sub s 1 (String.length s - 2)))),
-                                              of_string return)
-        | _ -> raise_name_error ("Le type '" ^ str ^ "' est inconnu"))
+    | ("procédure" | "procedure") :: [] -> Function ([], None)
+    | ("procédure:" | "procedure") :: tail ->
+      Function (String.split_on_char 'x' (String.concat " " tail)
+                |> List.map (fun s -> let s = String.trim s in
+                              of_string (String.sub s 1 (String.length s - 2))),
+                None)
+    | "fonction:" :: tail ->
+      (match Str.split (Str.regexp " -> ") (String.concat " " tail) with
+       | params :: return :: [] ->
+         Function ((if String.trim params = "_" then []
+                    else
+                      (String.split_on_char 'x' params)
+                      |> List.map (fun s -> let s = String.trim s in
+                                    of_string (String.sub s 1 (String.length s - 2)))),
+                   of_string return)
+       | _ -> raise_name_error ("Le type '" ^ str ^ "' est inconnu"))
     | ("Ø" | "rien") :: [] -> None
     | "?" :: [] -> Any
     | t :: [] -> raise_name_error ("Le type '" ^ t ^ "n'est pas défini")

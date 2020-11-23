@@ -110,7 +110,7 @@ let naturl_to_python ?(raise_exception = false) ~annotate ~code =
              | Func_definition _ ->
                begin
                  match parent with
-                 | Func_definition _ -> ""
+                 | Func_definition _ | End -> ""
                  | _ -> "\n\n"
                end, "\n\n"
              | _ ->
