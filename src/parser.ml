@@ -44,13 +44,16 @@ let parse_body code =
             parse_while condition { context with index } location
           (*Assignment*)
           | {|^[ \t]*(?<target>[^\s]+?)[ \t]*<-[ \t]*(?<value>.+?)[ \t]*$|} ->
+            if not @@ Str.string_match (Str.regexp "^[a-zA-Z_]\\w*$") target 0 then
+              raise_syntax_error ~location
+                ("'" ^ target ^ "' n'est pas un format de variable valide");
             let value = try_update_err location (fun () -> expr_of_string value) in
             Ast.make_assign ~target ~value ~context ~location, index
           (*Function*)
           | {|^[ \t]*fonction[ \t]*(?<name>[A-Za-z_]\w*)[ \t]*\((?<args>.*)\)[ \t]*->(?<ret_type>.+)[ \t]*$|} ->
             parse_func_definition name args ret_type { context with index } location
           (*Procedure*)
-          | {|^[ \t]*procedure[ \t]*(?<name>[A-Za-z_]\w*)[ \t]*\((?<args>.*)\)[ \t]*$|} ->
+          | {|^[ \t]*proc(e|é)dure[ \t]*(?<name>[A-Za-z_]\w*)[ \t]*\((?<args>.*)\)[ \t]*$|} ->
             parse_proc_definition name args { context with index } location
           (*Return*)
           | "^[ \t]*retourner[ \t]*$" ->
