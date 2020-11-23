@@ -121,15 +121,14 @@ type error = {
   location: Location.t;
 }
 
-let errors = Queue.create ()
+let errors = ref []
 
 let clear_errors () =
-  Queue.clear errors
+  errors := []
 
 let get_errors () =
-  errors
-  |> Utils.list_of_queue
-  |> List.map (function { header = _; message; location } -> message, location)
+  !errors |> List.map
+    (function { header = _; message; location } -> message, location)
 
 let make_error_header = function
   | SyntaxError (_, Some location) -> "Erreur de syntaxe à la " ^ Location.to_string_fr location
@@ -144,12 +143,11 @@ let try_add_error func ~default =
   | NameError (msg, Some location) | ImportError (msg, Some location) as e ->
     let header = make_error_header e ^ " : "
     and message = msg in
-    Queue.add { header; message; location } errors;
+    errors := { header; message; location } :: !errors;
     default
 
 let try_print_errors () =
-  errors
-  |> Queue.iter (function { header; message; location = _ } ->
-      prerr_endline (header ^ message));
-  if not @@ Queue.is_empty errors then
+  !errors |> List.iter
+    (function { header; message; location = _ } -> prerr_endline (header ^ message));
+  if !errors <> [] then
     exit 2

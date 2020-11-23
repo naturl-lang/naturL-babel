@@ -74,7 +74,7 @@ let tokenize input =
       else if Str.string_match reg_closehook input index then
         CloseHook :: _tokenize input (index+1)
       else
-        raise_syntax_error ("Imposible de lire l'expression: " ^ String.sub input index (String.length input - index))
+        raise_syntax_error ("Imposible de lire l'expression '" ^ String.sub input index (String.length input - index) ^ "'")
     in _tokenize input 0
   in
   let improve_tokens tokens =
@@ -83,7 +83,7 @@ let tokenize input =
         else if hook_count > 0 then raise_syntax_error "Il manque un crochet fermant"
         else []
       | OpenP :: t -> OpenP :: _improve_tokens t ~previous: OpenP ~par_count: (par_count + 1) ~hook_count
-      | CloseP :: t -> if par_count = 0 then raise_syntax_error "Une parenth_se fermante est non ouverte"
+      | CloseP :: t -> if par_count = 0 then raise_syntax_error "Une parenthèse fermante est non ouverte"
           else CloseP :: _improve_tokens t ~previous: CloseP ~par_count: (par_count - 1) ~hook_count
       | OpenHook :: t -> (match previous with
           | None | Some (Operator _ | OpenP | OpenHook | Coma) -> Operator "[" :: OpenHook :: _improve_tokens t ~previous: OpenHook ~par_count ~hook_count: (hook_count + 1)
