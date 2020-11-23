@@ -13,8 +13,8 @@ let parse_body code =
       let code = context.code and index = context.index in
       let location = get_current_line_location ~line_list context.code context.index in
       let line, index = get_line code index in
+      let line = String.trim line in
       if is_in_func_definition context then
-        let line = String.trim line in
         if line = "debut" || line = "début" then
           parse_body ["fin"; "fin fonction"] body (mark_func_defined { context with index })
         else
@@ -25,43 +25,56 @@ let parse_body code =
         let node, index =
           match%pcre line with
           (*If*)
-          | {|^[ \t]*si[ \t]+(?<condition>.+?)[ \t]+alors[ \t]*$|} ->
+          | {|^si[ \t]+(?<condition>.+?)[ \t]+alors$|} ->
             parse_if condition { context with index } location
           (*Else if*)
-          | {|^[ \t]*sinon([ \t]*|_)si[ \t]+(?<condition>.+)[ \t]+alors[ \t]*$|} ->
+          | {|^sinon([ \t]*|_)si[ \t]+(?<condition>.+)[ \t]+alors$|} ->
             parse_else_if condition { context with index } location
           (*Else*)
-          | {|^[ \t]*sinon[ \t]*$|} ->
+          | {|^sinon$|} ->
             parse_else { context with index } location
           (*For*)
-          | {|^[ \t]*pour[ \t]+(?<var>[A-Za-z_]\w*)[ \t]+de[ \t]+(?<start>.+?)[ \t]+jusqu(e |_|')a[ \t](?<end_>.+?)[ \t]faire[ \t]*$|} ->
+          | {|^pour[ \t]+(?<var>[A-Za-z_]\w*)[ \t]+de[ \t]+(?<start>.+?)[ \t]+jusqu(e |_|')(a|à)[ \t](?<end_>.+?)[ \t]faire$|} ->
             parse_for var start end_ { context with index } location
           (*For each*)
-          | {|^[ \t]*pour(_| )chaque[ \t]+(?<var>[A-Za-z_]\w*)[ \t]+dans[ \t]+(?<iter>.+?)[ \t]*faire[ \t]*$|} ->
+          | {|^pour(_| )chaque[ \t]+(?<var>[A-Za-z_]\w*)[ \t]+dans[ \t]+(?<iter>.+?)[ \t]*faire$|} ->
             parse_for_each var iter { context with index } location
           (*While*)
-          | "^[ \t]*tant(_| )que[ \t]+(?<condition>.+?)[ \t]+faire[ \t]*" ->
+          | "^tant(_| )que[ \t]+(?<condition>.+?)[ \t]+faire" ->
             parse_while condition { context with index } location
           (*Assignment*)
-          | {|^[ \t]*(?<target>[^\s]+?)[ \t]*<-[ \t]*(?<value>.+?)[ \t]*$|} ->
+          | {|^(?<target>[^\s]+?)[ \t]*<-[ \t]*(?<value>.+?)$|} ->
             if not @@ Str.string_match (Str.regexp "^[a-zA-Z_]\\w*$") target 0 then
               raise_syntax_error ~location
                 ("'" ^ target ^ "' n'est pas un format de variable valide");
             let value = try_update_err location (fun () -> expr_of_string value) in
             Ast.make_assign ~target ~value ~context ~location, index
           (*Function*)
-          | {|^[ \t]*fonction[ \t]*(?<name>[A-Za-z_]\w*)[ \t]*\((?<args>.*)\)[ \t]*->(?<ret_type>.+)[ \t]*$|} ->
+          | {|^fonction[ \t]*(?<name>[A-Za-z_]\w*)[ \t]*\((?<args>.*)\)[ \t]*->(?<ret_type>.+)$|} ->
             parse_func_definition name args ret_type { context with index } location
           (*Procedure*)
-          | {|^[ \t]*proc(e|é)dure[ \t]*(?<name>[A-Za-z_]\w*)[ \t]*\((?<args>.*)\)[ \t]*$|} ->
+          | {|^proc(e|é)dure[ \t]*(?<name>[A-Za-z_]\w*)[ \t]*\((?<args>.*)\)$|} ->
             parse_proc_definition name args { context with index } location
           (*Return*)
-          | "^[ \t]*retourner[ \t]*$" ->
+          | "^retourner$" ->
             Ast.make_return ~expr:(Value None) ~context ~location, index
-          | "^[ \t]*retourner[ \t]+(?<value>.+)[ \t]*$" ->
+          | "^retourner[ \t]+(?<value>.+)$" ->
             let expr = try_update_err location (fun () -> expr_of_string value) in
             Ast.make_return ~expr ~context ~location, index
-          | "[ \t]*(?<s>.*)[ \t]*" ->
+          | "^(fonction|proc(e|é)dure)[ \t]" -> raise_syntax_error ~location "Définition de fonction invalide"
+          | "^pour(_| )chaque[ \t]" ->
+            raise_syntax_error ~location
+              ("Une boucle 'pour chaque' se définit de la façon suivante :\n" ^
+               "pour chaque <variable> dans <itérable> faire\n\t<code>\nfin")
+          | "^pour[ \t]" ->
+            raise_syntax_error ~location
+              ("Une boucle 'pour' se définit de la façon suivante :\n" ^
+               "pour <variable> de <début> jusqu'à <fin> faire\n\t<code>\nfin")
+          | "^tant(_| )que[ \t]" ->
+            raise_syntax_error ~location "Une boucle 'tant que' doit se terminer par 'faire'"
+          | "^(sinon([ \t]*|_))?si[ \t]" ->
+            raise_syntax_error ~location "Il manque le mot-clé 'alors'"
+          | "(?<s>.*)" ->
             if List.mem s terminators then
               Ast.make_end (), index
             else if s = "" then
