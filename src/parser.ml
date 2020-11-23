@@ -14,12 +14,13 @@ let parse_body code =
       let location = get_current_line_location ~line_list context.code context.index in
       let line, index = get_line code index in
       if is_in_func_definition context then
-        match%pcre line with
-        | "^[ \t]*debut[ \t]*$" ->
+        let line = String.trim line in
+        if line = "debut" || line = "début" then
           parse_body ["fin"; "fin fonction"] body (mark_func_defined { context with index })
-        | _ -> raise_syntax_error
-                 ~location
-                 "Le mot-clé 'début' est attendu après la définition d'une fonction"
+        else
+          raise_syntax_error
+            ~location
+            "Le mot-clé 'début' est attendu après la définition d'une fonction"
       else
         let node, index =
           match%pcre line with
@@ -43,7 +44,7 @@ let parse_body code =
             parse_while condition { context with index } location
           (*Assignment*)
           | {|^[ \t]*(?<target>[^\s]+?)[ \t]*<-[ \t]*(?<value>.+?)[ \t]*$|} ->
-            let value = expr_of_string value in
+            let value = try_update_err location (fun () -> expr_of_string value) in
             Ast.make_assign ~target ~value ~context ~location, index
           (*Function*)
           | {|^[ \t]*fonction[ \t]*(?<name>[A-Za-z_]\w*)[ \t]*\((?<args>.*)\)[ \t]*->(?<ret_type>.+)[ \t]*$|} ->
@@ -55,7 +56,7 @@ let parse_body code =
           | "^[ \t]*retourner[ \t]*$" ->
             Ast.make_return ~expr:(Value None) ~context ~location, index
           | "^[ \t]*retourner[ \t]+(?<value>.+)[ \t]*$" ->
-            let expr = expr_of_string value in
+            let expr = try_update_err location (fun () -> expr_of_string value) in
             Ast.make_return ~expr ~context ~location, index
           | "[ \t]*(?<s>.*)[ \t]*" ->
             if List.mem s terminators then
@@ -74,7 +75,7 @@ let parse_body code =
     in parse_body terminators [] context
 
   and parse_if condition context location =
-    let target = expr_of_string condition
+    let target = try_update_err location (fun () -> expr_of_string condition)
     and body, index = parse_body ~terminators:["fin"; "fin si"]
         { context with scopes = If :: context.scopes } in
     Ast.make_if ~target ~body ~context ~location, index
@@ -85,7 +86,7 @@ let parse_body code =
   (* TODO Remove this stupid 'index - 4' and replace it with a function that goes backward until it reads 'fin' *)
 
   and parse_else_if condition context location =
-    let target = expr_of_string condition
+    let target = try_update_err location (fun () -> expr_of_string condition)
     and body, index = parse_body ~terminators:["fin"; "fin si"]
         { context with scopes = If :: context.scopes } in
     Ast.make_else_if ~target ~body ~context ~location, index - 4
@@ -93,21 +94,21 @@ let parse_body code =
 
   and parse_for var start end_ context location =
     let target = var
-    and start = expr_of_string start
-    and end_ = expr_of_string (end_ ^ " + 1")
+    and start = try_update_err location (fun () -> expr_of_string start)
+    and end_ = try_update_err location (fun () -> expr_of_string (end_ ^ " + 1"))
     and body, index = parse_body ~terminators:["fin"; "pour"]
         { context with scopes = For :: context.scopes } in
     Ast.make_for ~target ~start ~end_ ~body ~context ~location, index
 
   and parse_for_each var iter context location =
     let target = var
-    and iter = expr_of_string iter
+    and iter = try_update_err location (fun () -> expr_of_string iter)
     and body, index = parse_body ~terminators:["fin"; "fin pour_chaque"; "fin pour chaque"]
         { context with scopes = For :: context.scopes } in
     Ast.make_for_each ~target ~iter ~body ~context ~location, index
 
   and parse_while condition context location =
-    let test = expr_of_string condition
+    let test = try_update_err location (fun () -> expr_of_string condition)
     and body, index = parse_body ~terminators:["fin"; "fin tant que"; "fin tant_que"]
         { context with scopes = While :: context.scopes } in
     Ast.make_while ~test ~body ~context ~location, index
@@ -135,4 +136,7 @@ let parse_body code =
   and parse_proc_definition name args_list context location =
     parse_func_definition name args_list "rien" context location
 
-  in let ast, _ = parse_body { code; index = 0; scopes = [] } in ast
+  in
+  let code = Str.global_replace (Str.regexp "\r") "" code in
+  clear_errors ();
+  let ast, _ = parse_body { code; index = 0; scopes = [] } in ast

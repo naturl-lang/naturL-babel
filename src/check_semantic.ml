@@ -214,7 +214,6 @@ let check_semantic ast =
     | End -> variables, false
   in
   Variables.reset ();
-  clear_errors ();
   clear_warnings ();
   let _ = check_semantic ~current_func:None (StringMap.empty) ast
   in ()
