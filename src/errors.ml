@@ -12,6 +12,8 @@ let name_error message location oc = _error "Erreur de dénomination" message lo
 
 let import_error message location oc = _error "Erreur d'importation" message location oc
 
+let value_error message location oc = _error "Error de valeur" message location oc
+
 let bug code oc =
   Printf.fprintf oc
     "Un bug a été détecté, merci de le rapporter aux développeurs. Code d'erreur: %s.\n"
@@ -22,6 +24,7 @@ type error_arg = string * Location.t option
 exception SyntaxError of error_arg
 exception TypeError of error_arg
 exception NameError of error_arg
+exception ValueError of error_arg
 exception ImportError of error_arg
 exception Bug of string
 
@@ -34,6 +37,8 @@ let raise_type_error ?(location) message =
   raise (TypeError (message, location))
 let raise_import_error ?(location) message =
   raise (ImportError (message, location))
+let raise_value_error ?(location) message =
+  raise (ValueError (message, location))
 let raise_bug code =
   raise (Bug code)
 
@@ -94,21 +99,24 @@ let try_update_err location func =
   | TypeError (msg, None) -> raise (TypeError (msg, Some location))
   | NameError (msg, None) -> raise (NameError (msg, Some location))
   | ImportError (msg, None) -> raise (ImportError (msg, Some location))
+  | ValueError (msg, None) -> raise (ValueError (msg, Some location))
 
 let try_catch ?raise_errors oc func =
   let raise_error = raise_errors = Some true in
   try func () with
-  | SyntaxError _ | TypeError _ | NameError _ | ImportError _ as error when raise_error -> raise error
+  | error when raise_error -> raise error
   | SyntaxError (msg, Some location) -> syntax_error msg location oc
   | TypeError (msg, Some location) -> type_error msg location oc
   | NameError (msg, Some location) -> name_error msg location oc
+  | ValueError (msg, Some location) -> value_error msg location oc
   | ImportError (msg, Some location) -> import_error msg location oc
   | Bug code -> bug code oc
 
 let try_execute func ~on_success ~on_failure =
   try let value = func () in on_success value with
   | SyntaxError (msg, Some location) | TypeError (msg, Some location)
-  | NameError (msg, Some location) | ImportError (msg, Some location) -> on_failure (msg, location)
+  | NameError (msg, Some location) | ImportError (msg, Some location)
+  | ValueError (msg, Some location) -> on_failure (msg, location)
   | Bug code -> on_failure
                   ("Un bug a été détecté, merci de le rapporter aux développeurs. Code d'erreur: " ^
                    code ^ ".",
@@ -135,12 +143,14 @@ let make_error_header = function
   | TypeError (_, Some location) -> "Erreur de type à la " ^ Location.to_string_fr location
   | NameError (_, Some location) -> "Erreur de nommage à la " ^ Location.to_string_fr location
   | ImportError (_, Some location) -> "Erreur d'importation à la " ^ Location.to_string_fr location
+  | ValueError (_, Some location) -> "Erreur de valeur à la " ^ Location.to_string_fr location
   | _ -> assert false
 
 let try_add_error func ~default =
   try func () with
   | SyntaxError (msg, Some location) | TypeError (msg, Some location)
-  | NameError (msg, Some location) | ImportError (msg, Some location) as e ->
+  | NameError (msg, Some location) | ImportError (msg, Some location)
+  | ValueError (msg, Some location) as e ->
     let header = make_error_header e ^ " : "
     and message = msg in
     errors := { header; message; location } :: !errors;

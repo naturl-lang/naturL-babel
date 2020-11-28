@@ -207,6 +207,7 @@ let (~--) = Big_int.minus_big_int
 let ( ** ) = Big_int.mult_big_int
 let (%) = Big_int.mod_big_int
 let (//) = Big_int.div_big_int
+let ( === ) = Big_int.eq_big_int
 let ( >>= ) = Big_int.ge_big_int
 let ( <<= ) = Big_int.le_big_int
 let ( >> ) = Big_int.gt_big_int

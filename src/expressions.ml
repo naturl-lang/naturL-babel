@@ -162,7 +162,11 @@ open (struct
       | "\\", Value (Float x1), Value (Float x2) -> Value (Float (x1 /. x2))
       | "\\", Value (Int x1), Value (Float x2) -> Value(Float ((Big_int.float_of_big_int x1) /. x2))
       | "\\", Value (Float x1), Value (Int x2) -> Value(Float (x1 /. (Big_int.float_of_big_int x2)))
-      | "div", Value (Int x1), Value (Int x2) -> Value (Int (x1 // x2))
+      | "div", Value (Int x1), Value (Int x2) ->
+        if x2 === to_big 0 then
+          raise_value_error "Impossible de diviser par 0 !"
+        else
+          Value (Int (x1 // x2))
       | "%", Value (Int x1), Value (Int x2) -> Value (Int (x1 % x2))
       | "=", Value v1, Value v2 when not (is_var v1 || is_var v2) -> Value (Bool Value.(to_string v1 = to_string v2))
       | ">", Value (Int x1), Value (Int x2) -> Value (Bool (x1 >> x2))
@@ -185,7 +189,8 @@ open (struct
       | "neg", Value (Int x), _ -> Value (Int (~--x))
       | "neg", Value (Float x), _ -> Value (Float (-1.*. x))
       | "get[", List l, Value (Int i) when i >>= to_big 0 && i <<= to_big (List.length l) -> List.nth l (of_big i)
-      | "get[", Value (String s), Value (Int i) when i >>= to_big 0 && i <<= to_big (String.length s) -> Value (Char s.[of_big i])
+      | "get[", Value (String s), Value (Int i) when i >>= to_big 0 && i <<= to_big (String.length s) ->
+        Value (Char s.[of_big i])
       | "get[", expr1, expr2 -> Subscript (_simplify expr1, _simplify expr2)
       | _-> expr_
     in

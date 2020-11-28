@@ -31,7 +31,7 @@ let tokenize input =
     and reg_boolean = Str.regexp "vrai\\|faux"
     and reg_number = Str.regexp "[0-9]+\\.?[0-9]*"
     and reg_operator = Str.regexp {|ou\|et\|non\|=\|!=\|<=\|>=\|<\|>\|*\|fois\|+\|-\|/\|div\|mod\|\^\|\.\|de|}
-    and reg_string = Str.regexp  {|"\([^"]\)*"|}
+    and reg_string = Str.regexp  "\"\\([^\"]\\)*\""
     and reg_char = Str.regexp "'[\x00-\xff]'"
     and reg_openp = Str.regexp "("
     and reg_closep = Str.regexp ")"
