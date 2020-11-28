@@ -116,6 +116,7 @@ open (struct
 
   let rec string_of_tokens = function
       [] -> ""
+    | Litteral _ :: Litteral _ :: _ -> raise_syntax_error "Expression invalide"
     | token :: t -> string_of_token token ^ string_of_tokens t
 
 
@@ -283,7 +284,7 @@ let expr_of_string str : Expr.t =
              | Identifier id :: [] -> id
              | _ -> raise_syntax_error ""
            and right = expr_of_tokens (list_of_queue right)
-           in Call(left, [right])
+           in Call (left, [right])
          else (* Function call *)
            let right = split_params (list_of_queue right) |> List.map expr_of_tokens in
            if Queue.is_empty left then
