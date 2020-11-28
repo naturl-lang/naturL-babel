@@ -44,6 +44,7 @@ let py_expr variables =
     | Pow (left, right) as expr -> binary_op " ** " expr left right, expr
     | Neg arg as expr -> "-" ^ py_expr (Some expr) arg, expr
     | Eq (left, right) as expr -> binary_op " == " expr left right, expr
+    | Neq (left, right) as expr -> binary_op " != " expr left right, expr
     | Gt (left, right) as expr -> binary_op " > " expr left right, expr
     | Lt (left, right) as expr -> binary_op " < " expr left right, expr
     | Gt_eq (left, right) as expr -> binary_op " >= " expr left right, expr

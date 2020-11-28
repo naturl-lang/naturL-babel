@@ -14,6 +14,7 @@ module Expr = struct
     | Modulus of t * t           (* x mod y *)
     | Pow of t * t               (* x ^ y *)
     | Eq of t * t                (* x = y *)
+    | Neq of t * t               (* x != y *)
     | Gt of t * t                (* x > y *)
     | Gt_eq of t * t             (* x >= y *)
     | Lt of t * t                (* x < y *)
@@ -32,7 +33,7 @@ let precedence = function
   | "" -> max_int
   | "ou" -> 1
   | "et" -> 2
-  | ">" | ">=" | "<" | "<=" | "=" -> 3
+  | ">" | ">=" | "<" | "<=" | "=" | "!=" -> 3
   | "+" | "-" -> 4
   | "*" | "fois" | "/" | "div" | "neg" -> 5
   | "non" | "get[" -> 6
@@ -48,6 +49,7 @@ let expr_to_op : Expr.t -> string = function
   | Modulus _ -> "mod"
   | Pow _ -> "^"
   | Eq _ -> "="
+  | Neq _ -> "!="
   | Gt _ -> ">"
   | Gt_eq _ -> ">="
   | Lt _ -> "<"
@@ -77,6 +79,7 @@ open (struct
     "<";
     "<=";
     "=";
+    "!=";
     "et";
     "ou";
     "get["
@@ -94,6 +97,7 @@ open (struct
     | "mod" -> Modulus (e1, e2)
     | "^" -> Pow (e1, e2)
     | "=" -> Eq (e1, e2)
+    | "!=" -> Neq (e1, e2)
     | ">" -> Gt (e1, e2)
     | ">=" -> Gt_eq (e1, e2)
     | "<" -> Lt (e1, e2)
@@ -170,6 +174,7 @@ open (struct
           Value (Int (x1 // x2))
       | "%", Value (Int x1), Value (Int x2) -> Value (Int (x1 % x2))
       | "=", Value v1, Value v2 when not (is_var v1 || is_var v2) -> Value (Bool Value.(to_string v1 = to_string v2))
+      | "!=", Value v1, Value v2 when not (is_var v1 || is_var v2) -> Value (Bool Value.(to_string v1 <> to_string v2))
       | ">", Value (Int x1), Value (Int x2) -> Value (Bool (x1 >> x2))
       | ">", Value (Float x1), Value (Float x2) -> Value (Bool (x1 > x2))
       | ">=", Value (Int x1), Value (Int x2) -> Value (Bool (x1 >>= x2))
@@ -203,6 +208,7 @@ open (struct
     | Div_int (e1, e2) -> let e1,e2 = (_simplify e1, _simplify e2) in perform_op e1 e2 "div" (Div_int (e1, e2))
     | Modulus (e1, e2) -> let e1,e2 = (_simplify e1, _simplify e2) in perform_op e1 e2 "%" (Modulus (e1, e2))
     | Eq (e1, e2) -> let e1,e2 = (_simplify e1, _simplify e2) in perform_op e1 e2 "=" (Eq (e1, e2))
+    | Neq (e1, e2) -> let e1,e2 = (_simplify e1, _simplify e2) in perform_op e1 e2 "!=" (Neq (e1, e2))
     | Gt (e1, e2) -> let e1,e2 = (_simplify e1, _simplify e2) in perform_op e1 e2 ">" (Gt (e1, e2))
     | Gt_eq (e1, e2) -> let e1,e2 = (_simplify e1, _simplify e2) in perform_op e1 e2 ">=" (Gt_eq (e1, e2))
     | Lt (e1, e2) -> let e1,e2 = (_simplify e1, _simplify e2) in perform_op e1 e2 "<" (Lt (e1, e2))
@@ -222,7 +228,7 @@ open (struct
     | Minus _ | Times _ | Neg _ | Pow _ -> List.exists (Type.equal t) [Int; Float]
     | Div_int _ | Modulus _ -> Type.equal Int t
     | Div _ -> Type.equal Float t
-    | Eq _ | Gt _ | Gt_eq _ | Lt _ | Lt_eq _ -> true
+    | Eq _ | Neq _ | Gt _ | Gt_eq _ | Lt _ | Lt_eq _ -> true
     | And _ | Or _ | Not _ -> Type.equal Bool t
     | List _ | Call _ | Subscript _ | Value _ | Access _ -> assert false
 
@@ -354,8 +360,8 @@ let type_of_expr ?(desired_type = Type.Any) expr vars =
         raise_type_error (
           "Le type '" ^ (Type.to_string t) ^
           "' n'est pas supporté par cet opérateur")
-    | Eq (l, r) | Gt (l, r) | Gt_eq (l, r)
-    | Lt (l, r) | Lt_eq (l, r) ->
+    | Eq (l, r) | Neq (l, r) | Gt (l, r)
+    | Gt_eq (l, r) | Lt (l, r) | Lt_eq (l, r) ->
       let _ = type_of_bin_expr ~desired_type:Any l r in
       Bool
     | List [] -> List Any

@@ -40,6 +40,7 @@ let csharp_expr =
       "Math.Pow(" ^ csharp_expr None left ^ ", " ^ csharp_expr None right, expr
     | Neg arg as expr -> "-" ^ csharp_expr (Some expr) arg, expr
     | Eq (left, right) as expr -> binary_op " == " expr left right, expr
+    | Neq (left, right) as expr -> binary_op " != " expr left right, expr
     | Gt (left, right) as expr -> binary_op " > " expr left right, expr
     | Lt (left, right) as expr -> binary_op " < " expr left right, expr
     | Gt_eq (left, right) as expr -> binary_op " >= " expr left right, expr
