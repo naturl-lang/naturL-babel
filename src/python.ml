@@ -100,7 +100,18 @@ let naturl_to_python ?(raise_exception = false) ~annotate ~code =
       | _ :: t, location -> find_declare_location (t, location)
     in find_declare_location (StringMap.bindings variables, None) |> Option.get
   in
-  let rec ast_to_python ~depth ast =
+  let rec if_to_python ~is_else ~depth ~(location: Structures.Location.t) ~condition ~body ~else_ =
+    let variables = Variables.get_locale_variables location.line in
+    let body = ast_to_python ~depth:(depth + 1) body in
+    let condition = py_expr variables condition in
+    let else_ = match else_ with
+      | Some (If (location, condition, body, else_)) ->
+        "\n" ^ if_to_python ~is_else:true ~depth ~location ~condition ~body ~else_
+      | Some body -> "\n" ^ indent depth ^ "else:\n" ^ ast_to_python ~depth:(depth + 1) body
+      | None -> ""
+    in
+    indent depth ^ (if is_else then "elif " else "if ") ^ condition ^ ":\n" ^ body ^ else_
+  and ast_to_python ~depth ast =
     match ast with
     | Body [] -> indent depth ^ "pass"
     | Body body ->
@@ -137,15 +148,7 @@ let naturl_to_python ?(raise_exception = false) ~annotate ~code =
         else ": " ^ (variables |> type_of_expr expr |> py_type)
       in
       indent depth ^ name ^ annotation ^ " = " ^ py_expr variables expr
-    | If (location, condition, body, else_) ->
-      let variables = Variables.get_locale_variables location.line in
-      let body = ast_to_python ~depth:(depth + 1) body in
-      let condition = py_expr variables condition in
-      let else_ = match else_ with
-        | Some body -> "\n" ^ indent depth ^ "else:\n" ^ ast_to_python ~depth:(depth + 1) body
-        | None -> ""
-      in
-      indent depth ^ "if " ^ condition ^ ":\n" ^ body ^ else_
+    | If (location, condition, body, else_) -> if_to_python ~is_else:false ~depth ~location ~condition ~body ~else_
     | Else (_, body) ->
       let body = ast_to_python ~depth:(depth + 1) body in
       indent depth ^ "else:\n" ^ body
