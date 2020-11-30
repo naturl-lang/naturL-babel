@@ -14,7 +14,7 @@ let rec simplify ast =
   |Ast.For (location, value, exp1, exp2, body) -> Ast.For (location, value, exp1, exp2, simplify body)
   |Ast.For_each (location, value, expression, body) -> Ast.For_each (location, value, expression, simplify body)
   |Ast.Func_definition (location, value, args, return, body) -> Ast.Func_definition (location, value, args, return, simplify body)
-  |_ -> ast
+  |Ast.Else (location, body) -> Ast.Else (location, simplify body)
 and simplify_opt opt = match opt with
   |None -> None
   |Some option -> Some (simplify option)
